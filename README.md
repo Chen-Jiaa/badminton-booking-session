@@ -48,3 +48,4 @@ See `.env.example` for required environment variables.
 - Generate migrations: `pnpm db:generate`
 - Push schema: `pnpm db:push`
 - Open Drizzle Studio: `pnpm db:studio`
+# badminton-booking-session
