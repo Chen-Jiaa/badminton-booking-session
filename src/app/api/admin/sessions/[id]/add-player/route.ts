@@ -5,10 +5,7 @@ import { attendances, sessions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { addPlayerSchema } from "@/lib/validations";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -35,18 +32,19 @@ export async function POST(
     }
 
     if (gameSession.status === "LOCKED") {
-      return NextResponse.json({ error: "Cannot add players to a locked session" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Cannot add players to a locked session" },
+        { status: 400 },
+      );
     }
 
     const existing = await db.query.attendances.findFirst({
-      where: and(
-        eq(attendances.sessionId, params.id),
-        eq(attendances.userId, validated.userId)
-      ),
+      where: and(eq(attendances.sessionId, params.id), eq(attendances.userId, validated.userId)),
     });
 
     if (existing) {
-      await db.update(attendances)
+      await db
+        .update(attendances)
         .set({ status: "YES", updatedAt: new Date() })
         .where(eq(attendances.id, existing.id));
     } else {

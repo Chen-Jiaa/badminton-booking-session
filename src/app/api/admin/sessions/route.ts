@@ -42,20 +42,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = createSessionSchema.parse(body);
 
-    const [newSession] = await db.insert(sessions).values({
-      startTime: new Date(validated.startTime),
-      endTime: new Date(validated.endTime),
-      courts: validated.courts,
-      costPerCourt: validated.costPerCourt.toFixed(2),
-      location: validated.location || null,
-      locationMapUrl: validated.locationMapUrl || null,
-      courtNumbers: validated.courtNumbers || null,
-      maxPlayers: validated.maxPlayers,
-      minBalance: validated.minBalance.toFixed(2),
-      rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
-      note: validated.note,
-      createdById: session.user.id,
-    }).returning();
+    const [newSession] = await db
+      .insert(sessions)
+      .values({
+        startTime: new Date(validated.startTime),
+        endTime: new Date(validated.endTime),
+        courts: validated.courts,
+        costPerCourt: validated.costPerCourt.toFixed(2),
+        location: validated.location || null,
+        locationMapUrl: validated.locationMapUrl || null,
+        courtNumbers: validated.courtNumbers || null,
+        maxPlayers: validated.maxPlayers,
+        minBalance: validated.minBalance.toFixed(2),
+        rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
+        note: validated.note,
+        createdById: session.user.id,
+      })
+      .returning();
 
     return NextResponse.json(newSession, { status: 201 });
   } catch (error) {

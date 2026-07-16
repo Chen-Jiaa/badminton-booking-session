@@ -42,7 +42,6 @@ export const updateSessionSchema = z.object({
   rsvpDeadline: z.string().datetime().optional().nullable(),
 });
 
-
 export const rsvpSchema = z.object({
   sessionId: z.string().min(1),
   status: z.enum(["YES", "NO", "WAITLIST"]),

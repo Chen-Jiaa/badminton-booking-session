@@ -1,0 +1,5 @@
+node_modules
+.next
+drizzle
+public/sw.js
+public/workbox-*.js

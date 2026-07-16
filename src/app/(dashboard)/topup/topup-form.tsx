@@ -25,7 +25,7 @@ export function TopUpForm() {
     setLoading(true);
     try {
       let receiptUrl = undefined;
-      
+
       if (file) {
         const formData = new FormData();
         formData.append("file", file);

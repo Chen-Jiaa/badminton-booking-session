@@ -14,12 +14,7 @@ interface RsvpButtonsProps {
   isFull?: boolean;
 }
 
-export function RsvpButtons({
-  sessionId,
-  currentStatus,
-  isLoggedIn,
-  isFull,
-}: RsvpButtonsProps) {
+export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull }: RsvpButtonsProps) {
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const { toast } = useToast();

@@ -55,7 +55,9 @@ export function AddPlayerForm({ sessionId, availablePlayers }: AddPlayerFormProp
   }
 
   if (availablePlayers.length === 0) {
-    return <p className="text-sm text-muted-foreground">All members are already in this session.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">All members are already in this session.</p>
+    );
   }
 
   return (
@@ -73,11 +75,7 @@ export function AddPlayerForm({ sessionId, availablePlayers }: AddPlayerFormProp
         </SelectContent>
       </Select>
       <Button onClick={handleAdd} disabled={!selectedUserId || loading}>
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <UserPlus className="h-4 w-4" />
-        )}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
       </Button>
     </div>
   );

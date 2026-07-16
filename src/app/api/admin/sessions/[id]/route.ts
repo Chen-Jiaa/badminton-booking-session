@@ -5,10 +5,7 @@ import { sessions, attendances, ledger, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { updateSessionSchema } from "@/lib/validations";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -38,20 +35,23 @@ export async function PATCH(
     const body = await request.json();
     const validated = updateSessionSchema.parse(body);
 
-    await db.update(sessions).set({
-      startTime: new Date(validated.startTime),
-      endTime: new Date(validated.endTime),
-      courts: validated.courts,
-      costPerCourt: validated.costPerCourt.toFixed(2),
-      location: validated.location || null,
-      locationMapUrl: validated.locationMapUrl || null,
-      courtNumbers: validated.courtNumbers || null,
-      maxPlayers: validated.maxPlayers,
-      minBalance: validated.minBalance.toFixed(2),
-      note: validated.note || null,
-      rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
-      updatedAt: new Date(),
-    }).where(eq(sessions.id, params.id));
+    await db
+      .update(sessions)
+      .set({
+        startTime: new Date(validated.startTime),
+        endTime: new Date(validated.endTime),
+        courts: validated.courts,
+        costPerCourt: validated.costPerCourt.toFixed(2),
+        location: validated.location || null,
+        locationMapUrl: validated.locationMapUrl || null,
+        courtNumbers: validated.courtNumbers || null,
+        maxPlayers: validated.maxPlayers,
+        minBalance: validated.minBalance.toFixed(2),
+        note: validated.note || null,
+        rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(sessions.id, params.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -60,10 +60,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -98,8 +95,11 @@ export async function DELETE(
           where: eq(users.id, entry.userId),
         });
         if (user) {
-          const newBalance = (parseFloat(user.balance) + Math.abs(parseFloat(entry.amount))).toFixed(2);
-          await db.update(users)
+          const newBalance = (
+            parseFloat(user.balance) + Math.abs(parseFloat(entry.amount))
+          ).toFixed(2);
+          await db
+            .update(users)
             .set({ balance: newBalance, updatedAt: new Date() })
             .where(eq(users.id, entry.userId));
         }

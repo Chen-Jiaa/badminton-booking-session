@@ -37,9 +37,7 @@ export async function POST(request: Request) {
   });
 
   const googleImage =
-    supabaseUser.user_metadata?.avatar_url ||
-    supabaseUser.user_metadata?.picture ||
-    null;
+    supabaseUser.user_metadata?.avatar_url || supabaseUser.user_metadata?.picture || null;
 
   if (!dbUser) {
     const [newUser] = await db

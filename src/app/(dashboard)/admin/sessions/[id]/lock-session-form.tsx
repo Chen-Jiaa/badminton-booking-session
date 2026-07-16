@@ -67,7 +67,9 @@ export function LockSessionForm({
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
         <div className="flex justify-between text-sm">
-          <span>Court cost ({courts} × {formatCurrency(costPerCourt)})</span>
+          <span>
+            Court cost ({courts} × {formatCurrency(costPerCourt)})
+          </span>
           <span>{formatCurrency(courtCost)}</span>
         </div>
         <div className="flex justify-between text-sm">

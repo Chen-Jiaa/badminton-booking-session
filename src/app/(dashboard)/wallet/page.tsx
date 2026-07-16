@@ -29,11 +29,8 @@ export default async function LedgerPage() {
     db.query.topUpRequests.findMany({
       where: and(
         eq(topUpRequests.userId, session.user.id),
-        or(
-          eq(topUpRequests.status, "PENDING"),
-          eq(topUpRequests.status, "REJECTED")
-        ),
-        eq(topUpRequests.isDeleted, false)
+        or(eq(topUpRequests.status, "PENDING"), eq(topUpRequests.status, "REJECTED")),
+        eq(topUpRequests.isDeleted, false),
       ),
       orderBy: [desc(topUpRequests.createdAt)],
     }),
@@ -62,10 +59,16 @@ export default async function LedgerPage() {
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <p className={cn(
-                "text-3xl font-bold",
-                balance < 0 ? "text-red-600" : isLowBalance ? "text-yellow-600" : "text-green-600"
-              )}>
+              <p
+                className={cn(
+                  "text-3xl font-bold",
+                  balance < 0
+                    ? "text-red-600"
+                    : isLowBalance
+                      ? "text-yellow-600"
+                      : "text-green-600",
+                )}
+              >
                 {formatCurrency(balance)}
               </p>
               {isLowBalance && (
@@ -99,15 +102,20 @@ export default async function LedgerPage() {
                 return (
                   <Card
                     key={`topup-${req.id}`}
-                    className={isPending ? "border-gray-200 bg-gray-50" : "border-red-200 bg-red-50"}
+                    className={
+                      isPending ? "border-gray-200 bg-gray-50" : "border-red-200 bg-red-50"
+                    }
                   >
                     <CardContent className="py-3">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${isPending ? "bg-gray-100" : "bg-red-100"}`}>
-                          {isPending
-                            ? <Clock className="h-4 w-4 text-gray-500" />
-                            : <XCircle className="h-4 w-4 text-red-600" />
-                          }
+                        <div
+                          className={`p-2 rounded-full ${isPending ? "bg-gray-100" : "bg-red-100"}`}
+                        >
+                          {isPending ? (
+                            <Clock className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium">
@@ -123,7 +131,9 @@ export default async function LedgerPage() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className={`font-semibold ${isPending ? "text-gray-500" : "text-red-600"}`}>
+                          <p
+                            className={`font-semibold ${isPending ? "text-gray-500" : "text-red-600"}`}
+                          >
                             {formatCurrency(parseFloat(req.amount))}
                           </p>
                         </div>
@@ -136,14 +146,19 @@ export default async function LedgerPage() {
               const entry = item.data;
               const amount = parseFloat(entry.amount);
               const isCredit = amount > 0;
-              const Icon = entry.type === "MANUAL_ADJUST" ? Edit : isCredit ? ArrowUpCircle : ArrowDownCircle;
+              const Icon =
+                entry.type === "MANUAL_ADJUST" ? Edit : isCredit ? ArrowUpCircle : ArrowDownCircle;
 
               return (
                 <Card key={entry.id}>
                   <CardContent className="py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${isCredit ? "bg-green-100" : "bg-red-100"}`}>
-                        <Icon className={`h-4 w-4 ${isCredit ? "text-green-600" : "text-red-600"}`} />
+                      <div
+                        className={`p-2 rounded-full ${isCredit ? "bg-green-100" : "bg-red-100"}`}
+                      >
+                        <Icon
+                          className={`h-4 w-4 ${isCredit ? "text-green-600" : "text-red-600"}`}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">
@@ -159,8 +174,11 @@ export default async function LedgerPage() {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className={`font-semibold ${isCredit ? "text-green-600" : "text-red-600"}`}>
-                          {isCredit ? "+" : ""}{formatCurrency(amount)}
+                        <p
+                          className={`font-semibold ${isCredit ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {isCredit ? "+" : ""}
+                          {formatCurrency(amount)}
                         </p>
                         {entry.type !== "TOPUP" && (
                           <p className="text-xs text-muted-foreground">

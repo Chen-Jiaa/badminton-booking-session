@@ -5,10 +5,7 @@ import { topUpRequests, users, ledger } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { sendTopUpConfirmedNotification } from "@/lib/fcm";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -38,7 +35,8 @@ export async function POST(
     const adminUserId = session.user.id;
 
     await db.transaction(async (tx) => {
-      await tx.update(topUpRequests)
+      await tx
+        .update(topUpRequests)
         .set({
           status: "CONFIRMED",
           confirmedAt: new Date(),
@@ -46,7 +44,8 @@ export async function POST(
         })
         .where(eq(topUpRequests.id, params.id));
 
-      await tx.update(users)
+      await tx
+        .update(users)
         .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
         .where(eq(users.id, topUpRequest.userId));
 

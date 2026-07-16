@@ -53,8 +53,12 @@ export default async function SessionsPage() {
 
       <Tabs defaultValue="upcoming" className="w-full">
         <TabsList className="w-full">
-          <TabsTrigger value="upcoming" className="flex-1">Upcoming</TabsTrigger>
-          <TabsTrigger value="past" className="flex-1">Past</TabsTrigger>
+          <TabsTrigger value="upcoming" className="flex-1">
+            Upcoming
+          </TabsTrigger>
+          <TabsTrigger value="past" className="flex-1">
+            Past
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="upcoming" className="mt-4">
@@ -67,17 +71,8 @@ export default async function SessionsPage() {
           ) : (
             <div className="space-y-3">
               {upcomingSessions.map((s) => {
-                const myRsvp = userId
-                  ? s.attendances.find((a) => a.userId === userId)
-                  : null;
-                return (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    userRsvp={myRsvp}
-                    userId={userId}
-                  />
-                );
+                const myRsvp = userId ? s.attendances.find((a) => a.userId === userId) : null;
+                return <SessionCard key={s.id} session={s} userRsvp={myRsvp} userId={userId} />;
               })}
             </div>
           )}
@@ -93,9 +88,7 @@ export default async function SessionsPage() {
           ) : (
             <div className="space-y-3">
               {pastSessions.map((s) => {
-                const myRsvp = userId
-                  ? s.attendances.find((a) => a.userId === userId)
-                  : null;
+                const myRsvp = userId ? s.attendances.find((a) => a.userId === userId) : null;
                 return (
                   <Card key={s.id}>
                     <CardContent className="py-4">
@@ -103,7 +96,8 @@ export default async function SessionsPage() {
                         <div>
                           <p className="font-medium">{formatDateTime(s.startTime)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {s.courts} court{s.courts > 1 ? "s" : ""} • {formatCurrency(s.costPerPlayer || "0")}/person
+                            {s.courts} court{s.courts > 1 ? "s" : ""} •{" "}
+                            {formatCurrency(s.costPerPlayer || "0")}/person
                           </p>
                         </div>
                         <div className="text-right">

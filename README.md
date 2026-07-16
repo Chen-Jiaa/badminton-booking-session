@@ -23,6 +23,7 @@ A PWA for managing pre-payments and session costs for badminton group play.
 ## Getting Started
 
 1. Clone and install dependencies:
+
    ```bash
    pnpm install
    ```
@@ -30,6 +31,7 @@ A PWA for managing pre-payments and session costs for badminton group play.
 2. Copy `.env.example` to `.env.local` and fill in your credentials
 
 3. Push database schema:
+
    ```bash
    pnpm db:push
    ```
@@ -48,4 +50,5 @@ See `.env.example` for required environment variables.
 - Generate migrations: `pnpm db:generate`
 - Push schema: `pnpm db:push`
 - Open Drizzle Studio: `pnpm db:studio`
+
 # badminton-booking-session

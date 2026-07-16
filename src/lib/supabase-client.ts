@@ -31,7 +31,6 @@ export async function signInWithGoogle() {
   if (error) throw error;
 }
 
-
 export async function signOut() {
   const supabase = getSupabaseClient();
 

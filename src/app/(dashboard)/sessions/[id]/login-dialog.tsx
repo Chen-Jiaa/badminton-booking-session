@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LoginButtons } from "@/app/(auth)/login/login-buttons";
 
@@ -10,13 +9,6 @@ interface LoginDialogProps {
 }
 
 export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
-  const router = useRouter();
-
-  function handleSuccess() {
-    onOpenChange(false);
-    router.refresh();
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
@@ -26,7 +18,7 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
           </div>
           <DialogTitle className="text-center">Sign in to RSVP</DialogTitle>
         </DialogHeader>
-        <LoginButtons onSuccess={handleSuccess} />
+        <LoginButtons />
       </DialogContent>
     </Dialog>
   );

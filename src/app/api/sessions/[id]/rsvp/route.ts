@@ -5,10 +5,7 @@ import { attendances, sessions, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { rsvpSchema } from "@/lib/validations";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -33,15 +30,12 @@ export async function POST(
     if (validated.status === "YES" || validated.status === "WAITLIST") {
       const now = new Date();
       if (gameSession.rsvpDeadline && now >= gameSession.rsvpDeadline) {
-        return NextResponse.json(
-          { error: "RSVP deadline has passed" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "RSVP deadline has passed" }, { status: 400 });
       }
       if (now >= gameSession.startTime) {
         return NextResponse.json(
           { error: "RSVPs are closed — the session has already started" },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -60,7 +54,7 @@ export async function POST(
             error: `Insufficient balance. You need at least RM${threshold.toFixed(2)} to join. Current balance: RM${balance.toFixed(2)}`,
             code: "INSUFFICIENT_BALANCE",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -68,12 +62,13 @@ export async function POST(
     const existing = await db.query.attendances.findFirst({
       where: and(
         eq(attendances.sessionId, validated.sessionId),
-        eq(attendances.userId, session.user.id)
+        eq(attendances.userId, session.user.id),
       ),
     });
 
     if (existing) {
-      await db.update(attendances)
+      await db
+        .update(attendances)
         .set({ status: validated.status, updatedAt: new Date() })
         .where(eq(attendances.id, existing.id));
     } else {

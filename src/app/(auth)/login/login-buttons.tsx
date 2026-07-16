@@ -6,7 +6,7 @@ import { signInWithGoogle } from "@/lib/supabase-client";
 
 const LAST_PROVIDER_KEY = "last-auth-provider";
 
-export function LoginButtons({ onSuccess }: { onSuccess?: () => void } = {}) {
+export function LoginButtons() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastUsed, setLastUsed] = useState(false);
@@ -56,9 +56,7 @@ export function LoginButtons({ onSuccess }: { onSuccess?: () => void } = {}) {
         <span className="flex-1 text-center">
           {loading ? "Signing in..." : "Continue with Google"}
         </span>
-        {lastUsed && !loading && (
-          <span className="text-xs text-muted-foreground">Last used</span>
-        )}
+        {lastUsed && !loading && <span className="text-xs text-muted-foreground">Last used</span>}
       </Button>
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}

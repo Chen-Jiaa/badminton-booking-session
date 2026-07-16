@@ -1,6 +1,6 @@
 import { auth } from "@/lib/supabase-server";
 import { db } from "@/db";
-import { sessions, settings } from "@/db/schema";
+import { sessions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,11 +22,7 @@ function formatTime(date: Date): string {
     .toUpperCase();
 }
 
-export default async function SessionDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function SessionDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();
   const userId = session?.user?.id;
 
@@ -45,9 +41,7 @@ export default async function SessionDetailPage({
     notFound();
   }
 
-  const myAttendance = userId
-    ? gameSession.attendances.find((a) => a.userId === userId)
-    : null;
+  const myAttendance = userId ? gameSession.attendances.find((a) => a.userId === userId) : null;
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const now = new Date();
@@ -58,9 +52,7 @@ export default async function SessionDetailPage({
   const isPrivate = parseFloat(gameSession.minBalance) > 0;
   const groupName = appSettings?.groupName ?? "Badminton Group";
 
-  const mapQuery = gameSession.location
-    ? encodeURIComponent(gameSession.location)
-    : null;
+  const mapQuery = gameSession.location ? encodeURIComponent(gameSession.location) : null;
 
   return (
     <div className="-mx-4 -mt-6">
@@ -85,17 +77,13 @@ export default async function SessionDetailPage({
         <div className="py-4 border-b">
           <h1 className="text-lg font-bold uppercase tracking-wide">Badminton</h1>
           <p className="font-semibold">{groupName}</p>
-          <p className="text-sm text-muted-foreground">
-            Hosted by {gameSession.createdBy.name}
-          </p>
+          <p className="text-sm text-muted-foreground">Hosted by {gameSession.createdBy.name}</p>
         </div>
 
         {/* Location */}
         {gameSession.location && (
           <div className="py-4 border-b space-y-2">
-            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">
-              Location
-            </p>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Location</p>
             <p className="font-bold">{gameSession.location}</p>
             <a
               href={
@@ -163,9 +151,7 @@ export default async function SessionDetailPage({
                 <span className={`text-sm font-semibold ${isFull ? "text-red-500" : ""}`}>
                   {yesAttendees.length}/{gameSession.maxPlayers} joined
                 </span>
-                {isFull && (
-                  <p className="text-xs text-muted-foreground">Sorry, game is full</p>
-                )}
+                {isFull && <p className="text-xs text-muted-foreground">Sorry, game is full</p>}
               </div>
             </div>
           </div>

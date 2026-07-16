@@ -13,7 +13,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 
 export async function requestNotificationPermission(): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  
+
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return null;
@@ -32,7 +32,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
 export function onForegroundMessage(callback: (payload: unknown) => void) {
   if (typeof window === "undefined") return;
-  
+
   const messaging = getMessaging(app);
   onMessage(messaging, callback);
 }
