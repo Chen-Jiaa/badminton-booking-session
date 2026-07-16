@@ -4,10 +4,7 @@ import { db } from "@/db";
 import { courts, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {

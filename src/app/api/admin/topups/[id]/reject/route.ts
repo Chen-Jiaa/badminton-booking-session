@@ -6,10 +6,7 @@ import { eq } from "drizzle-orm";
 import { rejectTopUpSchema } from "@/lib/validations";
 import { sendTopUpRejectedNotification } from "@/lib/fcm";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -36,7 +33,8 @@ export async function POST(
       return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    await db.update(topUpRequests)
+    await db
+      .update(topUpRequests)
       .set({
         status: "REJECTED",
         rejectReason: validated.reason,
@@ -49,7 +47,7 @@ export async function POST(
       await sendTopUpRejectedNotification(
         topUpRequest.user.fcmToken,
         topUpRequest.amount,
-        validated.reason
+        validated.reason,
       );
     }
 

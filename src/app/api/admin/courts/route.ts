@@ -47,7 +47,7 @@ export async function GET() {
         PREDEFINED_COURTS.map(async (url) => ({
           name: await resolveMapUrlName(url),
           mapUrl: url,
-        }))
+        })),
       );
       const inserted = await db.insert(courts).values(resolved).returning();
       return NextResponse.json(inserted);

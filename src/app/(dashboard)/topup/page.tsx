@@ -12,10 +12,7 @@ export default async function TopUpPage() {
   if (!session?.user?.id) return null;
 
   const requests = await db.query.topUpRequests.findMany({
-    where: and(
-      eq(topUpRequests.userId, session.user.id),
-      eq(topUpRequests.isDeleted, false)
-    ),
+    where: and(eq(topUpRequests.userId, session.user.id), eq(topUpRequests.isDeleted, false)),
     orderBy: [desc(topUpRequests.createdAt)],
     limit: 20,
   });
@@ -51,9 +48,7 @@ export default async function TopUpPage() {
                         {formatDateTime(req.createdAt)}
                       </p>
                       {req.rejectReason && (
-                        <p className="text-xs text-red-600 mt-1">
-                          Reason: {req.rejectReason}
-                        </p>
+                        <p className="text-xs text-red-600 mt-1">Reason: {req.rejectReason}</p>
                       )}
                     </div>
                     <Badge
@@ -61,8 +56,8 @@ export default async function TopUpPage() {
                         req.status === "CONFIRMED"
                           ? "success"
                           : req.status === "REJECTED"
-                          ? "destructive"
-                          : "secondary"
+                            ? "destructive"
+                            : "secondary"
                       }
                     >
                       {req.status}

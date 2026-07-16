@@ -63,12 +63,12 @@ export function TopUpActions({ requestId }: { requestId: string }) {
   return (
     <>
       <div className="flex gap-2">
-        <Button
-          onClick={handleConfirm}
-          disabled={loading}
-          className="flex-1"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+        <Button onClick={handleConfirm} disabled={loading} className="flex-1">
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4 mr-1" />
+          )}
           Confirm
         </Button>
         <Button

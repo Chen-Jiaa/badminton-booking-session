@@ -45,7 +45,9 @@ export default async function ProfilePage() {
             <div>
               <h2 className="text-xl font-semibold">{user.name}</h2>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <Badge variant="secondary" className="mt-1">{user.role}</Badge>
+              <Badge variant="secondary" className="mt-1">
+                {user.role}
+              </Badge>
             </div>
           </div>
         </CardContent>
@@ -56,7 +58,9 @@ export default async function ProfilePage() {
           <CardTitle className="text-sm text-muted-foreground">Current Balance</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className={`text-3xl font-bold ${parseFloat(user.balance) < 0 ? "text-red-600" : "text-green-600"}`}>
+          <p
+            className={`text-3xl font-bold ${parseFloat(user.balance) < 0 ? "text-red-600" : "text-green-600"}`}
+          >
             {formatCurrency(user.balance)}
           </p>
         </CardContent>

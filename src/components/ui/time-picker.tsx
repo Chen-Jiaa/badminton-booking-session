@@ -5,11 +5,7 @@ import { Clock } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface TimePickerProps {
@@ -18,11 +14,7 @@ interface TimePickerProps {
   placeholder?: string;
 }
 
-export function TimePicker({
-  value,
-  onChange,
-  placeholder = "Select time",
-}: TimePickerProps) {
+export function TimePicker({ value, onChange, placeholder = "Select time" }: TimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -33,7 +25,7 @@ export function TimePicker({
 
   const handleHourChange = (hour: number) => {
     const current = value || { hour: 9, minute: 0 };
-    const newHour = isAM ? (hour % 12) : (hour % 12) + 12;
+    const newHour = isAM ? hour % 12 : (hour % 12) + 12;
     onChange?.({ ...current, hour: newHour });
   };
 
@@ -71,7 +63,7 @@ export function TimePicker({
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground"
+            !value && "text-muted-foreground",
           )}
         >
           <Clock className="mr-2 h-4 w-4" />
@@ -121,8 +113,8 @@ export function TimePicker({
                   value && ((ampm === "AM" && !isAM) || (ampm === "PM" && isAM))
                     ? "ghost"
                     : value
-                    ? "default"
-                    : "ghost"
+                      ? "default"
+                      : "ghost"
                 }
                 className="w-full shrink-0 aspect-square"
                 onClick={() => handleAmPmChange(ampm)}

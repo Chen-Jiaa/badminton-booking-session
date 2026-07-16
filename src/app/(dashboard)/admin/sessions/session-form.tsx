@@ -9,11 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CalendarIcon, Plus, Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -61,14 +57,18 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
 
   const initialStart = defaultValues ? new Date(defaultValues.startTime) : undefined;
   const initialEnd = defaultValues ? new Date(defaultValues.endTime) : undefined;
-  const initialRsvp = defaultValues?.rsvpDeadline ? new Date(defaultValues.rsvpDeadline) : undefined;
+  const initialRsvp = defaultValues?.rsvpDeadline
+    ? new Date(defaultValues.rsvpDeadline)
+    : undefined;
 
   function toTimeString(d: Date) {
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   }
 
   const [sessionDate, setSessionDate] = useState<Date | undefined>(initialStart);
-  const [startTime, setStartTime] = useState<string>(initialStart ? toTimeString(initialStart) : "");
+  const [startTime, setStartTime] = useState<string>(
+    initialStart ? toTimeString(initialStart) : "",
+  );
   const [endTime, setEndTime] = useState<string>(initialEnd ? toTimeString(initialEnd) : "");
   const [numCourts, setNumCourts] = useState(defaultValues?.courts ?? 1);
   const [costPerCourt, setCostPerCourt] = useState(defaultValues?.costPerCourt ?? 60);
@@ -224,7 +224,12 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
       }
     } catch (err) {
       toast({
-        title: err instanceof Error ? err.message : isEdit ? "Failed to update session" : "Failed to create session",
+        title:
+          err instanceof Error
+            ? err.message
+            : isEdit
+              ? "Failed to update session"
+              : "Failed to create session",
         variant: "destructive",
       });
     } finally {
@@ -241,7 +246,10 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className={cn("w-full justify-start text-left font-normal", !sessionDate && "text-muted-foreground")}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !sessionDate && "text-muted-foreground",
+                )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {sessionDate ? format(sessionDate, "EEEE, MMMM d, yyyy") : "Select date"}
@@ -251,7 +259,12 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
               <Calendar
                 mode="single"
                 selected={sessionDate}
-                onSelect={(d) => { if (d) { setSessionDate(d); setDatePickerOpen(false); } }}
+                onSelect={(d) => {
+                  if (d) {
+                    setSessionDate(d);
+                    setDatePickerOpen(false);
+                  }
+                }}
                 initialFocus
               />
             </PopoverContent>
@@ -305,7 +318,7 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
                   key={court.id}
                   className={cn(
                     "flex items-center justify-between rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-accent",
-                    selectedCourtId === court.id && "bg-accent font-medium"
+                    selectedCourtId === court.id && "bg-accent font-medium",
                   )}
                 >
                   <span
@@ -392,10 +405,6 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
         </div>
       </div>
 
-      
-
-      
-
       <div>
         <Label htmlFor="courtNumbers">Court Numbers (optional)</Label>
         <Input
@@ -466,7 +475,11 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             Cancel
           </Button>
         )}
-        <Button onClick={handleSubmit} className={cn(isEdit ? "flex-1" : "w-full")} disabled={loading}>
+        <Button
+          onClick={handleSubmit}
+          className={cn(isEdit ? "flex-1" : "w-full")}
+          disabled={loading}
+        >
           {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
           {isEdit ? "Save Changes" : loading ? "Creating..." : "Create Session"}
         </Button>

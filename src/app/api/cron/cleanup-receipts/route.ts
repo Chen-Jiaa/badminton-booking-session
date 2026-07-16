@@ -18,12 +18,7 @@ export async function GET(request: Request) {
   const rows = await db
     .select({ id: topUpRequests.id, receiptUrl: topUpRequests.receiptUrl })
     .from(topUpRequests)
-    .where(
-      and(
-        isNotNull(topUpRequests.receiptUrl),
-        lt(topUpRequests.createdAt, threeMonthsAgo)
-      )
-    );
+    .where(and(isNotNull(topUpRequests.receiptUrl), lt(topUpRequests.createdAt, threeMonthsAgo)));
 
   if (rows.length === 0) {
     return NextResponse.json({ deleted: 0 });
@@ -38,12 +33,7 @@ export async function GET(request: Request) {
   await db
     .update(topUpRequests)
     .set({ receiptUrl: null })
-    .where(
-      and(
-        isNotNull(topUpRequests.receiptUrl),
-        lt(topUpRequests.createdAt, threeMonthsAgo)
-      )
-    );
+    .where(and(isNotNull(topUpRequests.receiptUrl), lt(topUpRequests.createdAt, threeMonthsAgo)));
 
   return NextResponse.json({ deleted: paths.length });
 }

@@ -9,10 +9,7 @@ import { TopUpActions } from "./topup-actions";
 
 export default async function AdminTopUpsPage() {
   const pendingRequests = await db.query.topUpRequests.findMany({
-    where: and(
-      eq(topUpRequests.status, "PENDING"),
-      eq(topUpRequests.isDeleted, false)
-    ),
+    where: and(eq(topUpRequests.status, "PENDING"), eq(topUpRequests.isDeleted, false)),
     orderBy: [desc(topUpRequests.createdAt)],
     with: { user: true },
   });
@@ -33,7 +30,9 @@ export default async function AdminTopUpsPage() {
           <TabsTrigger value="pending" className="flex-1">
             Pending ({pendingRequests.length})
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+          <TabsTrigger value="all" className="flex-1">
+            All
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending" className="mt-4">
@@ -95,8 +94,8 @@ export default async function AdminTopUpsPage() {
                         req.status === "CONFIRMED"
                           ? "success"
                           : req.status === "REJECTED"
-                          ? "destructive"
-                          : "secondary"
+                            ? "destructive"
+                            : "secondary"
                       }
                     >
                       {req.status}

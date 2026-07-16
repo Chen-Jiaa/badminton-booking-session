@@ -18,10 +18,10 @@ export async function sendPushNotification(
   token: string,
   title: string,
   body: string,
-  data?: Record<string, string>
+  data?: Record<string, string>,
 ) {
   const messaging = getFirebaseAdmin();
-  
+
   try {
     await messaging.send({
       token,
@@ -43,7 +43,7 @@ export async function sendLowBalanceNotification(token: string, balance: string)
     token,
     "Low Balance Alert",
     `Your balance is low (RM ${balance}). Please top up soon.`,
-    { type: "LOW_BALANCE" }
+    { type: "LOW_BALANCE" },
   );
 }
 
@@ -52,7 +52,7 @@ export async function sendTopUpConfirmedNotification(token: string, amount: stri
     token,
     "Top-up Confirmed",
     `Your top-up of RM ${amount} has been confirmed.`,
-    { type: "TOPUP_CONFIRMED" }
+    { type: "TOPUP_CONFIRMED" },
   );
 }
 
@@ -61,6 +61,6 @@ export async function sendTopUpRejectedNotification(token: string, amount: strin
     token,
     "Top-up Rejected",
     `Your top-up of RM ${amount} was rejected: ${reason}`,
-    { type: "TOPUP_REJECTED" }
+    { type: "TOPUP_REJECTED" },
   );
 }

@@ -96,8 +96,8 @@ export function SessionCard({ session, userRsvp }: SessionCardProps) {
                 isJoined
                   ? "bg-gray-200 text-gray-500"
                   : buttonDisabled
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700 text-white"
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700 text-white"
               }`}
               tabIndex={-1}
             >

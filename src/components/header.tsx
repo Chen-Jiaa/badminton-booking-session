@@ -20,10 +20,7 @@ export function Header({ user }: HeaderProps) {
         {user ? (
           <Link href="/profile">
             <Avatar className="h-8 w-8">
-              <AvatarImage
-                src={user.image || undefined}
-                alt={user.name || ""}
-              />
+              <AvatarImage src={user.image || undefined} alt={user.name || ""} />
               <AvatarFallback className="bg-green-700 text-white text-sm">
                 {user.name?.charAt(0) || "U"}
               </AvatarFallback>

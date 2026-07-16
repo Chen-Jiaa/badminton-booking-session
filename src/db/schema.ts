@@ -23,7 +23,9 @@ export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
 export const users = pgTable(
   "users",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     name: text("name").notNull(),
     email: text("email").unique(),
     phone: text("phone").unique(),
@@ -37,14 +39,18 @@ export const users = pgTable(
   (table) => ({
     emailIdx: index("users_email_idx").on(table.email),
     phoneIdx: index("users_phone_idx").on(table.phone),
-  })
+  }),
 );
 
 export const topUpRequests = pgTable(
   "top_up_requests",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
-    userId: text("user_id").notNull().references(() => users.id),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
     receiptUrl: text("receipt_url"),
     status: topUpStatusEnum("status").default("PENDING").notNull(),
@@ -57,13 +63,15 @@ export const topUpRequests = pgTable(
   (table) => ({
     userIdIdx: index("top_up_requests_user_id_idx").on(table.userId),
     statusIdx: index("top_up_requests_status_idx").on(table.status),
-  })
+  }),
 );
 
 export const sessions = pgTable(
   "sessions",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
     startTime: timestamp("start_time").notNull(),
     endTime: timestamp("end_time").notNull(),
     courts: integer("courts").default(1).notNull(),
@@ -81,41 +89,57 @@ export const sessions = pgTable(
     note: text("note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
-    createdById: text("created_by_id").notNull().references(() => users.id),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
   },
   (table) => ({
     startTimeIdx: index("sessions_start_time_idx").on(table.startTime),
     statusIdx: index("sessions_status_idx").on(table.status),
-  })
+  }),
 );
 
 export const ledger = pgTable(
   "ledger",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
-    userId: text("user_id").notNull().references(() => users.id),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
     type: ledgerTypeEnum("type").notNull(),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
     balanceAfter: decimal("balance_after", { precision: 10, scale: 2 }).notNull(),
     note: text("note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-    createdById: text("created_by_id").notNull().references(() => users.id),
-    topUpRequestId: text("top_up_request_id").unique().references(() => topUpRequests.id),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    topUpRequestId: text("top_up_request_id")
+      .unique()
+      .references(() => topUpRequests.id),
     sessionId: text("session_id").references(() => sessions.id),
   },
   (table) => ({
     userIdIdx: index("ledger_user_id_idx").on(table.userId),
     sessionIdIdx: index("ledger_session_id_idx").on(table.sessionId),
     createdAtIdx: index("ledger_created_at_idx").on(table.createdAt),
-  })
+  }),
 );
 
 export const attendances = pgTable(
   "attendances",
   {
-    id: text("id").primaryKey().$defaultFn(() => createId()),
-    sessionId: text("session_id").notNull().references(() => sessions.id),
-    userId: text("user_id").notNull().references(() => users.id),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
     status: rsvpStatusEnum("status").default("YES").notNull(),
     finalCost: decimal("final_cost", { precision: 10, scale: 2 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -125,7 +149,7 @@ export const attendances = pgTable(
     sessionUserUnique: unique("attendance_session_user_unique").on(table.sessionId, table.userId),
     sessionIdIdx: index("attendances_session_id_idx").on(table.sessionId),
     userIdIdx: index("attendances_user_id_idx").on(table.userId),
-  })
+  }),
 );
 
 export const settings = pgTable("settings", {
@@ -138,7 +162,9 @@ export const settings = pgTable("settings", {
 });
 
 export const courts = pgTable("courts", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => createId()),
   name: text("name").notNull(),
   mapUrl: text("map_url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

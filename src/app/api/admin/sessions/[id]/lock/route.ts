@@ -6,10 +6,7 @@ import { eq } from "drizzle-orm";
 import { lockSessionSchema } from "@/lib/validations";
 import { sendLowBalanceNotification } from "@/lib/fcm";
 
-export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -53,24 +50,29 @@ export async function POST(
     const adminUserId = session.user.id;
 
     await db.transaction(async (tx) => {
-      await tx.update(sessions).set({
-        shuttleCost: validated.shuttleCost.toFixed(2),
-        totalCost: totalCost.toFixed(2),
-        costPerPlayer: costPerPlayer.toFixed(2),
-        status: "LOCKED",
-        updatedAt: new Date(),
-      }).where(eq(sessions.id, params.id));
+      await tx
+        .update(sessions)
+        .set({
+          shuttleCost: validated.shuttleCost.toFixed(2),
+          totalCost: totalCost.toFixed(2),
+          costPerPlayer: costPerPlayer.toFixed(2),
+          status: "LOCKED",
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, params.id));
 
       for (const attendance of confirmedAttendees) {
         const user = attendance.user;
         const currentBalance = parseFloat(user.balance);
         const newBalance = currentBalance - costPerPlayer;
 
-        await tx.update(users)
+        await tx
+          .update(users)
           .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
           .where(eq(users.id, user.id));
 
-        await tx.update(attendances)
+        await tx
+          .update(attendances)
           .set({ finalCost: costPerPlayer.toFixed(2), updatedAt: new Date() })
           .where(eq(attendances.id, attendance.id));
 

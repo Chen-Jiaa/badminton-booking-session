@@ -14,11 +14,14 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = topUpRequestSchema.parse(body);
 
-    const [newRequest] = await db.insert(topUpRequests).values({
-      userId: session.user.id,
-      amount: validated.amount.toFixed(2),
-      receiptUrl: validated.receiptUrl,
-    }).returning();
+    const [newRequest] = await db
+      .insert(topUpRequests)
+      .values({
+        userId: session.user.id,
+        amount: validated.amount.toFixed(2),
+        receiptUrl: validated.receiptUrl,
+      })
+      .returning();
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error) {

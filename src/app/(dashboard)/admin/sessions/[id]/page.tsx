@@ -13,11 +13,7 @@ import { ShareButton } from "./share-button";
 import { AddPlayerForm } from "./add-player-form";
 import { EditSessionToggle } from "./edit-session-toggle";
 
-export default async function AdminSessionDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function AdminSessionDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
@@ -38,20 +34,19 @@ export default async function AdminSessionDetailPage({
   const isLocked = gameSession.status === "LOCKED";
 
   const attendeeUserIds = gameSession.attendances.map((a) => a.userId);
-  const availablePlayers = attendeeUserIds.length > 0
-    ? await db.query.users.findMany({
-        where: notInArray(users.id, attendeeUserIds),
-      })
-    : await db.query.users.findMany();
+  const availablePlayers =
+    attendeeUserIds.length > 0
+      ? await db.query.users.findMany({
+          where: notInArray(users.id, attendeeUserIds),
+        })
+      : await db.query.users.findMany();
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Session Details</h1>
         <div className="flex items-center gap-2">
-          <Badge variant={isLocked ? "default" : "secondary"}>
-            {gameSession.status}
-          </Badge>
+          <Badge variant={isLocked ? "default" : "secondary"}>{gameSession.status}</Badge>
           <ShareButton sessionId={params.id} />
           {!isLocked && (
             <EditSessionToggle
@@ -159,7 +154,8 @@ export default async function AdminSessionDetailPage({
                 {formatCurrency(gameSession.costPerPlayer || "0")}/person
               </p>
               <p className="text-sm text-green-700">
-                Total: {formatCurrency(gameSession.totalCost || "0")} • {yesAttendees.length} players
+                Total: {formatCurrency(gameSession.totalCost || "0")} • {yesAttendees.length}{" "}
+                players
               </p>
             </div>
           </CardContent>
@@ -176,7 +172,10 @@ export default async function AdminSessionDetailPage({
           ) : (
             <div className="space-y-2">
               {yesAttendees.map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div
+                  key={a.id}
+                  className="flex items-center justify-between py-2 border-b last:border-0"
+                >
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage src={a.user.image || undefined} />
@@ -190,9 +189,7 @@ export default async function AdminSessionDetailPage({
                     </div>
                   </div>
                   {a.finalCost && (
-                    <span className="text-red-600 font-medium">
-                      -{formatCurrency(a.finalCost)}
-                    </span>
+                    <span className="text-red-600 font-medium">-{formatCurrency(a.finalCost)}</span>
                   )}
                 </div>
               ))}

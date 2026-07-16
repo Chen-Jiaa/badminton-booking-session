@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "rules": {},
+  "plugins": ["react", "nextjs", "typescript"],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "ignore": ["node_modules", ".next", "drizzle"]
+}

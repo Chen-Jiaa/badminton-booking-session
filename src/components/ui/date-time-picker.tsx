@@ -7,11 +7,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface DateTimePickerProps {
@@ -40,17 +36,12 @@ export function DateTimePicker({
     }
   };
 
-  const handleTimeChange = (
-    type: "hour" | "minute" | "ampm",
-    timeValue: string
-  ) => {
+  const handleTimeChange = (type: "hour" | "minute" | "ampm", timeValue: string) => {
     const date = value || new Date();
     const newDate = new Date(date);
 
     if (type === "hour") {
-      newDate.setHours(
-        (parseInt(timeValue) % 12) + (newDate.getHours() >= 12 ? 12 : 0)
-      );
+      newDate.setHours((parseInt(timeValue) % 12) + (newDate.getHours() >= 12 ? 12 : 0));
     } else if (type === "minute") {
       newDate.setMinutes(parseInt(timeValue));
     } else if (type === "ampm") {
@@ -72,25 +63,16 @@ export function DateTimePicker({
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground"
+            !value && "text-muted-foreground",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value ? (
-            format(value, "MM/dd/yyyy hh:mm aa")
-          ) : (
-            <span>{placeholder}</span>
-          )}
+          {value ? format(value, "MM/dd/yyyy hh:mm aa") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <div className="sm:flex">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
+          <Calendar mode="single" selected={value} onSelect={handleDateSelect} initialFocus />
           <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
             <ScrollArea className="w-64 sm:w-auto">
               <div className="flex sm:flex-col p-2">
@@ -98,11 +80,7 @@ export function DateTimePicker({
                   <Button
                     key={hour}
                     size="icon"
-                    variant={
-                      value && value.getHours() % 12 === hour % 12
-                        ? "default"
-                        : "ghost"
-                    }
+                    variant={value && value.getHours() % 12 === hour % 12 ? "default" : "ghost"}
                     className="sm:w-full shrink-0 aspect-square"
                     onClick={() => handleTimeChange("hour", hour.toString())}
                   >
@@ -118,15 +96,9 @@ export function DateTimePicker({
                   <Button
                     key={minute}
                     size="icon"
-                    variant={
-                      value && value.getMinutes() === minute
-                        ? "default"
-                        : "ghost"
-                    }
+                    variant={value && value.getMinutes() === minute ? "default" : "ghost"}
                     className="sm:w-full shrink-0 aspect-square"
-                    onClick={() =>
-                      handleTimeChange("minute", minute.toString())
-                    }
+                    onClick={() => handleTimeChange("minute", minute.toString())}
                   >
                     {minute.toString().padStart(2, "0")}
                   </Button>
