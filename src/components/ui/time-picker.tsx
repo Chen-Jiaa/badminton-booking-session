@@ -45,14 +45,15 @@ export function TimePicker({
   const handleAmPmChange = (ampm: "AM" | "PM") => {
     if (!value) {
       onChange?.({ hour: ampm === "AM" ? 9 : 21, minute: 0 });
-      return;
+    } else {
+      const currentHour = value.hour;
+      if (ampm === "PM" && currentHour < 12) {
+        onChange?.({ ...value, hour: currentHour + 12 });
+      } else if (ampm === "AM" && currentHour >= 12) {
+        onChange?.({ ...value, hour: currentHour - 12 });
+      }
     }
-    const currentHour = value.hour;
-    if (ampm === "PM" && currentHour < 12) {
-      onChange?.({ ...value, hour: currentHour + 12 });
-    } else if (ampm === "AM" && currentHour >= 12) {
-      onChange?.({ ...value, hour: currentHour - 12 });
-    }
+    setIsOpen(false);
   };
 
   const formatTime = () => {

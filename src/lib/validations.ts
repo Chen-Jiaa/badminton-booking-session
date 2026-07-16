@@ -19,11 +19,29 @@ export const createSessionSchema = z.object({
   endTime: z.string().datetime(),
   courts: z.number().int().positive(),
   costPerCourt: z.number().positive(),
-  shuttleTubes: z.number().int().min(0).optional(),
-  costPerTube: z.number().min(0).optional(),
+  location: z.string().optional(),
+  locationMapUrl: z.string().url().optional(),
+  courtNumbers: z.string().optional(),
+  maxPlayers: z.number().int().positive().default(20),
+  minBalance: z.number().min(0).default(20),
   rsvpDeadline: z.string().datetime().optional(),
   note: z.string().optional(),
 });
+
+export const updateSessionSchema = z.object({
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  courts: z.number().int().positive(),
+  costPerCourt: z.number().positive(),
+  location: z.string().optional(),
+  locationMapUrl: z.string().url().optional().nullable(),
+  courtNumbers: z.string().optional(),
+  maxPlayers: z.number().int().positive(),
+  minBalance: z.number().min(0),
+  note: z.string().optional(),
+  rsvpDeadline: z.string().datetime().optional().nullable(),
+});
+
 
 export const rsvpSchema = z.object({
   sessionId: z.string().min(1),
@@ -38,8 +56,11 @@ export const manualAdjustSchema = z.object({
 
 export const lockSessionSchema = z.object({
   sessionId: z.string().min(1),
-  shuttleTubes: z.number().int().min(0),
-  costPerTube: z.number().min(0),
+  shuttleCost: z.number().min(0),
+});
+
+export const addPlayerSchema = z.object({
+  userId: z.string().min(1),
 });
 
 export type TopUpRequestInput = z.infer<typeof topUpRequestSchema>;
@@ -49,3 +70,5 @@ export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type RsvpInput = z.infer<typeof rsvpSchema>;
 export type ManualAdjustInput = z.infer<typeof manualAdjustSchema>;
 export type LockSessionInput = z.infer<typeof lockSessionSchema>;
+export type AddPlayerInput = z.infer<typeof addPlayerSchema>;
+export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;

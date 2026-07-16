@@ -47,16 +47,14 @@ export async function POST(
     }
 
     const courtCost = gameSession.courts * parseFloat(gameSession.costPerCourt);
-    const shuttleCost = validated.shuttleTubes * validated.costPerTube;
-    const totalCost = courtCost + shuttleCost;
+    const totalCost = courtCost + validated.shuttleCost;
     const costPerPlayer = totalCost / confirmedAttendees.length;
 
     const adminUserId = session.user.id;
 
     await db.transaction(async (tx) => {
       await tx.update(sessions).set({
-        shuttleTubes: validated.shuttleTubes,
-        costPerTube: validated.costPerTube.toFixed(2),
+        shuttleCost: validated.shuttleCost.toFixed(2),
         totalCost: totalCost.toFixed(2),
         costPerPlayer: costPerPlayer.toFixed(2),
         status: "LOCKED",

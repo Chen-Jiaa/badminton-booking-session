@@ -13,7 +13,7 @@ import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
 // ENUMS
-export const roleEnum = pgEnum("role", ["PLAYER", "HOST", "TREASURER"]);
+export const roleEnum = pgEnum("role", ["PLAYER", "HOST"]);
 export const topUpStatusEnum = pgEnum("top_up_status", ["PENDING", "CONFIRMED", "REJECTED"]);
 export const ledgerTypeEnum = pgEnum("ledger_type", ["TOPUP", "SESSION_DEBIT", "MANUAL_ADJUST"]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
@@ -68,10 +68,14 @@ export const sessions = pgTable(
     endTime: timestamp("end_time").notNull(),
     courts: integer("courts").default(1).notNull(),
     costPerCourt: decimal("cost_per_court", { precision: 10, scale: 2 }).notNull(),
-    shuttleTubes: integer("shuttle_tubes").default(0).notNull(),
-    costPerTube: decimal("cost_per_tube", { precision: 10, scale: 2 }).default("0").notNull(),
+    shuttleCost: decimal("shuttle_cost", { precision: 10, scale: 2 }).default("0").notNull(),
     totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
     costPerPlayer: decimal("cost_per_player", { precision: 10, scale: 2 }),
+    location: text("location"),
+    locationMapUrl: text("location_map_url"),
+    courtNumbers: text("court_numbers"),
+    maxPlayers: integer("max_players").default(20).notNull(),
+    minBalance: decimal("min_balance", { precision: 10, scale: 2 }).default("20").notNull(),
     status: sessionStatusEnum("status").default("OPEN").notNull(),
     rsvpDeadline: timestamp("rsvp_deadline"),
     note: text("note"),
@@ -128,10 +132,16 @@ export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   groupName: text("group_name").default("Badminton Group").notNull(),
   currency: text("currency").default("RM").notNull(),
-  lowBalanceThreshold: decimal("low_balance_threshold", { precision: 10, scale: 2 }).default("20").notNull(),
   defaultSessionDay: text("default_session_day").default("Thursday"),
   defaultSessionTime: text("default_session_time").default("20:00"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const courts = pgTable("courts", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  name: text("name").notNull(),
+  mapUrl: text("map_url").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // RELATIONS
@@ -192,6 +202,8 @@ export const attendancesRelations = relations(attendances, ({ one }) => ({
   }),
 }));
 
+export const courtsRelations = relations(courts, () => ({}));
+
 // TYPES
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -204,3 +216,5 @@ export type NewSession = typeof sessions.$inferInsert;
 export type Attendance = typeof attendances.$inferSelect;
 export type NewAttendance = typeof attendances.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
+export type Court = typeof courts.$inferSelect;
+export type NewCourt = typeof courts.$inferInsert;

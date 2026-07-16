@@ -104,7 +104,15 @@ export function TopUpForm() {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f && f.size > 5 * 1024 * 1024) {
+                toast({ title: "File too large (max 5 MB)", variant: "destructive" });
+                e.target.value = "";
+                return;
+              }
+              setFile(f || null);
+            }}
           />
         </div>
       </div>

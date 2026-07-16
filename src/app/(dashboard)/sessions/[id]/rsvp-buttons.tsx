@@ -4,23 +4,30 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Check, X, Clock, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
+import { LoginDialog } from "./login-dialog";
 
 interface RsvpButtonsProps {
   sessionId: string;
   currentStatus?: "YES" | "NO" | "WAITLIST";
   isLoggedIn: boolean;
+  isFull?: boolean;
 }
 
-export function RsvpButtons({ sessionId, currentStatus, isLoggedIn }: RsvpButtonsProps) {
+export function RsvpButtons({
+  sessionId,
+  currentStatus,
+  isLoggedIn,
+  isFull,
+}: RsvpButtonsProps) {
   const [loading, setLoading] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
-  async function handleRsvp(status: "YES" | "NO" | "WAITLIST") {
+  async function handleRsvp(status: "YES" | "NO") {
     if (!isLoggedIn) {
-      router.push("/login");
+      setShowLogin(true);
       return;
     }
 
@@ -31,8 +38,11 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn }: RsvpButton
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error();
-      toast({ title: `RSVP updated to ${status}` });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: data.error ?? "Failed to update RSVP", variant: "destructive" });
+        return;
+      }
       router.refresh();
     } catch {
       toast({ title: "Failed to update RSVP", variant: "destructive" });
@@ -41,56 +51,33 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn }: RsvpButton
     }
   }
 
+  const isJoined = currentStatus === "YES";
+
   return (
-    <div className="flex gap-2">
-      <Button
-        onClick={() => handleRsvp("YES")}
-        disabled={loading}
-        variant={currentStatus === "YES" ? "default" : "outline"}
-        className={cn(
-          "flex-1",
-          currentStatus === "YES" && "bg-green-600 hover:bg-green-700"
-        )}
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Check className="h-4 w-4 mr-1" />
-        )}
-        Yes
-      </Button>
-      <Button
-        onClick={() => handleRsvp("WAITLIST")}
-        disabled={loading}
-        variant={currentStatus === "WAITLIST" ? "default" : "outline"}
-        className={cn(
-          "flex-1",
-          currentStatus === "WAITLIST" && "bg-yellow-600 hover:bg-yellow-700"
-        )}
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Clock className="h-4 w-4 mr-1" />
-        )}
-        Maybe
-      </Button>
-      <Button
-        onClick={() => handleRsvp("NO")}
-        disabled={loading}
-        variant={currentStatus === "NO" ? "default" : "outline"}
-        className={cn(
-          "flex-1",
-          currentStatus === "NO" && "bg-red-600 hover:bg-red-700"
-        )}
-      >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <X className="h-4 w-4 mr-1" />
-        )}
-        No
-      </Button>
-    </div>
+    <>
+      {isJoined ? (
+        <Button
+          onClick={() => handleRsvp("NO")}
+          disabled={loading}
+          variant="outline"
+          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Leave Game"}
+        </Button>
+      ) : (
+        <Button
+          onClick={() => handleRsvp("YES")}
+          disabled={loading || isFull}
+          className={
+            isFull
+              ? "w-full bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "w-full bg-green-600 hover:bg-green-700 text-white"
+          }
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join Game"}
+        </Button>
+      )}
+      <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
+    </>
   );
 }

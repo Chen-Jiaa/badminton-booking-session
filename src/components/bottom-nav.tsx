@@ -2,27 +2,26 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Wallet, Calendar, Shield } from "lucide-react";
+import { Wallet, Calendar, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomNavProps {
-  userRole?: "PLAYER" | "HOST" | "TREASURER";
+  userRole?: "PLAYER" | "HOST";
+  pendingTopupsCount?: number;
 }
 
 const playerNavItems = [
-  { href: "/", icon: Home, label: "Home" },
   { href: "/sessions", icon: Calendar, label: "Sessions" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
 ];
 
 const hostNavItems = [
-  { href: "/", icon: Home, label: "Home" },
   { href: "/sessions", icon: Calendar, label: "Sessions" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
   { href: "/profile", icon: Shield, label: "Admin" },
 ];
 
-export function BottomNav({ userRole = "PLAYER" }: BottomNavProps) {
+export function BottomNav({ userRole = "PLAYER", pendingTopupsCount = 0 }: BottomNavProps) {
   const pathname = usePathname();
   const navItems = userRole === "PLAYER" ? playerNavItems : hostNavItems;
 
@@ -32,18 +31,24 @@ export function BottomNav({ userRole = "PLAYER" }: BottomNavProps) {
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
+            const showBadge = item.label === "Admin" && pendingTopupsCount > 0;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors",
+                  "relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors",
                   isActive
                     ? "text-green-600"
                     : "text-gray-500 hover:text-gray-700",
                 )}
               >
                 <item.icon className="h-5 w-5" />
+                {showBadge && (
+                  <span className="absolute -top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white leading-none">
+                    {pendingTopupsCount}
+                  </span>
+                )}
                 <span className="text-xs">{item.label}</span>
               </Link>
             );

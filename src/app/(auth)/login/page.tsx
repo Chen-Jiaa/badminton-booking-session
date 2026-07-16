@@ -9,7 +9,7 @@ export default function LoginPage() {
           <span className="text-2xl">🏸</span>
         </div>
         <CardTitle className="text-2xl">Badminton Group</CardTitle>
-        <CardDescription>Sign in to manage your pre-pay balance</CardDescription>
+        <CardDescription>Sign in to join sessions and manage your balance</CardDescription>
       </CardHeader>
       <CardContent>
         <LoginButtons />

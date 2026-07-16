@@ -2,8 +2,8 @@ import { auth } from "@/lib/supabase-server";
 import { BottomNav } from "@/components/bottom-nav";
 import { Header } from "@/components/header";
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, topUpRequests } from "@/db/schema";
+import { eq, count } from "drizzle-orm";
 
 export default async function DashboardLayout({
   children,
@@ -12,7 +12,9 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
 
-  let userRole: "PLAYER" | "HOST" | "TREASURER" = "PLAYER";
+  let userRole: "PLAYER" | "HOST" = "PLAYER";
+  let pendingTopupsCount = 0;
+
   if (session?.user?.id) {
     const dbUser = await db.query.users.findFirst({
       where: eq(users.id, session.user.id),
@@ -20,6 +22,13 @@ export default async function DashboardLayout({
     });
     if (dbUser?.role) {
       userRole = dbUser.role;
+    }
+    if (userRole === "HOST") {
+      const [result] = await db
+        .select({ count: count() })
+        .from(topUpRequests)
+        .where(eq(topUpRequests.status, "PENDING"));
+      pendingTopupsCount = result?.count ?? 0;
     }
   }
 
@@ -29,7 +38,7 @@ export default async function DashboardLayout({
       <main className="container mx-auto px-4 py-6 max-w-lg">
         {children}
       </main>
-      <BottomNav userRole={userRole} />
+      <BottomNav userRole={userRole} pendingTopupsCount={pendingTopupsCount} />
     </div>
   );
 }
