@@ -8,6 +8,13 @@
       "when": 1784161379148,
       "tag": "0000_lame_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784192029378,
+      "tag": "0001_clear_blizzard",
+      "breakpoints": true
     }
   ]
 }

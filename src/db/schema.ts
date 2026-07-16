@@ -15,6 +15,11 @@ import { createId } from "@paralleldrive/cuid2";
 // ENUMS
 export const roleEnum = pgEnum("role", ["PLAYER", "HOST"]);
 export const topUpStatusEnum = pgEnum("top_up_status", ["PENDING", "CONFIRMED", "REJECTED"]);
+export const withdrawalStatusEnum = pgEnum("withdrawal_status", [
+  "PENDING",
+  "CONFIRMED",
+  "REJECTED",
+]);
 export const ledgerTypeEnum = pgEnum("ledger_type", ["TOPUP", "SESSION_DEBIT", "MANUAL_ADJUST"]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
 export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
@@ -63,6 +68,29 @@ export const topUpRequests = pgTable(
   (table) => ({
     userIdIdx: index("top_up_requests_user_id_idx").on(table.userId),
     statusIdx: index("top_up_requests_status_idx").on(table.status),
+  }),
+);
+
+export const withdrawalRequests = pgTable(
+  "withdrawal_requests",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    note: text("note"),
+    status: withdrawalStatusEnum("status").default("PENDING").notNull(),
+    rejectReason: text("reject_reason"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    resolvedAt: timestamp("resolved_at"),
+    resolvedBy: text("resolved_by"),
+  },
+  (table) => ({
+    userIdIdx: index("withdrawal_requests_user_id_idx").on(table.userId),
+    statusIdx: index("withdrawal_requests_status_idx").on(table.status),
   }),
 );
 
@@ -175,8 +203,16 @@ export const usersRelations = relations(users, ({ many }) => ({
   ledgerEntries: many(ledger, { relationName: "userLedger" }),
   createdLedgers: many(ledger, { relationName: "ledgerCreator" }),
   topUpRequests: many(topUpRequests),
+  withdrawalRequests: many(withdrawalRequests),
   attendances: many(attendances),
   createdSessions: many(sessions),
+}));
+
+export const withdrawalRequestsRelations = relations(withdrawalRequests, ({ one }) => ({
+  user: one(users, {
+    fields: [withdrawalRequests.userId],
+    references: [users.id],
+  }),
 }));
 
 export const topUpRequestsRelations = relations(topUpRequests, ({ one }) => ({
@@ -244,3 +280,5 @@ export type NewAttendance = typeof attendances.$inferInsert;
 export type Settings = typeof settings.$inferSelect;
 export type Court = typeof courts.$inferSelect;
 export type NewCourt = typeof courts.$inferInsert;
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type NewWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
