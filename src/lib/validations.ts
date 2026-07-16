@@ -5,6 +5,11 @@ export const topUpRequestSchema = z.object({
   receiptUrl: z.string().url().optional(),
 });
 
+export const withdrawalRequestSchema = z.object({
+  amount: z.number().positive().multipleOf(0.01),
+  note: z.string().optional(),
+});
+
 export const confirmTopUpSchema = z.object({
   requestId: z.string().min(1),
 });
@@ -63,6 +68,7 @@ export const addPlayerSchema = z.object({
 });
 
 export type TopUpRequestInput = z.infer<typeof topUpRequestSchema>;
+export type WithdrawalRequestInput = z.infer<typeof withdrawalRequestSchema>;
 export type ConfirmTopUpInput = z.infer<typeof confirmTopUpSchema>;
 export type RejectTopUpInput = z.infer<typeof rejectTopUpSchema>;
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;

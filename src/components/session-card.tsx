@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin } from "lucide-react";
@@ -57,7 +57,7 @@ export function SessionCard({ session, userRsvp }: SessionCardProps) {
     .toUpperCase();
 
   return (
-    <Link href={`/sessions/${session.id}`}>
+    <Link to="/sessions/$id" params={{ id: session.id }}>
       <Card className="hover:shadow-md transition-shadow bg-white border border-gray-100 shadow-sm rounded-2xl">
         <CardContent className="p-5 space-y-3">
           {/* Date & time */}

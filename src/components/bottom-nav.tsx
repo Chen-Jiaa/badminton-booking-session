@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useMatchRoute } from "@tanstack/react-router";
 import { Wallet, Calendar, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +19,7 @@ const hostNavItems = [
 ];
 
 export function BottomNav({ userRole = "PLAYER", pendingTopupsCount = 0 }: BottomNavProps) {
-  const pathname = usePathname();
+  const matchRoute = useMatchRoute();
   const navItems = userRole === "PLAYER" ? playerNavItems : hostNavItems;
 
   return (
@@ -30,12 +27,12 @@ export function BottomNav({ userRole = "PLAYER", pendingTopupsCount = 0 }: Botto
       <div className="container mx-auto max-w-lg">
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = !!matchRoute({ to: item.href, fuzzy: true });
             const showBadge = item.label === "Admin" && pendingTopupsCount > 0;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
                 className={cn(
                   "relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors",
                   isActive ? "text-green-600" : "text-gray-500 hover:text-gray-700",
