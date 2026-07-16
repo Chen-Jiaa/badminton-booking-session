@@ -1,7 +1,7 @@
 import { auth } from "@/lib/supabase-server";
 import { db } from "@/db";
-import { sessions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { sessions, users } from "@/db/schema";
+import { eq, notInArray } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { LockSessionForm } from "./lock-session-form";
 import { DeleteSessionButton } from "../delete-session-button";
+import { ShareButton } from "./share-button";
+import { AddPlayerForm } from "./add-player-form";
+import { EditSessionToggle } from "./edit-session-toggle";
 
 export default async function AdminSessionDetailPage({
   params,
@@ -34,6 +37,13 @@ export default async function AdminSessionDetailPage({
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const isLocked = gameSession.status === "LOCKED";
 
+  const attendeeUserIds = gameSession.attendances.map((a) => a.userId);
+  const availablePlayers = attendeeUserIds.length > 0
+    ? await db.query.users.findMany({
+        where: notInArray(users.id, attendeeUserIds),
+      })
+    : await db.query.users.findMany();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -42,6 +52,25 @@ export default async function AdminSessionDetailPage({
           <Badge variant={isLocked ? "default" : "secondary"}>
             {gameSession.status}
           </Badge>
+          <ShareButton sessionId={params.id} />
+          {!isLocked && (
+            <EditSessionToggle
+              sessionId={params.id}
+              defaultValues={{
+                startTime: gameSession.startTime.toISOString(),
+                endTime: gameSession.endTime.toISOString(),
+                courts: gameSession.courts,
+                costPerCourt: parseFloat(gameSession.costPerCourt),
+                location: gameSession.location,
+                locationMapUrl: gameSession.locationMapUrl,
+                courtNumbers: gameSession.courtNumbers,
+                maxPlayers: gameSession.maxPlayers,
+                minBalance: parseFloat(gameSession.minBalance),
+                note: gameSession.note,
+                rsvpDeadline: gameSession.rsvpDeadline?.toISOString() ?? null,
+              }}
+            />
+          )}
           <DeleteSessionButton sessionId={params.id} isLocked={isLocked} />
         </div>
       </div>
@@ -49,12 +78,24 @@ export default async function AdminSessionDetailPage({
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
+            <div className="col-span-2">
               <p className="text-muted-foreground">Date & Time</p>
               <p className="font-medium">{formatDateTime(gameSession.startTime)}</p>
             </div>
+            {gameSession.location && (
+              <div className="col-span-2">
+                <p className="text-muted-foreground">Venue</p>
+                <p className="font-medium">{gameSession.location}</p>
+              </div>
+            )}
+            {gameSession.courtNumbers && (
+              <div className="col-span-2">
+                <p className="text-muted-foreground">Courts</p>
+                <p className="font-medium">{gameSession.courtNumbers}</p>
+              </div>
+            )}
             <div>
-              <p className="text-muted-foreground">Courts</p>
+              <p className="text-muted-foreground">No. of Courts</p>
               <p className="font-medium">{gameSession.courts}</p>
             </div>
             <div>
@@ -65,9 +106,33 @@ export default async function AdminSessionDetailPage({
               <p className="text-muted-foreground">Confirmed Players</p>
               <p className="font-medium">{yesAttendees.length}</p>
             </div>
+            {isLocked && parseFloat(gameSession.shuttleCost) > 0 && (
+              <div>
+                <p className="text-muted-foreground">Shuttle Cost</p>
+                <p className="font-medium">{formatCurrency(gameSession.shuttleCost)}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {!isLocked && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Add Walk-in Player</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AddPlayerForm
+              sessionId={params.id}
+              availablePlayers={availablePlayers.map((u) => ({
+                id: u.id,
+                name: u.name,
+                balance: u.balance,
+              }))}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {!isLocked && yesAttendees.length > 0 && (
         <Card>

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/supabase-server";
 import { db } from "@/db";
-import { sessions, attendances, users } from "@/db/schema";
+import { sessions, users } from "@/db/schema";
 import { eq, gte, desc } from "drizzle-orm";
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionCard } from "@/components/session-card";
@@ -19,7 +19,7 @@ export default async function SessionsPage() {
     const dbUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
     });
-    isAdmin = dbUser?.role === "HOST" || dbUser?.role === "TREASURER";
+    isAdmin = dbUser?.role === "HOST";
   }
 
   const now = new Date();
@@ -27,26 +27,14 @@ export default async function SessionsPage() {
   const upcomingSessions = await db.query.sessions.findMany({
     where: gte(sessions.startTime, now),
     orderBy: [sessions.startTime],
-    with: {
-      attendances: userId
-        ? {
-            where: eq(attendances.userId, userId),
-          }
-        : true,
-    },
+    with: { attendances: true, createdBy: true },
   });
 
   const pastSessions = await db.query.sessions.findMany({
     where: eq(sessions.status, "LOCKED"),
     orderBy: [desc(sessions.startTime)],
     limit: 20,
-    with: {
-      attendances: userId
-        ? {
-            where: eq(attendances.userId, userId),
-          }
-        : true,
-    },
+    with: { attendances: true, createdBy: true },
   });
 
   return (
@@ -87,6 +75,7 @@ export default async function SessionsPage() {
                     key={s.id}
                     session={s}
                     userRsvp={myRsvp}
+                    userId={userId}
                   />
                 );
               })}

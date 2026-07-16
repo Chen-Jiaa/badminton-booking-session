@@ -62,6 +62,7 @@ export function DateTimePicker({
       }
     }
     onChange?.(newDate);
+    if (type === "ampm") setIsOpen(false);
   };
 
   return (

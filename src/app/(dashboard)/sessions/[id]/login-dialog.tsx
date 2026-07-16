@@ -1,0 +1,33 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LoginButtons } from "@/app/(auth)/login/login-buttons";
+
+interface LoginDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
+  const router = useRouter();
+
+  function handleSuccess() {
+    onOpenChange(false);
+    router.refresh();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-green-600 flex items-center justify-center">
+            <span className="text-xl">🏸</span>
+          </div>
+          <DialogTitle className="text-center">Sign in to RSVP</DialogTitle>
+        </DialogHeader>
+        <LoginButtons onSuccess={handleSuccess} />
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -20,35 +20,24 @@ export function getSupabaseClient(): SupabaseClient {
   return supabaseClient;
 }
 
-export async function signInWithEmail(email: string) {
+export async function signInWithGoogle() {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
     options: {
-      shouldCreateUser: true,
-      emailRedirectTo: undefined,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
   if (error) throw error;
 }
 
-export async function verifyOtp(email: string, token: string) {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: "email",
-  });
-  if (error) throw error;
-  return data;
-}
 
 export async function signOut() {
   const supabase = getSupabaseClient();
-  
+
   document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  
+
   await supabase.auth.signOut();
   window.location.href = "/login";
 }

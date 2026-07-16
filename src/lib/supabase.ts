@@ -16,6 +16,25 @@ function getSupabase(): SupabaseClient {
   return supabaseClient;
 }
 
+// Extracts the storage path from a full Supabase public URL
+export function receiptUrlToPath(url: string): string | null {
+  try {
+    const u = new URL(url);
+    // path format: /storage/v1/object/public/receipts/<userId>/<file>
+    const match = u.pathname.match(/\/receipts\/(.+)$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteReceipts(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.storage.from("receipts").remove(paths);
+  if (error) throw error;
+}
+
 export async function uploadReceipt(file: File, userId: string): Promise<string> {
   const supabase = getSupabase();
   const fileExt = file.name.split(".").pop();

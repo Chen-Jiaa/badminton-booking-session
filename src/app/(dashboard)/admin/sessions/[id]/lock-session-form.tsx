@@ -22,14 +22,12 @@ export function LockSessionForm({
   costPerCourt,
   playerCount,
 }: LockSessionFormProps) {
-  const [shuttleTubes, setShuttleTubes] = useState(0);
-  const [costPerTube, setCostPerTube] = useState(15);
+  const [shuttleCost, setShuttleCost] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
   const courtCost = courts * costPerCourt;
-  const shuttleCost = shuttleTubes * costPerTube;
   const totalCost = courtCost + shuttleCost;
   const costPerPlayer = playerCount > 0 ? totalCost / playerCount : 0;
 
@@ -39,7 +37,7 @@ export function LockSessionForm({
       const res = await fetch(`/api/admin/sessions/${sessionId}/lock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shuttleTubes, costPerTube }),
+        body: JSON.stringify({ shuttleCost }),
       });
       if (!res.ok) throw new Error();
       toast({ title: "Session locked and costs deducted" });
@@ -53,30 +51,18 @@ export function LockSessionForm({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="shuttleTubes">Shuttle Tubes Used</Label>
-          <Input
-            id="shuttleTubes"
-            type="number"
-            min="0"
-            value={shuttleTubes}
-            onChange={(e) => setShuttleTubes(parseInt(e.target.value) || 0)}
-            className="mt-1"
-          />
-        </div>
-        <div>
-          <Label htmlFor="costPerTube">Cost/Tube (RM)</Label>
-          <Input
-            id="costPerTube"
-            type="number"
-            step="0.01"
-            min="0"
-            value={costPerTube}
-            onChange={(e) => setCostPerTube(parseFloat(e.target.value) || 0)}
-            className="mt-1"
-          />
-        </div>
+      <div>
+        <Label htmlFor="shuttleCost">Shuttle Cost (RM)</Label>
+        <Input
+          id="shuttleCost"
+          type="number"
+          step="0.01"
+          min="0"
+          value={shuttleCost}
+          onChange={(e) => setShuttleCost(parseFloat(e.target.value) || 0)}
+          className="mt-1"
+          placeholder="0.00"
+        />
       </div>
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
@@ -85,7 +71,7 @@ export function LockSessionForm({
           <span>{formatCurrency(courtCost)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>Shuttle cost ({shuttleTubes} × {formatCurrency(costPerTube)})</span>
+          <span>Shuttle cost</span>
           <span>{formatCurrency(shuttleCost)}</span>
         </div>
         <div className="flex justify-between font-medium border-t pt-2">
