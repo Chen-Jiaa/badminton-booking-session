@@ -45,7 +45,7 @@ function AdminTopUpsPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <p className="font-semibold">{req.user.name}</p>
-                        <p className="text-2xl font-bold text-green-600">
+                        <p className="text-2xl font-bold text-brand-foreground">
                           {formatCurrency(req.amount)}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -57,7 +57,7 @@ function AdminTopUpsPage() {
                           href={req.receiptUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-blue-600 underline"
+                          className="text-sm text-brand-foreground underline"
                         >
                           View Receipt
                         </a>

@@ -21,6 +21,7 @@ export function LockSessionForm({
   costPerCourt,
   playerCount,
 }: LockSessionFormProps) {
+  const [shuttleCount, setShuttleCount] = useState(0);
   const [shuttleCost, setShuttleCost] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -33,14 +34,21 @@ export function LockSessionForm({
   async function handleLock() {
     setLoading(true);
     try {
-      const result = await lockSessionFn({ data: { sessionId, shuttleCost } });
-      if (result.type !== "SUCCESS") throw new Error();
-      toast({ title: "Session locked and costs deducted" });
+      const result = await lockSessionFn({ data: { sessionId, shuttleCount, shuttleCost } });
+      if (result.type !== "SUCCESS") {
+        throw new Error(
+          result.type === "BUSINESS_ERROR" ? result.code : "Failed to finalize session",
+        );
+      }
+      toast({ title: "Session finalized and costs deducted" });
       await queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] });
       await queryClient.invalidateQueries({ queryKey: ["sessions"] });
       await queryClient.invalidateQueries({ queryKey: ["current-user"] });
-    } catch {
-      toast({ title: "Failed to lock session", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : "Failed to finalize session",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -49,7 +57,20 @@ export function LockSessionForm({
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="shuttleCost">Shuttle Cost (RM)</Label>
+        <Label htmlFor="shuttleCount">Shuttles Used</Label>
+        <Input
+          id="shuttleCount"
+          type="number"
+          step="1"
+          min="0"
+          value={shuttleCount}
+          onChange={(e) => setShuttleCount(parseInt(e.target.value, 10) || 0)}
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="shuttleCost">Total Shuttle Cost (RM)</Label>
         <Input
           id="shuttleCost"
           type="number"
@@ -70,14 +91,14 @@ export function LockSessionForm({
           <span>{formatCurrency(courtCost)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>Shuttle cost</span>
+          <span>Shuttle cost ({shuttleCount} used)</span>
           <span>{formatCurrency(shuttleCost)}</span>
         </div>
         <div className="flex justify-between font-medium border-t pt-2">
           <span>Total</span>
           <span>{formatCurrency(totalCost)}</span>
         </div>
-        <div className="flex justify-between text-green-600 font-semibold">
+        <div className="flex justify-between text-brand-foreground font-semibold">
           <span>Per player ({playerCount} players)</span>
           <span>{formatCurrency(costPerPlayer)}</span>
         </div>
@@ -87,12 +108,12 @@ export function LockSessionForm({
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Locking...
+            Finalizing...
           </>
         ) : (
           <>
             <Lock className="h-4 w-4 mr-2" />
-            Lock Session &amp; Deduct from Balances
+            Finalize Session &amp; Deduct from Balances
           </>
         )}
       </Button>

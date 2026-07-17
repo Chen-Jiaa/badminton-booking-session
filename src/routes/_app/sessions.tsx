@@ -23,8 +23,8 @@ function SessionsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Sessions</h1>
-        {user?.role === "HOST" && (
-          <Link to="/admin/sessions/new">
+        {(user?.role === "HOST" || user?.role === "ADMIN") && (
+          <Link to="/sessions/new">
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />
               New Session
@@ -51,7 +51,7 @@ function SessionsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-4">
               {upcoming.map((s) => {
                 const myRsvp = userId ? s.attendances.find((a) => a.userId === userId) : null;
                 return <SessionCard key={s.id} session={s} userRsvp={myRsvp} userId={userId} />;
@@ -68,9 +68,11 @@ function SessionsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-4">
               {past.map((s) => {
                 const myRsvp = userId ? s.attendances.find((a) => a.userId === userId) : null;
+                const canManage =
+                  user?.role === "ADMIN" || (user?.role === "HOST" && s.createdById === user.id);
                 return (
                   <Card key={s.id}>
                     <CardContent className="py-4">
@@ -87,6 +89,13 @@ function SessionsPage() {
                             <p className="font-semibold text-red-600">
                               -{formatCurrency(myRsvp.finalCost)}
                             </p>
+                          )}
+                          {canManage && (
+                            <Link to="/sessions/$id" params={{ id: s.id }}>
+                              <Button size="sm" variant="outline" className="mt-2">
+                                {s.status === "LOCKED" ? "View" : "Finalize"}
+                              </Button>
+                            </Link>
                           )}
                         </div>
                       </div>

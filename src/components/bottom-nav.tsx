@@ -3,7 +3,7 @@ import { Wallet, Calendar, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomNavProps {
-  userRole?: "PLAYER" | "HOST";
+  userRole?: "PLAYER" | "HOST" | "ADMIN";
   pendingTopupsCount?: number;
 }
 
@@ -20,7 +20,7 @@ const hostNavItems = [
 
 export function BottomNav({ userRole = "PLAYER", pendingTopupsCount = 0 }: BottomNavProps) {
   const matchRoute = useMatchRoute();
-  const navItems = userRole === "PLAYER" ? playerNavItems : hostNavItems;
+  const navItems = userRole === "ADMIN" ? hostNavItems : playerNavItems;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t z-50">
@@ -35,7 +35,7 @@ export function BottomNav({ userRole = "PLAYER", pendingTopupsCount = 0 }: Botto
                 to={item.href}
                 className={cn(
                   "relative flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors",
-                  isActive ? "text-green-600" : "text-gray-500 hover:text-gray-700",
+                  isActive ? "text-brand-foreground" : "text-gray-500 hover:text-gray-700",
                 )}
               >
                 <item.icon className="h-5 w-5" />

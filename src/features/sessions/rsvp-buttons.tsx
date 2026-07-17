@@ -62,14 +62,21 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull }: Rs
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Leave Game"}
         </Button>
+      ) : !isLoggedIn ? (
+        <Button
+          onClick={() => setShowLogin(true)}
+          className="w-full bg-brand text-brand-foreground hover:bg-brand/80"
+        >
+          Sign in
+        </Button>
       ) : (
         <Button
           onClick={() => handleRsvp("YES")}
           disabled={loading || isFull}
           className={
             isFull
-              ? "w-full bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "w-full bg-green-600 hover:bg-green-700 text-white"
+              ? "w-full bg-brand text-brand-foreground cursor-not-allowed opacity-60"
+              : "w-full bg-brand text-brand-foreground hover:bg-brand/80"
           }
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join Game"}

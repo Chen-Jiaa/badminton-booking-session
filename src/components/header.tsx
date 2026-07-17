@@ -21,7 +21,7 @@ export function Header({ user }: HeaderProps) {
           <Link to="/profile">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-              <AvatarFallback className="bg-green-700 text-white text-sm">
+              <AvatarFallback className="bg-brand text-brand-foreground text-sm">
                 {user.name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>

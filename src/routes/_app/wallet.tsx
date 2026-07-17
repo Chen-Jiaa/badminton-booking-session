@@ -1,11 +1,11 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { walletQueryOptions } from "@/features/wallet/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { WithdrawalDialog } from "@/features/withdrawal/withdrawal-dialog";
-import { ArrowUpCircle, ArrowDownCircle, Edit, Plus, XCircle, Clock } from "lucide-react";
+import { TopUpDialog } from "@/features/topup/topup-dialog";
+import { ArrowUpCircle, ArrowDownCircle, Edit, XCircle, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/_app/wallet")({
   beforeLoad: ({ context }) => {
@@ -51,12 +51,7 @@ function WalletPage() {
             </div>
             <div className="flex gap-2">
               <WithdrawalDialog balance={balanceNum} />
-              <Link to="/topup">
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Top Up
-                </Button>
-              </Link>
+              <TopUpDialog />
             </div>
           </div>
         </CardContent>

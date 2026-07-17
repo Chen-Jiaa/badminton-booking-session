@@ -35,6 +35,6 @@ export default defineConfig({
     viteReact(),
   ],
   ssr: {
-    noExternal: ["firebase-admin"],
+    external: ["firebase-admin"],
   },
 });

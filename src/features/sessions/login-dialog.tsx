@@ -11,7 +11,7 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-green-600 flex items-center justify-center">
+          <div className="mx-auto mb-2 h-12 w-12 rounded-full bg-background flex items-center justify-center">
             <span className="text-xl">🏸</span>
           </div>
           <DialogTitle className="text-center">Sign in to RSVP</DialogTitle>

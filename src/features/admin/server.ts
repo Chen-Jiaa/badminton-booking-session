@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { courts, sessions, attendances, users, ledger, topUpRequests } from "@/db/schema";
-import { eq, desc, and, notInArray } from "drizzle-orm";
+import {
+  courts,
+  sessions,
+  attendances,
+  users,
+  ledger,
+  topUpRequests,
+  withdrawalRequests,
+} from "@/db/schema";
+import { eq, lte, desc, and, notInArray, sum } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import {
   createSessionSchema,
@@ -81,15 +89,15 @@ export const courtsQueryOptions = () =>
 export const createCourtFn = createServerFn({ method: "POST" })
   .validator((data: { mapUrl: string }) => data)
   .middleware([sessionMiddleware])
-  .handler(async ({ data, context: { session } }): Promise<Result> => {
+  .handler(async ({ data, context: { session } }): Promise<Result<typeof courts.$inferSelect>> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     const name = await resolveMapUrlName(data.mapUrl);
-    await db.insert(courts).values({ name, mapUrl: data.mapUrl });
-    return { type: "SUCCESS", value: undefined };
+    const [court] = await db.insert(courts).values({ name, mapUrl: data.mapUrl }).returning();
+    return { type: "SUCCESS", value: court };
   });
 
 export const deleteCourtFn = createServerFn({ method: "POST" })
@@ -99,7 +107,7 @@ export const deleteCourtFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     await db.delete(courts).where(eq(courts.id, data.courtId));
     return { type: "SUCCESS", value: undefined };
@@ -111,6 +119,9 @@ export const fetchAdminSessionsFn = createServerFn({ method: "GET" })
   .middleware([sessionMiddleware])
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return [];
+
+    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!admin || admin.role !== "ADMIN") return [];
 
     return db.query.sessions.findMany({
       orderBy: [desc(sessions.startTime)],
@@ -129,6 +140,9 @@ export const fetchAdminSessionDetailFn = createServerFn({ method: "GET" })
   .middleware([sessionMiddleware])
   .handler(async ({ data: { id }, context: { session } }) => {
     if (!session?.user.id) return null;
+
+    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!admin || admin.role !== "ADMIN") return null;
 
     const gameSession = await db.query.sessions.findFirst({
       where: eq(sessions.id, id),
@@ -161,7 +175,9 @@ export const createAdminSessionFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
+      return { type: "FORBIDDEN" };
+    }
 
     const validated = createSessionSchema.parse(data);
 
@@ -190,11 +206,16 @@ export const updateAdminSessionFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
+      return { type: "FORBIDDEN" };
+    }
 
     const { sessionId, ...rest } = data as { sessionId: string } & Record<string, unknown>;
     const gameSession = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (admin.role === "HOST" && gameSession.createdById !== admin.id) {
+      return { type: "FORBIDDEN" };
+    }
     if (gameSession.status === "LOCKED") {
       return { type: "BUSINESS_ERROR", code: "Cannot edit a locked session" };
     }
@@ -229,7 +250,7 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     const gameSession = await db.query.sessions.findFirst({
       where: eq(sessions.id, sessionId),
@@ -237,17 +258,20 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
     });
     if (!gameSession) return { type: "NOT_FOUND" };
 
-    if (gameSession.status === "LOCKED" && gameSession.ledgerEntries.length > 0) {
+    if (gameSession.ledgerEntries.length > 0) {
+      // Group entries by user and sum — then reverse the net amount for each user
+      const netByUser = new Map<string, number>();
       for (const entry of gameSession.ledgerEntries) {
-        const user = await db.query.users.findFirst({ where: eq(users.id, entry.userId) });
-        if (user) {
-          const newBalance = (
-            parseFloat(user.balance) + Math.abs(parseFloat(entry.amount))
-          ).toFixed(2);
+        netByUser.set(entry.userId, (netByUser.get(entry.userId) ?? 0) + parseFloat(entry.amount));
+      }
+      for (const [uid, net] of Array.from(netByUser)) {
+        const user = await db.query.users.findFirst({ where: eq(users.id, uid) });
+        if (user && net !== 0) {
+          const newBalance = (parseFloat(user.balance) - net).toFixed(2);
           await db
             .update(users)
             .set({ balance: newBalance, updatedAt: new Date() })
-            .where(eq(users.id, entry.userId));
+            .where(eq(users.id, uid));
         }
       }
       await db.delete(ledger).where(eq(ledger.sessionId, sessionId));
@@ -260,13 +284,15 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
   });
 
 export const lockSessionFn = createServerFn({ method: "POST" })
-  .validator((data: { sessionId: string; shuttleCost: number }) => data)
+  .validator((data: { sessionId: string; shuttleCount: number; shuttleCost: number }) => data)
   .middleware([sessionMiddleware])
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
+      return { type: "FORBIDDEN" };
+    }
 
     const validated = lockSessionSchema.parse(data);
 
@@ -277,10 +303,20 @@ export const lockSessionFn = createServerFn({ method: "POST" })
           where: eq(attendances.status, "YES"),
           with: { user: true },
         },
+        ledgerEntries: true,
       },
     });
 
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (admin.role === "HOST" && gameSession.createdById !== admin.id) {
+      return { type: "FORBIDDEN" };
+    }
+    if (gameSession.status === "LOCKED") {
+      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+    }
+    if (gameSession.endTime > new Date()) {
+      return { type: "BUSINESS_ERROR", code: "Session can only be finalized after it ends" };
+    }
 
     const confirmedAttendees = gameSession.attendances;
     if (confirmedAttendees.length === 0) {
@@ -292,48 +328,78 @@ export const lockSessionFn = createServerFn({ method: "POST" })
     const costPerPlayer = totalCost / confirmedAttendees.length;
     const adminUserId = session.user.id;
 
-    await db.transaction(async (tx) => {
-      await tx
+    const heldDeposits = new Map<string, number>();
+    for (const entry of gameSession.ledgerEntries) {
+      if (entry.type === "SESSION_DEPOSIT" || entry.type === "SESSION_REFUND") {
+        heldDeposits.set(
+          entry.userId,
+          (heldDeposits.get(entry.userId) ?? 0) - parseFloat(entry.amount),
+        );
+      }
+    }
+
+    const finalized = await db.transaction(async (tx) => {
+      const [claimedSession] = await tx
         .update(sessions)
         .set({
+          shuttleCount: validated.shuttleCount,
           shuttleCost: validated.shuttleCost.toFixed(2),
           totalCost: totalCost.toFixed(2),
           costPerPlayer: costPerPlayer.toFixed(2),
           status: "LOCKED",
           updatedAt: new Date(),
         })
-        .where(eq(sessions.id, validated.sessionId));
+        .where(
+          and(
+            eq(sessions.id, validated.sessionId),
+            eq(sessions.status, "OPEN"),
+            lte(sessions.endTime, new Date()),
+          ),
+        )
+        .returning({ id: sessions.id });
+
+      if (!claimedSession) return false;
 
       for (const attendance of confirmedAttendees) {
         const user = attendance.user;
         const currentBalance = parseFloat(user.balance);
-        const newBalance = currentBalance - costPerPlayer;
+        const heldDeposit = Math.max(0, heldDeposits.get(user.id) ?? 0);
+        const netCharge = costPerPlayer - heldDeposit;
+        const newBalance = currentBalance - netCharge;
 
-        await tx
-          .update(users)
-          .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
-          .where(eq(users.id, user.id));
+        if (netCharge !== 0) {
+          await tx
+            .update(users)
+            .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
+            .where(eq(users.id, user.id));
+
+          await tx.insert(ledger).values({
+            userId: user.id,
+            type: netCharge > 0 ? "SESSION_DEBIT" : "SESSION_REFUND",
+            amount: (-netCharge).toFixed(2),
+            balanceAfter: newBalance.toFixed(2),
+            note: netCharge > 0 ? "Session fee (balance due)" : "Session deposit refund",
+            createdById: adminUserId,
+            sessionId: validated.sessionId,
+          });
+        }
 
         await tx
           .update(attendances)
           .set({ finalCost: costPerPlayer.toFixed(2), updatedAt: new Date() })
           .where(eq(attendances.id, attendance.id));
 
-        await tx.insert(ledger).values({
-          userId: user.id,
-          type: "SESSION_DEBIT",
-          amount: (-costPerPlayer).toFixed(2),
-          balanceAfter: newBalance.toFixed(2),
-          note: "Session fee",
-          createdById: adminUserId,
-          sessionId: validated.sessionId,
-        });
-
         if (newBalance < 20 && user.fcmToken) {
           await sendLowBalanceNotification(user.fcmToken, newBalance.toFixed(2));
         }
       }
+
+      return true;
     });
+
+    if (!finalized) {
+      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+    }
 
     return { type: "SUCCESS", value: undefined };
   });
@@ -345,7 +411,7 @@ export const addPlayerFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     const validated = addPlayerSchema.parse({ userId: data.userId });
 
@@ -387,6 +453,9 @@ export const fetchAdminTopUpsFn = createServerFn({ method: "GET" })
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return { pending: [], recent: [] };
 
+    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!admin || admin.role !== "ADMIN") return { pending: [], recent: [] };
+
     const [pending, recent] = await Promise.all([
       db.query.topUpRequests.findMany({
         where: and(eq(topUpRequests.status, "PENDING"), eq(topUpRequests.isDeleted, false)),
@@ -417,7 +486,7 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     const topUpRequest = await db.query.topUpRequests.findFirst({
       where: eq(topUpRequests.id, requestId),
@@ -468,7 +537,7 @@ export const rejectTopUpFn = createServerFn({ method: "POST" })
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role === "PLAYER") return { type: "FORBIDDEN" };
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
 
     const validated = rejectTopUpSchema.parse({ requestId: data.requestId, reason: data.reason });
 
@@ -508,6 +577,9 @@ export const fetchMembersFn = createServerFn({ method: "GET" })
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return [];
 
+    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!admin || admin.role !== "ADMIN") return [];
+
     return db.query.users.findMany({
       orderBy: [desc(users.createdAt)],
     });
@@ -517,4 +589,43 @@ export const membersQueryOptions = () =>
   queryOptions({
     queryKey: ["admin", "members"],
     queryFn: () => fetchMembersFn(),
+  });
+
+// ─── Pool Balance ─────────────────────────────────────────────────────────────
+
+export const fetchPoolBalanceFn = createServerFn({ method: "GET" })
+  .middleware([sessionMiddleware])
+  .handler(async ({ context: { session } }) => {
+    if (!session?.user.id) return null;
+
+    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!admin || admin.role !== "ADMIN") return null;
+
+    const [topupsResult, debitsResult, withdrawalsResult] = await Promise.all([
+      db
+        .select({ total: sum(ledger.amount) })
+        .from(ledger)
+        .where(eq(ledger.type, "TOPUP")),
+      db
+        .select({ total: sum(ledger.amount) })
+        .from(ledger)
+        .where(eq(ledger.type, "SESSION_DEBIT")),
+      db
+        .select({ total: sum(withdrawalRequests.amount) })
+        .from(withdrawalRequests)
+        .where(eq(withdrawalRequests.status, "CONFIRMED")),
+    ]);
+
+    const totalTopups = parseFloat(topupsResult[0]?.total ?? "0");
+    const totalDebits = Math.abs(parseFloat(debitsResult[0]?.total ?? "0"));
+    const totalWithdrawals = parseFloat(withdrawalsResult[0]?.total ?? "0");
+    const remaining = totalTopups - totalDebits - totalWithdrawals;
+
+    return { totalTopups, totalDebits, totalWithdrawals, remaining };
+  });
+
+export const poolBalanceQueryOptions = () =>
+  queryOptions({
+    queryKey: ["admin", "pool-balance"],
+    queryFn: () => fetchPoolBalanceFn(),
   });

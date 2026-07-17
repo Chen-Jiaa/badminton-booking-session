@@ -11,7 +11,7 @@ import { ShareButton } from "@/features/admin/share-button";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 
-export const Route = createFileRoute("/_app/admin/sessions/$id")({
+export const Route = createFileRoute("/_app/admin/sessions_/$id")({
   loader: async ({ context: { queryClient }, params: { id } }) => {
     const [data] = await Promise.all([
       queryClient.ensureQueryData(adminSessionDetailQueryOptions(id)),
@@ -29,6 +29,7 @@ function AdminSessionDetailPage() {
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const isLocked = gameSession.status === "LOCKED";
+  const hasEnded = new Date() >= gameSession.endTime;
 
   return (
     <div className="space-y-6">
@@ -90,10 +91,12 @@ function AdminSessionDetailPage() {
               <p className="text-muted-foreground">Confirmed Players</p>
               <p className="font-medium">{yesAttendees.length}</p>
             </div>
-            {isLocked && parseFloat(gameSession.shuttleCost) > 0 && (
+            {isLocked && (
               <div>
-                <p className="text-muted-foreground">Shuttle Cost</p>
-                <p className="font-medium">{formatCurrency(gameSession.shuttleCost)}</p>
+                <p className="text-muted-foreground">Shuttles Used</p>
+                <p className="font-medium">
+                  {gameSession.shuttleCount} ({formatCurrency(gameSession.shuttleCost)})
+                </p>
               </div>
             )}
           </div>
@@ -118,10 +121,10 @@ function AdminSessionDetailPage() {
         </Card>
       )}
 
-      {!isLocked && yesAttendees.length > 0 && (
+      {!isLocked && hasEnded && yesAttendees.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Lock Session &amp; Deduct Costs</CardTitle>
+            <CardTitle className="text-lg">Finalize Session &amp; Deduct Costs</CardTitle>
           </CardHeader>
           <CardContent>
             <LockSessionForm
@@ -135,14 +138,14 @@ function AdminSessionDetailPage() {
       )}
 
       {isLocked && (
-        <Card className="bg-green-50 border-green-200">
+        <Card className="bg-brand border-brand">
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-green-800 font-medium">Session Locked</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-brand-foreground font-medium">Session Locked</p>
+              <p className="text-2xl font-bold text-brand-foreground">
                 {formatCurrency(gameSession.costPerPlayer || "0")}/person
               </p>
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-brand-foreground/70">
                 Total: {formatCurrency(gameSession.totalCost || "0")} • {yesAttendees.length}{" "}
                 players
               </p>
