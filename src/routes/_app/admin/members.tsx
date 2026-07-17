@@ -30,7 +30,7 @@ function AdminMembersPage() {
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarImage src={user.image || undefined} />
-                    <AvatarFallback className="bg-green-100 text-green-700">
+                    <AvatarFallback className="bg-brand text-brand-foreground">
                       {user.name?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>

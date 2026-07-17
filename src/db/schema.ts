@@ -13,14 +13,21 @@ import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
 
 // ENUMS
-export const roleEnum = pgEnum("role", ["PLAYER", "HOST"]);
+export const roleEnum = pgEnum("role", ["PLAYER", "HOST", "ADMIN"]);
 export const topUpStatusEnum = pgEnum("top_up_status", ["PENDING", "CONFIRMED", "REJECTED"]);
 export const withdrawalStatusEnum = pgEnum("withdrawal_status", [
   "PENDING",
   "CONFIRMED",
   "REJECTED",
 ]);
-export const ledgerTypeEnum = pgEnum("ledger_type", ["TOPUP", "SESSION_DEBIT", "MANUAL_ADJUST"]);
+export const withdrawalPaymentMethodEnum = pgEnum("withdrawal_payment_method", ["BANK", "DUITNOW"]);
+export const ledgerTypeEnum = pgEnum("ledger_type", [
+  "TOPUP",
+  "SESSION_DEBIT",
+  "MANUAL_ADJUST",
+  "SESSION_DEPOSIT",
+  "SESSION_REFUND",
+]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
 export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
 
@@ -37,6 +44,9 @@ export const users = pgTable(
     image: text("image"),
     role: roleEnum("role").default("PLAYER").notNull(),
     balance: decimal("balance", { precision: 10, scale: 2 }).default("0").notNull(),
+    duitnowPhone: text("duitnow_phone"),
+    savedBankName: text("saved_bank_name"),
+    savedAccountNumber: text("saved_account_number"),
     fcmToken: text("fcm_token"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -81,6 +91,10 @@ export const withdrawalRequests = pgTable(
       .notNull()
       .references(() => users.id),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    paymentMethod: withdrawalPaymentMethodEnum("payment_method"),
+    bankName: text("bank_name"),
+    accountNumber: text("account_number"),
+    duitnowPhone: text("duitnow_phone"),
     note: text("note"),
     status: withdrawalStatusEnum("status").default("PENDING").notNull(),
     rejectReason: text("reject_reason"),
@@ -104,6 +118,7 @@ export const sessions = pgTable(
     endTime: timestamp("end_time").notNull(),
     courts: integer("courts").default(1).notNull(),
     costPerCourt: decimal("cost_per_court", { precision: 10, scale: 2 }).notNull(),
+    shuttleCount: integer("shuttle_count").default(0).notNull(),
     shuttleCost: decimal("shuttle_cost", { precision: 10, scale: 2 }).default("0").notNull(),
     totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
     costPerPlayer: decimal("cost_per_player", { precision: 10, scale: 2 }),

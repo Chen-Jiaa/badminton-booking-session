@@ -1,7 +1,17 @@
 import { useDeferredValue, useMemo } from "react";
-import { useSuspenseQuery, type UseSuspenseQueryOptions } from "@tanstack/react-query";
+import {
+  useSuspenseQuery,
+  type DefaultError,
+  type QueryKey,
+  type UseSuspenseQueryOptions,
+} from "@tanstack/react-query";
 
-export function useSuspenseQueryDeferred<T>(options: UseSuspenseQueryOptions<T>) {
+export function useSuspenseQueryDeferred<
+  TQueryFnData = unknown,
+  TError = DefaultError,
+  TData = TQueryFnData,
+  TQueryKey extends QueryKey = QueryKey,
+>(options: UseSuspenseQueryOptions<TQueryFnData, TError, TData, TQueryKey>) {
   // Stabilise the query key with deep equality so filter/param changes don't
   // suspend/unmount the existing UI — the old data stays rendered while new data loads.
   const stableQueryKey = useMemo(

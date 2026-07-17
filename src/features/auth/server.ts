@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { queryOptions } from "@tanstack/react-query";
 import { deleteCookie, setCookie } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/db";
@@ -92,7 +93,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
     });
 
     let pendingTopupsCount = 0;
-    if (dbUser?.role === "HOST") {
+    if (dbUser?.role === "ADMIN") {
       const [result] = await db
         .select({ count: count() })
         .from(topUpRequests)
@@ -106,4 +107,10 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
       balance: dbUser?.balance ?? "0",
       pendingTopupsCount,
     };
+  });
+
+export const currentUserQueryOptions = () =>
+  queryOptions({
+    queryKey: ["current-user"],
+    queryFn: () => fetchCurrentUserFn(),
   });

@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
 /* Map shadcn CSS variables to Tailwind v4 color/radius utilities */
 @theme inline {
   --color-border: hsl(var(--border));
@@ -24,6 +29,8 @@
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  --color-brand: hsl(var(--brand));
+  --color-brand-foreground: hsl(var(--brand-foreground));
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -32,14 +39,16 @@
 
 @layer base {
   :root {
+    --brand: 316 100% 91%; /* #ffcff2 */
+    --brand-foreground: 316 60% 28%;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 316 100% 91%;
+    --primary-foreground: 316 60% 28%;
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;

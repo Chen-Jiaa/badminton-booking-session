@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { getSupabaseClient } from "@/features/auth/client";
 import { createSessionFn } from "@/features/auth/server";
 
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/auth/callback")({
 
 function AuthCallbackPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -30,6 +32,7 @@ function AuthCallbackPage() {
             refresh_token: session.refresh_token,
           },
         });
+        queryClient.removeQueries({ queryKey: ["current-user"] });
         navigate({ to: "/" });
       } catch {
         navigate({ to: "/login", search: { error: "session_failed" } });

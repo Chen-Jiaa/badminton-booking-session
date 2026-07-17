@@ -2,7 +2,7 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanst
 import type { QueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import "@fontsource/inter/latin.css";
-import "@/app/globals.css";
+import "@/styles/globals.css";
 
 export interface RouterContext {
   queryClient: QueryClient;

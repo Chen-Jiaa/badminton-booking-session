@@ -29,8 +29,40 @@ export const withdrawalsQueryOptions = () =>
     queryFn: () => fetchWithdrawalsFn(),
   });
 
+export const fetchSavedPaymentDetailsFn = createServerFn({ method: "GET" })
+  .middleware([sessionMiddleware])
+  .handler(async ({ context: { session } }) => {
+    if (!session?.user.id) return null;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { duitnowPhone: true, savedBankName: true, savedAccountNumber: true },
+    });
+
+    return {
+      duitnowPhone: user?.duitnowPhone ?? null,
+      bankName: user?.savedBankName ?? null,
+      accountNumber: user?.savedAccountNumber ?? null,
+    };
+  });
+
+export const savedPaymentDetailsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["saved-payment-details"],
+    queryFn: () => fetchSavedPaymentDetailsFn(),
+  });
+
 export const createWithdrawalFn = createServerFn({ method: "POST" })
-  .validator((data: { amount: number; note?: string }) => data)
+  .validator(
+    (data: {
+      amount: number;
+      paymentMethod: "BANK" | "DUITNOW";
+      bankName?: string;
+      accountNumber?: string;
+      duitnowPhone?: string;
+      note?: string;
+    }) => data,
+  )
   .middleware([sessionMiddleware])
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
@@ -56,11 +88,34 @@ export const createWithdrawalFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "PENDING_EXISTS" };
     }
 
-    await db.insert(withdrawalRequests).values({
-      userId: session.user.id,
-      amount: validated.amount.toFixed(2),
-      note: validated.note,
-    });
+    if (validated.paymentMethod === "DUITNOW") {
+      await db
+        .update(users)
+        .set({ duitnowPhone: validated.duitnowPhone })
+        .where(eq(users.id, session.user.id));
+
+      await db.insert(withdrawalRequests).values({
+        userId: session.user.id,
+        amount: validated.amount.toFixed(2),
+        paymentMethod: "DUITNOW",
+        duitnowPhone: validated.duitnowPhone,
+        note: validated.note,
+      });
+    } else {
+      await db
+        .update(users)
+        .set({ savedBankName: validated.bankName, savedAccountNumber: validated.accountNumber })
+        .where(eq(users.id, session.user.id));
+
+      await db.insert(withdrawalRequests).values({
+        userId: session.user.id,
+        amount: validated.amount.toFixed(2),
+        paymentMethod: "BANK",
+        bankName: validated.bankName,
+        accountNumber: validated.accountNumber,
+        note: validated.note,
+      });
+    }
 
     return { type: "SUCCESS", value: undefined };
   });

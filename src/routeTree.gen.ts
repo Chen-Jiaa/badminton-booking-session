@@ -8,412 +8,417 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as LoginRouteImport } from "./routes/login";
-import { Route as AppRouteImport } from "./routes/_app";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as AuthCallbackRouteImport } from "./routes/auth/callback";
-import { Route as ApiUploadRouteImport } from "./routes/api/upload";
-import { Route as AppWalletRouteImport } from "./routes/_app/wallet";
-import { Route as AppTopupRouteImport } from "./routes/_app/topup";
-import { Route as AppSessionsRouteImport } from "./routes/_app/sessions";
-import { Route as AppProfileRouteImport } from "./routes/_app/profile";
-import { Route as AppAdminRouteImport } from "./routes/_app/admin";
-import { Route as ApiCronCleanupReceiptsRouteImport } from "./routes/api/cron/cleanup-receipts";
-import { Route as AppSessionsIdRouteImport } from "./routes/_app/sessions.$id";
-import { Route as AppAdminTopupsRouteImport } from "./routes/_app/admin/topups";
-import { Route as AppAdminSessionsRouteImport } from "./routes/_app/admin/sessions";
-import { Route as AppAdminMembersRouteImport } from "./routes/_app/admin/members";
-import { Route as AppAdminSessionsNewRouteImport } from "./routes/_app/admin/sessions.new";
-import { Route as AppAdminSessionsIdRouteImport } from "./routes/_app/admin/sessions.$id";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as AppWalletRouteImport } from './routes/_app/wallet'
+import { Route as AppTopupRouteImport } from './routes/_app/topup'
+import { Route as AppSessionsRouteImport } from './routes/_app/sessions'
+import { Route as AppProfileRouteImport } from './routes/_app/profile'
+import { Route as AppAdminRouteImport } from './routes/_app/admin'
+import { Route as ApiCronCleanupReceiptsRouteImport } from './routes/api/cron/cleanup-receipts'
+import { Route as AppSessionsNewRouteImport } from './routes/_app/sessions_.new'
+import { Route as AppSessionsIdRouteImport } from './routes/_app/sessions_.$id'
+import { Route as AppAdminTopupsRouteImport } from './routes/_app/admin/topups'
+import { Route as AppAdminSessionsRouteImport } from './routes/_app/admin/sessions'
+import { Route as AppAdminMembersRouteImport } from './routes/_app/admin/members'
+import { Route as AppAdminSessionsNewRouteImport } from './routes/_app/admin/sessions_.new'
+import { Route as AppAdminSessionsIdRouteImport } from './routes/_app/admin/sessions_.$id'
 
 const LoginRoute = LoginRouteImport.update({
-  id: "/login",
-  path: "/login",
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AppRoute = AppRouteImport.update({
-  id: "/_app",
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: "/auth/callback",
-  path: "/auth/callback",
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ApiUploadRoute = ApiUploadRouteImport.update({
-  id: "/api/upload",
-  path: "/api/upload",
+  id: '/api/upload',
+  path: '/api/upload',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AppWalletRoute = AppWalletRouteImport.update({
-  id: "/wallet",
-  path: "/wallet",
+  id: '/wallet',
+  path: '/wallet',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppTopupRoute = AppTopupRouteImport.update({
-  id: "/topup",
-  path: "/topup",
+  id: '/topup',
+  path: '/topup',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppSessionsRoute = AppSessionsRouteImport.update({
-  id: "/sessions",
-  path: "/sessions",
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppProfileRoute = AppProfileRouteImport.update({
-  id: "/profile",
-  path: "/profile",
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const AppAdminRoute = AppAdminRouteImport.update({
-  id: "/admin",
-  path: "/admin",
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
-} as any);
+} as any)
 const ApiCronCleanupReceiptsRoute = ApiCronCleanupReceiptsRouteImport.update({
-  id: "/api/cron/cleanup-receipts",
-  path: "/api/cron/cleanup-receipts",
+  id: '/api/cron/cleanup-receipts',
+  path: '/api/cron/cleanup-receipts',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const AppSessionsNewRoute = AppSessionsNewRouteImport.update({
+  id: '/sessions_/new',
+  path: '/sessions/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSessionsIdRoute = AppSessionsIdRouteImport.update({
-  id: "/$id",
-  path: "/$id",
-  getParentRoute: () => AppSessionsRoute,
-} as any);
+  id: '/sessions_/$id',
+  path: '/sessions/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminTopupsRoute = AppAdminTopupsRouteImport.update({
-  id: "/topups",
-  path: "/topups",
+  id: '/topups',
+  path: '/topups',
   getParentRoute: () => AppAdminRoute,
-} as any);
+} as any)
 const AppAdminSessionsRoute = AppAdminSessionsRouteImport.update({
-  id: "/sessions",
-  path: "/sessions",
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => AppAdminRoute,
-} as any);
+} as any)
 const AppAdminMembersRoute = AppAdminMembersRouteImport.update({
-  id: "/members",
-  path: "/members",
+  id: '/members',
+  path: '/members',
   getParentRoute: () => AppAdminRoute,
-} as any);
+} as any)
 const AppAdminSessionsNewRoute = AppAdminSessionsNewRouteImport.update({
-  id: "/new",
-  path: "/new",
-  getParentRoute: () => AppAdminSessionsRoute,
-} as any);
+  id: '/sessions_/new',
+  path: '/sessions/new',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 const AppAdminSessionsIdRoute = AppAdminSessionsIdRouteImport.update({
-  id: "/$id",
-  path: "/$id",
-  getParentRoute: () => AppAdminSessionsRoute,
-} as any);
+  id: '/sessions_/$id',
+  path: '/sessions/$id',
+  getParentRoute: () => AppAdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/login": typeof LoginRoute;
-  "/admin": typeof AppAdminRouteWithChildren;
-  "/profile": typeof AppProfileRoute;
-  "/sessions": typeof AppSessionsRouteWithChildren;
-  "/topup": typeof AppTopupRoute;
-  "/wallet": typeof AppWalletRoute;
-  "/api/upload": typeof ApiUploadRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/admin/members": typeof AppAdminMembersRoute;
-  "/admin/sessions": typeof AppAdminSessionsRouteWithChildren;
-  "/admin/topups": typeof AppAdminTopupsRoute;
-  "/sessions/$id": typeof AppSessionsIdRoute;
-  "/api/cron/cleanup-receipts": typeof ApiCronCleanupReceiptsRoute;
-  "/admin/sessions/$id": typeof AppAdminSessionsIdRoute;
-  "/admin/sessions/new": typeof AppAdminSessionsNewRoute;
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRouteWithChildren
+  '/profile': typeof AppProfileRoute
+  '/sessions': typeof AppSessionsRoute
+  '/topup': typeof AppTopupRoute
+  '/wallet': typeof AppWalletRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/admin/members': typeof AppAdminMembersRoute
+  '/admin/sessions': typeof AppAdminSessionsRoute
+  '/admin/topups': typeof AppAdminTopupsRoute
+  '/sessions/$id': typeof AppSessionsIdRoute
+  '/sessions/new': typeof AppSessionsNewRoute
+  '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/admin/sessions/$id': typeof AppAdminSessionsIdRoute
+  '/admin/sessions/new': typeof AppAdminSessionsNewRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/login": typeof LoginRoute;
-  "/admin": typeof AppAdminRouteWithChildren;
-  "/profile": typeof AppProfileRoute;
-  "/sessions": typeof AppSessionsRouteWithChildren;
-  "/topup": typeof AppTopupRoute;
-  "/wallet": typeof AppWalletRoute;
-  "/api/upload": typeof ApiUploadRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/admin/members": typeof AppAdminMembersRoute;
-  "/admin/sessions": typeof AppAdminSessionsRouteWithChildren;
-  "/admin/topups": typeof AppAdminTopupsRoute;
-  "/sessions/$id": typeof AppSessionsIdRoute;
-  "/api/cron/cleanup-receipts": typeof ApiCronCleanupReceiptsRoute;
-  "/admin/sessions/$id": typeof AppAdminSessionsIdRoute;
-  "/admin/sessions/new": typeof AppAdminSessionsNewRoute;
+  '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/admin': typeof AppAdminRouteWithChildren
+  '/profile': typeof AppProfileRoute
+  '/sessions': typeof AppSessionsRoute
+  '/topup': typeof AppTopupRoute
+  '/wallet': typeof AppWalletRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/admin/members': typeof AppAdminMembersRoute
+  '/admin/sessions': typeof AppAdminSessionsRoute
+  '/admin/topups': typeof AppAdminTopupsRoute
+  '/sessions/$id': typeof AppSessionsIdRoute
+  '/sessions/new': typeof AppSessionsNewRoute
+  '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/admin/sessions/$id': typeof AppAdminSessionsIdRoute
+  '/admin/sessions/new': typeof AppAdminSessionsNewRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/_app": typeof AppRouteWithChildren;
-  "/login": typeof LoginRoute;
-  "/_app/admin": typeof AppAdminRouteWithChildren;
-  "/_app/profile": typeof AppProfileRoute;
-  "/_app/sessions": typeof AppSessionsRouteWithChildren;
-  "/_app/topup": typeof AppTopupRoute;
-  "/_app/wallet": typeof AppWalletRoute;
-  "/api/upload": typeof ApiUploadRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/_app/admin/members": typeof AppAdminMembersRoute;
-  "/_app/admin/sessions": typeof AppAdminSessionsRouteWithChildren;
-  "/_app/admin/topups": typeof AppAdminTopupsRoute;
-  "/_app/sessions/$id": typeof AppSessionsIdRoute;
-  "/api/cron/cleanup-receipts": typeof ApiCronCleanupReceiptsRoute;
-  "/_app/admin/sessions/$id": typeof AppAdminSessionsIdRoute;
-  "/_app/admin/sessions/new": typeof AppAdminSessionsNewRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_app/admin': typeof AppAdminRouteWithChildren
+  '/_app/profile': typeof AppProfileRoute
+  '/_app/sessions': typeof AppSessionsRoute
+  '/_app/topup': typeof AppTopupRoute
+  '/_app/wallet': typeof AppWalletRoute
+  '/api/upload': typeof ApiUploadRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/_app/admin/members': typeof AppAdminMembersRoute
+  '/_app/admin/sessions': typeof AppAdminSessionsRoute
+  '/_app/admin/topups': typeof AppAdminTopupsRoute
+  '/_app/sessions_/$id': typeof AppSessionsIdRoute
+  '/_app/sessions_/new': typeof AppSessionsNewRoute
+  '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/_app/admin/sessions_/$id': typeof AppAdminSessionsIdRoute
+  '/_app/admin/sessions_/new': typeof AppAdminSessionsNewRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/login"
-    | "/admin"
-    | "/profile"
-    | "/sessions"
-    | "/topup"
-    | "/wallet"
-    | "/api/upload"
-    | "/auth/callback"
-    | "/admin/members"
-    | "/admin/sessions"
-    | "/admin/topups"
-    | "/sessions/$id"
-    | "/api/cron/cleanup-receipts"
-    | "/admin/sessions/$id"
-    | "/admin/sessions/new";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/profile'
+    | '/sessions'
+    | '/topup'
+    | '/wallet'
+    | '/api/upload'
+    | '/auth/callback'
+    | '/admin/members'
+    | '/admin/sessions'
+    | '/admin/topups'
+    | '/sessions/$id'
+    | '/sessions/new'
+    | '/api/cron/cleanup-receipts'
+    | '/admin/sessions/$id'
+    | '/admin/sessions/new'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/login"
-    | "/admin"
-    | "/profile"
-    | "/sessions"
-    | "/topup"
-    | "/wallet"
-    | "/api/upload"
-    | "/auth/callback"
-    | "/admin/members"
-    | "/admin/sessions"
-    | "/admin/topups"
-    | "/sessions/$id"
-    | "/api/cron/cleanup-receipts"
-    | "/admin/sessions/$id"
-    | "/admin/sessions/new";
+    | '/'
+    | '/login'
+    | '/admin'
+    | '/profile'
+    | '/sessions'
+    | '/topup'
+    | '/wallet'
+    | '/api/upload'
+    | '/auth/callback'
+    | '/admin/members'
+    | '/admin/sessions'
+    | '/admin/topups'
+    | '/sessions/$id'
+    | '/sessions/new'
+    | '/api/cron/cleanup-receipts'
+    | '/admin/sessions/$id'
+    | '/admin/sessions/new'
   id:
-    | "__root__"
-    | "/"
-    | "/_app"
-    | "/login"
-    | "/_app/admin"
-    | "/_app/profile"
-    | "/_app/sessions"
-    | "/_app/topup"
-    | "/_app/wallet"
-    | "/api/upload"
-    | "/auth/callback"
-    | "/_app/admin/members"
-    | "/_app/admin/sessions"
-    | "/_app/admin/topups"
-    | "/_app/sessions/$id"
-    | "/api/cron/cleanup-receipts"
-    | "/_app/admin/sessions/$id"
-    | "/_app/admin/sessions/new";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/_app/admin'
+    | '/_app/profile'
+    | '/_app/sessions'
+    | '/_app/topup'
+    | '/_app/wallet'
+    | '/api/upload'
+    | '/auth/callback'
+    | '/_app/admin/members'
+    | '/_app/admin/sessions'
+    | '/_app/admin/topups'
+    | '/_app/sessions_/$id'
+    | '/_app/sessions_/new'
+    | '/api/cron/cleanup-receipts'
+    | '/_app/admin/sessions_/$id'
+    | '/_app/admin/sessions_/new'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AppRoute: typeof AppRouteWithChildren;
-  LoginRoute: typeof LoginRoute;
-  ApiUploadRoute: typeof ApiUploadRoute;
-  AuthCallbackRoute: typeof AuthCallbackRoute;
-  ApiCronCleanupReceiptsRoute: typeof ApiCronCleanupReceiptsRoute;
+  IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  ApiUploadRoute: typeof ApiUploadRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  ApiCronCleanupReceiptsRoute: typeof ApiCronCleanupReceiptsRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/login": {
-      id: "/login";
-      path: "/login";
-      fullPath: "/login";
-      preLoaderRoute: typeof LoginRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app": {
-      id: "/_app";
-      path: "";
-      fullPath: "/";
-      preLoaderRoute: typeof AppRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/auth/callback": {
-      id: "/auth/callback";
-      path: "/auth/callback";
-      fullPath: "/auth/callback";
-      preLoaderRoute: typeof AuthCallbackRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/upload": {
-      id: "/api/upload";
-      path: "/api/upload";
-      fullPath: "/api/upload";
-      preLoaderRoute: typeof ApiUploadRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app/wallet": {
-      id: "/_app/wallet";
-      path: "/wallet";
-      fullPath: "/wallet";
-      preLoaderRoute: typeof AppWalletRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/topup": {
-      id: "/_app/topup";
-      path: "/topup";
-      fullPath: "/topup";
-      preLoaderRoute: typeof AppTopupRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/sessions": {
-      id: "/_app/sessions";
-      path: "/sessions";
-      fullPath: "/sessions";
-      preLoaderRoute: typeof AppSessionsRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/profile": {
-      id: "/_app/profile";
-      path: "/profile";
-      fullPath: "/profile";
-      preLoaderRoute: typeof AppProfileRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/_app/admin": {
-      id: "/_app/admin";
-      path: "/admin";
-      fullPath: "/admin";
-      preLoaderRoute: typeof AppAdminRouteImport;
-      parentRoute: typeof AppRoute;
-    };
-    "/api/cron/cleanup-receipts": {
-      id: "/api/cron/cleanup-receipts";
-      path: "/api/cron/cleanup-receipts";
-      fullPath: "/api/cron/cleanup-receipts";
-      preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/_app/sessions/$id": {
-      id: "/_app/sessions/$id";
-      path: "/$id";
-      fullPath: "/sessions/$id";
-      preLoaderRoute: typeof AppSessionsIdRouteImport;
-      parentRoute: typeof AppSessionsRoute;
-    };
-    "/_app/admin/topups": {
-      id: "/_app/admin/topups";
-      path: "/topups";
-      fullPath: "/admin/topups";
-      preLoaderRoute: typeof AppAdminTopupsRouteImport;
-      parentRoute: typeof AppAdminRoute;
-    };
-    "/_app/admin/sessions": {
-      id: "/_app/admin/sessions";
-      path: "/sessions";
-      fullPath: "/admin/sessions";
-      preLoaderRoute: typeof AppAdminSessionsRouteImport;
-      parentRoute: typeof AppAdminRoute;
-    };
-    "/_app/admin/members": {
-      id: "/_app/admin/members";
-      path: "/members";
-      fullPath: "/admin/members";
-      preLoaderRoute: typeof AppAdminMembersRouteImport;
-      parentRoute: typeof AppAdminRoute;
-    };
-    "/_app/admin/sessions/new": {
-      id: "/_app/admin/sessions/new";
-      path: "/new";
-      fullPath: "/admin/sessions/new";
-      preLoaderRoute: typeof AppAdminSessionsNewRouteImport;
-      parentRoute: typeof AppAdminSessionsRoute;
-    };
-    "/_app/admin/sessions/$id": {
-      id: "/_app/admin/sessions/$id";
-      path: "/$id";
-      fullPath: "/admin/sessions/$id";
-      preLoaderRoute: typeof AppAdminSessionsIdRouteImport;
-      parentRoute: typeof AppAdminSessionsRoute;
-    };
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/upload': {
+      id: '/api/upload'
+      path: '/api/upload'
+      fullPath: '/api/upload'
+      preLoaderRoute: typeof ApiUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/wallet': {
+      id: '/_app/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AppWalletRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/topup': {
+      id: '/_app/topup'
+      path: '/topup'
+      fullPath: '/topup'
+      preLoaderRoute: typeof AppTopupRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sessions': {
+      id: '/_app/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof AppSessionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/api/cron/cleanup-receipts': {
+      id: '/api/cron/cleanup-receipts'
+      path: '/api/cron/cleanup-receipts'
+      fullPath: '/api/cron/cleanup-receipts'
+      preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/sessions_/new': {
+      id: '/_app/sessions_/new'
+      path: '/sessions/new'
+      fullPath: '/sessions/new'
+      preLoaderRoute: typeof AppSessionsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sessions_/$id': {
+      id: '/_app/sessions_/$id'
+      path: '/sessions/$id'
+      fullPath: '/sessions/$id'
+      preLoaderRoute: typeof AppSessionsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/topups': {
+      id: '/_app/admin/topups'
+      path: '/topups'
+      fullPath: '/admin/topups'
+      preLoaderRoute: typeof AppAdminTopupsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/sessions': {
+      id: '/_app/admin/sessions'
+      path: '/sessions'
+      fullPath: '/admin/sessions'
+      preLoaderRoute: typeof AppAdminSessionsRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/members': {
+      id: '/_app/admin/members'
+      path: '/members'
+      fullPath: '/admin/members'
+      preLoaderRoute: typeof AppAdminMembersRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/sessions_/new': {
+      id: '/_app/admin/sessions_/new'
+      path: '/sessions/new'
+      fullPath: '/admin/sessions/new'
+      preLoaderRoute: typeof AppAdminSessionsNewRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
+    '/_app/admin/sessions_/$id': {
+      id: '/_app/admin/sessions_/$id'
+      path: '/sessions/$id'
+      fullPath: '/admin/sessions/$id'
+      preLoaderRoute: typeof AppAdminSessionsIdRouteImport
+      parentRoute: typeof AppAdminRoute
+    }
   }
 }
 
-interface AppAdminSessionsRouteChildren {
-  AppAdminSessionsIdRoute: typeof AppAdminSessionsIdRoute;
-  AppAdminSessionsNewRoute: typeof AppAdminSessionsNewRoute;
-}
-
-const AppAdminSessionsRouteChildren: AppAdminSessionsRouteChildren = {
-  AppAdminSessionsIdRoute: AppAdminSessionsIdRoute,
-  AppAdminSessionsNewRoute: AppAdminSessionsNewRoute,
-};
-
-const AppAdminSessionsRouteWithChildren = AppAdminSessionsRoute._addFileChildren(
-  AppAdminSessionsRouteChildren,
-);
-
 interface AppAdminRouteChildren {
-  AppAdminMembersRoute: typeof AppAdminMembersRoute;
-  AppAdminSessionsRoute: typeof AppAdminSessionsRouteWithChildren;
-  AppAdminTopupsRoute: typeof AppAdminTopupsRoute;
+  AppAdminMembersRoute: typeof AppAdminMembersRoute
+  AppAdminSessionsRoute: typeof AppAdminSessionsRoute
+  AppAdminTopupsRoute: typeof AppAdminTopupsRoute
+  AppAdminSessionsIdRoute: typeof AppAdminSessionsIdRoute
+  AppAdminSessionsNewRoute: typeof AppAdminSessionsNewRoute
 }
 
 const AppAdminRouteChildren: AppAdminRouteChildren = {
   AppAdminMembersRoute: AppAdminMembersRoute,
-  AppAdminSessionsRoute: AppAdminSessionsRouteWithChildren,
+  AppAdminSessionsRoute: AppAdminSessionsRoute,
   AppAdminTopupsRoute: AppAdminTopupsRoute,
-};
-
-const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(AppAdminRouteChildren);
-
-interface AppSessionsRouteChildren {
-  AppSessionsIdRoute: typeof AppSessionsIdRoute;
+  AppAdminSessionsIdRoute: AppAdminSessionsIdRoute,
+  AppAdminSessionsNewRoute: AppAdminSessionsNewRoute,
 }
 
-const AppSessionsRouteChildren: AppSessionsRouteChildren = {
-  AppSessionsIdRoute: AppSessionsIdRoute,
-};
-
-const AppSessionsRouteWithChildren = AppSessionsRoute._addFileChildren(AppSessionsRouteChildren);
+const AppAdminRouteWithChildren = AppAdminRoute._addFileChildren(
+  AppAdminRouteChildren,
+)
 
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRouteWithChildren;
-  AppProfileRoute: typeof AppProfileRoute;
-  AppSessionsRoute: typeof AppSessionsRouteWithChildren;
-  AppTopupRoute: typeof AppTopupRoute;
-  AppWalletRoute: typeof AppWalletRoute;
+  AppAdminRoute: typeof AppAdminRouteWithChildren
+  AppProfileRoute: typeof AppProfileRoute
+  AppSessionsRoute: typeof AppSessionsRoute
+  AppTopupRoute: typeof AppTopupRoute
+  AppWalletRoute: typeof AppWalletRoute
+  AppSessionsIdRoute: typeof AppSessionsIdRoute
+  AppSessionsNewRoute: typeof AppSessionsNewRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRouteWithChildren,
   AppProfileRoute: AppProfileRoute,
-  AppSessionsRoute: AppSessionsRouteWithChildren,
+  AppSessionsRoute: AppSessionsRoute,
   AppTopupRoute: AppTopupRoute,
   AppWalletRoute: AppWalletRoute,
-};
+  AppSessionsIdRoute: AppSessionsIdRoute,
+  AppSessionsNewRoute: AppSessionsNewRoute,
+}
 
-const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren);
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -422,16 +427,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUploadRoute: ApiUploadRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ApiCronCleanupReceiptsRoute: ApiCronCleanupReceiptsRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { createStart } from "@tanstack/react-start";
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

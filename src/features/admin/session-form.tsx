@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ interface CreateProps {
   sessionId?: never;
   defaultValues?: never;
   onCancel?: never;
+  canManageCourts?: boolean;
 }
 
 interface EditProps {
@@ -46,15 +47,22 @@ interface EditProps {
   sessionId: string;
   defaultValues: SessionDefaultValues;
   onCancel: () => void;
+  canManageCourts?: boolean;
 }
 
 type SessionFormProps = CreateProps | EditProps;
 
 const ADD_NEW_COURT_VALUE = "__add_new__";
 
-export function SessionForm({ mode, sessionId, defaultValues, onCancel }: SessionFormProps) {
+export function SessionForm({
+  mode,
+  sessionId,
+  defaultValues,
+  onCancel,
+  canManageCourts = true,
+}: SessionFormProps) {
   const isEdit = mode === "edit";
-  const navigate = useNavigate();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const initialStart = defaultValues ? new Date(defaultValues.startTime) : undefined;
@@ -72,16 +80,17 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
     initialStart ? toTimeString(initialStart) : "",
   );
   const [endTime, setEndTime] = useState<string>(initialEnd ? toTimeString(initialEnd) : "");
-  const [numCourts, setNumCourts] = useState(defaultValues?.courts ?? 1);
+  const [numCourts, setNumCourts] = useState<number | "">(defaultValues?.courts ?? 1);
   const [costPerCourt, setCostPerCourt] = useState(defaultValues?.costPerCourt ?? 60);
   const [location, setLocation] = useState(defaultValues?.location ?? "");
   const [locationMapUrl, setLocationMapUrl] = useState(defaultValues?.locationMapUrl ?? "");
   const [courtNumbers, setCourtNumbers] = useState(defaultValues?.courtNumbers ?? "");
-  const [maxPlayers, setMaxPlayers] = useState(defaultValues?.maxPlayers ?? 20);
+  const [maxPlayers, setMaxPlayers] = useState<number | "">(defaultValues?.maxPlayers ?? 20);
   const [minBalance, setMinBalance] = useState(defaultValues?.minBalance ?? 20);
   const [note, setNote] = useState(defaultValues?.note ?? "");
   const [rsvpDeadline, setRsvpDeadline] = useState<Date | undefined>(initialRsvp);
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const { data: courtsList, refetch: refetchCourts } = useSuspenseQuery(courtsQueryOptions());
   const [selectedCourtId, setSelectedCourtId] = useState<string>(() => {
@@ -158,8 +167,19 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
   }
 
   async function handleSubmit() {
-    if (!sessionDate || !startTime || !endTime) {
-      toast({ title: "Please select date and times", variant: "destructive" });
+    setSubmitted(true);
+
+    const missingRequired =
+      !sessionDate ||
+      !startTime ||
+      !endTime ||
+      numCourts === "" ||
+      maxPlayers === "" ||
+      !courtNumbers.trim() ||
+      !location;
+
+    if (missingRequired) {
+      toast({ title: "Please fill in all required fields", variant: "destructive" });
       return;
     }
 
@@ -174,12 +194,12 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
     const payload = {
       startTime: startDateTime.toISOString(),
       endTime: endDateTime.toISOString(),
-      courts: numCourts,
+      courts: numCourts as number,
       costPerCourt,
       location: location || undefined,
       locationMapUrl: locationMapUrl || undefined,
       courtNumbers: courtNumbers || undefined,
-      maxPlayers,
+      maxPlayers: maxPlayers as number,
       minBalance,
       note: note || undefined,
       rsvpDeadline: rsvpDeadline?.toISOString(),
@@ -199,7 +219,7 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
         if (result.type !== "SUCCESS") throw new Error();
         toast({ title: "Session created" });
         await queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        navigate({ to: "/admin/sessions" });
+        router.history.back();
       }
     } catch (err) {
       toast({
@@ -228,6 +248,7 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
                 className={cn(
                   "w-full justify-start text-left font-normal",
                   !sessionDate && "text-muted-foreground",
+                  submitted && !sessionDate && "border-destructive",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -248,6 +269,9 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
               />
             </PopoverContent>
           </Popover>
+          {submitted && !sessionDate && (
+            <p className="mt-1 text-xs text-destructive">Date is required</p>
+          )}
         </div>
       </div>
 
@@ -259,8 +283,14 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            className="mt-1"
+            className={cn(
+              "mt-1",
+              submitted && !startTime && "border-destructive focus-visible:ring-destructive",
+            )}
           />
+          {submitted && !startTime && (
+            <p className="mt-1 text-xs text-destructive">Start time is required</p>
+          )}
         </div>
         <div>
           <Label htmlFor="endTime">End Time</Label>
@@ -269,20 +299,29 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             type="time"
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
-            className="mt-1"
+            className={cn(
+              "mt-1",
+              submitted && !endTime && "border-destructive focus-visible:ring-destructive",
+            )}
           />
+          {submitted && !endTime && (
+            <p className="mt-1 text-xs text-destructive">End time is required</p>
+          )}
         </div>
       </div>
 
       <div>
-        <Label>Venue / Location (optional)</Label>
+        <Label>Venue / Location</Label>
         <div className="mt-1">
           <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 role="combobox"
-                className="w-full justify-between font-normal"
+                className={cn(
+                  "w-full justify-between font-normal",
+                  submitted && !location && "border-destructive",
+                )}
               >
                 <span className={cn("truncate", !location && "text-muted-foreground")}>
                   {location || "Select a court"}
@@ -308,30 +347,37 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
                   >
                     {court.name}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCourt(court.id);
-                    }}
-                    className="ml-2 shrink-0 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {canManageCourts && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCourt(court.id);
+                      }}
+                      className="ml-2 shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               ))}
-              <div
-                className="flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-sm cursor-pointer text-blue-600 hover:bg-accent"
-                onClick={() => {
-                  handleCourtSelect(ADD_NEW_COURT_VALUE);
-                  setDropdownOpen(false);
-                }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add new court
-              </div>
+              {canManageCourts && (
+                <div
+                  className="flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-sm cursor-pointer text-brand-foreground hover:bg-accent"
+                  onClick={() => {
+                    handleCourtSelect(ADD_NEW_COURT_VALUE);
+                    setDropdownOpen(false);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add new court
+                </div>
+              )}
             </PopoverContent>
           </Popover>
+          {submitted && !location && (
+            <p className="mt-1 text-xs text-destructive">Location is required</p>
+          )}
         </div>
 
         {showAddCourt && (
@@ -362,9 +408,18 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             type="number"
             min="1"
             value={numCourts}
-            onChange={(e) => setNumCourts(parseInt(e.target.value) || 1)}
-            className="mt-1"
+            onChange={(e) => {
+              const val = e.target.value;
+              setNumCourts(val === "" ? "" : parseInt(val));
+            }}
+            className={cn(
+              "mt-1",
+              submitted && numCourts === "" && "border-destructive focus-visible:ring-destructive",
+            )}
           />
+          {submitted && numCourts === "" && (
+            <p className="mt-1 text-xs text-destructive">Courts is required</p>
+          )}
         </div>
         <div>
           <Label htmlFor="costPerCourt">Cost/Court</Label>
@@ -384,15 +439,23 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
       </div>
 
       <div>
-        <Label htmlFor="courtNumbers">Court Numbers (optional)</Label>
+        <Label htmlFor="courtNumbers">Court Numbers</Label>
         <Input
           id="courtNumbers"
           type="text"
           value={courtNumbers}
           onChange={(e) => setCourtNumbers(e.target.value)}
           placeholder="e.g., Court 1 & 2"
-          className="mt-1"
+          className={cn(
+            "mt-1",
+            submitted &&
+              !courtNumbers.trim() &&
+              "border-destructive focus-visible:ring-destructive",
+          )}
         />
+        {submitted && !courtNumbers.trim() && (
+          <p className="mt-1 text-xs text-destructive">Court numbers is required</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -403,9 +466,18 @@ export function SessionForm({ mode, sessionId, defaultValues, onCancel }: Sessio
             type="number"
             min="1"
             value={maxPlayers}
-            onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 1)}
-            className="mt-1"
+            onChange={(e) => {
+              const val = e.target.value;
+              setMaxPlayers(val === "" ? "" : parseInt(val));
+            }}
+            className={cn(
+              "mt-1",
+              submitted && maxPlayers === "" && "border-destructive focus-visible:ring-destructive",
+            )}
           />
+          {submitted && maxPlayers === "" && (
+            <p className="mt-1 text-xs text-destructive">Max Players is required</p>
+          )}
         </div>
         <div>
           <Label htmlFor="minBalance">Min Balance to Join</Label>

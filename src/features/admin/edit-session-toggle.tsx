@@ -6,6 +6,7 @@ import { SessionForm } from "@/features/admin/session-form";
 
 interface EditSessionToggleProps {
   sessionId: string;
+  canManageCourts?: boolean;
   defaultValues: {
     startTime: string;
     endTime: string;
@@ -21,7 +22,11 @@ interface EditSessionToggleProps {
   };
 }
 
-export function EditSessionToggle({ sessionId, defaultValues }: EditSessionToggleProps) {
+export function EditSessionToggle({
+  sessionId,
+  canManageCourts = true,
+  defaultValues,
+}: EditSessionToggleProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -38,6 +43,7 @@ export function EditSessionToggle({ sessionId, defaultValues }: EditSessionToggl
           <SessionForm
             mode="edit"
             sessionId={sessionId}
+            canManageCourts={canManageCourts}
             defaultValues={defaultValues}
             onCancel={() => setOpen(false)}
           />

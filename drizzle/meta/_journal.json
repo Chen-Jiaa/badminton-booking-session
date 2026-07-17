@@ -15,6 +15,20 @@
       "when": 1784192029378,
       "tag": "0001_clear_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1752796800000,
+      "tag": "0002_deposit_refund_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784253896167,
+      "tag": "0003_add_host_role_and_shuttle_count",
+      "breakpoints": true
     }
   ]
 }
