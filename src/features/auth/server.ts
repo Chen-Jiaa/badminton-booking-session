@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
-import { deleteCookie, setCookie } from "@tanstack/react-start/server";
+import { deleteCookie } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/db";
-import { users, topUpRequests } from "@/db/schema";
+import { users, topUpRequests, withdrawalRequests } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
-import { sessionMiddleware } from "@/middleware/auth";
+import { sessionMiddleware, setAuthCookies } from "@/middleware/auth";
 
 export const createSessionFn = createServerFn({ method: "POST" })
   .validator((data: { access_token: string; refresh_token?: string }) => data)
@@ -58,21 +58,7 @@ export const createSessionFn = createServerFn({ method: "POST" })
       dbUser = updated;
     }
 
-    setCookie("sb-access-token", session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    setCookie("sb-refresh-token", session.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    setAuthCookies(session.access_token, session.refresh_token);
 
     return { success: true };
   });
@@ -89,23 +75,34 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
 
     const dbUser = await db.query.users.findFirst({
       where: eq(users.id, session.user.id),
-      columns: { role: true, balance: true },
+      columns: { role: true, balance: true, name: true, image: true },
     });
 
     let pendingTopupsCount = 0;
+    let pendingWithdrawalsCount = 0;
     if (dbUser?.role === "ADMIN") {
-      const [result] = await db
-        .select({ count: count() })
-        .from(topUpRequests)
-        .where(eq(topUpRequests.status, "PENDING"));
-      pendingTopupsCount = result?.count ?? 0;
+      const [topupResult, withdrawalResult] = await Promise.all([
+        db
+          .select({ count: count() })
+          .from(topUpRequests)
+          .where(eq(topUpRequests.status, "PENDING")),
+        db
+          .select({ count: count() })
+          .from(withdrawalRequests)
+          .where(eq(withdrawalRequests.status, "PENDING")),
+      ]);
+      pendingTopupsCount = topupResult[0]?.count ?? 0;
+      pendingWithdrawalsCount = withdrawalResult[0]?.count ?? 0;
     }
 
     return {
       ...session.user,
       role: dbUser?.role ?? ("PLAYER" as const),
       balance: dbUser?.balance ?? "0",
+      name: dbUser?.name ?? null,
+      image: dbUser?.image ?? null,
       pendingTopupsCount,
+      pendingWithdrawalsCount,
     };
   });
 
@@ -113,4 +110,5 @@ export const currentUserQueryOptions = () =>
   queryOptions({
     queryKey: ["current-user"],
     queryFn: () => fetchCurrentUserFn(),
+    staleTime: 5 * 60 * 1000, // balance/role changes only after explicit actions that already invalidate this
   });

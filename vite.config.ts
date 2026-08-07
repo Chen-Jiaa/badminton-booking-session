@@ -19,6 +19,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: null,
+        // Pulls our Web Push handlers (push + notificationclick) into the
+        // workbox-generated service worker so there's a single SW.
+        importScripts: ["push-sw.js"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/lh3\.googleusercontent\.com/,
@@ -34,7 +37,4 @@ export default defineConfig({
     }),
     viteReact(),
   ],
-  ssr: {
-    external: ["firebase-admin"],
-  },
 });

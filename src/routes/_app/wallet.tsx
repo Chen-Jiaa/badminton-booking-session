@@ -6,6 +6,17 @@ import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { WithdrawalDialog } from "@/features/withdrawal/withdrawal-dialog";
 import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { ArrowUpCircle, ArrowDownCircle, Edit, XCircle, Clock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { Ledger } from "@/db/schema";
+
+const LEDGER_LABELS: Record<Ledger["type"], string> = {
+  TOPUP: "Top Up Success",
+  SESSION_DEBIT: "Session Fee",
+  MANUAL_ADJUST: "Adjustment",
+  SESSION_DEPOSIT: "Session Deposit Held",
+  SESSION_REFUND: "Session Deposit Refund",
+  WITHDRAWAL: "Withdrawal Paid",
+};
 
 export const Route = createFileRoute("/_app/wallet")({
   beforeLoad: ({ context }) => {
@@ -17,153 +28,182 @@ export const Route = createFileRoute("/_app/wallet")({
 
 function WalletPage() {
   const { data } = useSuspenseQueryDeferred(walletQueryOptions());
-  const { balance, timeline } = data;
+  const { balance, pendingWithdrawalTotal, timeline } = data;
 
   const balanceNum = parseFloat(balance);
-  const isLowBalance = balanceNum < 20;
+  const pendingWithdrawalNum = parseFloat(pendingWithdrawalTotal);
+  const availableNum = balanceNum - pendingWithdrawalNum;
+  const hasPendingWithdrawal = pendingWithdrawalNum > 0;
+  const isNegative = balanceNum < 0;
+  const isLowBalance = !isNegative && balanceNum < 20;
 
   return (
     <div className="space-y-6">
-      <Card className={isLowBalance ? "border-red-200 bg-red-50" : ""}>
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Current Balance
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p
-                className={cn(
-                  "text-3xl font-bold",
-                  balanceNum < 0
-                    ? "text-red-600"
-                    : isLowBalance
-                      ? "text-yellow-600"
-                      : "text-green-600",
-                )}
-              >
-                {formatCurrency(balanceNum)}
-              </p>
-              {isLowBalance && (
-                <p className="text-sm text-red-600 mt-1">Low balance - please top up</p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <WithdrawalDialog balance={balanceNum} />
-              <TopUpDialog />
-            </div>
+          <p
+            className={cn(
+              "text-4xl font-semibold tabular-nums tracking-tight",
+              isNegative ? "text-destructive" : "text-foreground",
+            )}
+          >
+            {formatCurrency(balanceNum)}
+          </p>
+          {hasPendingWithdrawal && (
+            <p className="mt-1.5 text-sm text-muted-foreground tabular-nums">
+              {formatCurrency(pendingWithdrawalNum)} on hold for withdrawal ·{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(availableNum)} available
+              </span>
+            </p>
+          )}
+          {isLowBalance && !hasPendingWithdrawal && (
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Running low — top up to keep playing
+            </p>
+          )}
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <WithdrawalDialog balance={balanceNum} className="h-10 w-full" />
+            <TopUpDialog className="h-10 w-full" />
           </div>
         </CardContent>
       </Card>
 
       <div>
-        <h2 className="font-semibold mb-3">Transaction History</h2>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">Transaction History</h2>
         {timeline.length === 0 ? (
           <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
               No transactions yet
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {timeline.map((item) => {
-              if (item.kind === "topup") {
-                const req = item.data;
-                const isPending = req.status === "PENDING";
+          <Card className="overflow-hidden shadow-none">
+            <div className="divide-y divide-border">
+              {timeline.map((item) => {
+                if (item.kind === "topup") {
+                  const req = item.data;
+                  const isPending = req.status === "PENDING";
+                  return (
+                    <TransactionRow
+                      key={`topup-${req.id}`}
+                      icon={isPending ? Clock : XCircle}
+                      tone={isPending ? "pending" : "rejected"}
+                      title={isPending ? "Top Up Pending" : "Top Up Rejected"}
+                      subtitle={formatDateTime(req.createdAt)}
+                      note={!isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined}
+                      amount={formatCurrency(parseFloat(req.amount))}
+                    />
+                  );
+                }
+
+                if (item.kind === "withdrawal") {
+                  const req = item.data;
+                  const isPending = req.status === "PENDING";
+                  return (
+                    <TransactionRow
+                      key={`withdrawal-${req.id}`}
+                      icon={isPending ? Clock : XCircle}
+                      tone={isPending ? "pending" : "rejected"}
+                      title={isPending ? "Withdrawal Pending" : "Withdrawal Rejected"}
+                      subtitle={formatDateTime(req.createdAt)}
+                      note={!isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined}
+                      amount={`-${formatCurrency(parseFloat(req.amount))}`}
+                    />
+                  );
+                }
+
+                const entry = item.data;
+                const amount = parseFloat(entry.amount);
+                const isCredit = amount > 0;
+                const Icon =
+                  entry.type === "MANUAL_ADJUST" ? Edit : isCredit ? ArrowUpCircle : ArrowDownCircle;
+
                 return (
-                  <Card
-                    key={`topup-${req.id}`}
-                    className={
-                      isPending ? "border-gray-200 bg-gray-50" : "border-red-200 bg-red-50"
+                  <TransactionRow
+                    key={entry.id}
+                    icon={Icon}
+                    tone={isCredit ? "credit" : "debit"}
+                    title={LEDGER_LABELS[entry.type as Ledger["type"]]}
+                    subtitle={formatDateTime(entry.createdAt)}
+                    note={entry.type !== "TOPUP" && entry.note ? entry.note : undefined}
+                    amount={`${isCredit ? "+" : ""}${formatCurrency(amount)}`}
+                    balanceAfter={
+                      entry.type !== "TOPUP"
+                        ? `Bal ${formatCurrency(entry.balanceAfter)}`
+                        : undefined
                     }
-                  >
-                    <CardContent className="py-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`p-2 rounded-full ${isPending ? "bg-gray-100" : "bg-red-100"}`}
-                        >
-                          {isPending ? (
-                            <Clock className="h-4 w-4 text-gray-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-600" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">
-                            {isPending ? "Top Up Pending" : "Top Up Rejected"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateTime(req.createdAt)}
-                          </p>
-                          {!isPending && req.rejectReason && (
-                            <p className="text-xs text-red-700 mt-0.5">
-                              Reason: {req.rejectReason}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p
-                            className={`font-semibold ${isPending ? "text-gray-500" : "text-red-600"}`}
-                          >
-                            {formatCurrency(parseFloat(req.amount))}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  />
                 );
-              }
+              })}
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
 
-              const entry = item.data;
-              const amount = parseFloat(entry.amount);
-              const isCredit = amount > 0;
-              const Icon =
-                entry.type === "MANUAL_ADJUST" ? Edit : isCredit ? ArrowUpCircle : ArrowDownCircle;
+// Status tone drives the icon chip (the at-a-glance status cue) and the amount.
+// Hues follow the app's badge conventions: green = success/credit,
+// amber = warning/pending, red = error/rejected. Amount colors are chosen for
+// AA contrast on white; pending/rejected amounts stay neutral (amber text can't
+// pass), leaning on the chip + strike-through instead so color is never the only cue.
+type TransactionTone = "credit" | "debit" | "pending" | "rejected";
 
-              return (
-                <Card key={entry.id}>
-                  <CardContent className="py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`p-2 rounded-full ${isCredit ? "bg-green-100" : "bg-red-100"}`}
-                      >
-                        <Icon
-                          className={`h-4 w-4 ${isCredit ? "text-green-600" : "text-red-600"}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">
-                          {entry.type === "TOPUP" && "Top Up Success"}
-                          {entry.type === "SESSION_DEBIT" && "Session Fee"}
-                          {entry.type === "MANUAL_ADJUST" && "Adjustment"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTime(entry.createdAt)}
-                        </p>
-                        {entry.type !== "TOPUP" && entry.note && (
-                          <p className="text-xs text-muted-foreground truncate">{entry.note}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p
-                          className={`font-semibold ${isCredit ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {isCredit ? "+" : ""}
-                          {formatCurrency(amount)}
-                        </p>
-                        {entry.type !== "TOPUP" && (
-                          <p className="text-xs text-muted-foreground">
-                            Bal: {formatCurrency(entry.balanceAfter)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+const TONE: Record<TransactionTone, { chip: string; icon: string; amount: string }> = {
+  credit: { chip: "bg-green-50", icon: "text-green-600", amount: "text-green-700" },
+  debit: { chip: "bg-muted", icon: "text-muted-foreground", amount: "text-foreground" },
+  pending: { chip: "bg-amber-50", icon: "text-amber-600", amount: "text-muted-foreground" },
+  rejected: {
+    chip: "bg-red-50",
+    icon: "text-red-600",
+    amount: "text-muted-foreground line-through",
+  },
+};
+
+function TransactionRow({
+  icon: Icon,
+  tone,
+  title,
+  subtitle,
+  note,
+  amount,
+  balanceAfter,
+}: {
+  icon: LucideIcon;
+  tone: TransactionTone;
+  title: string;
+  subtitle: string;
+  note?: string;
+  amount: string;
+  balanceAfter?: string;
+}) {
+  const t = TONE[tone];
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <div
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+          t.chip,
+        )}
+      >
+        <Icon className={cn("h-4 w-4", t.icon)} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        {note && <p className="mt-0.5 truncate text-xs text-muted-foreground">{note}</p>}
+      </div>
+      <div className="shrink-0 text-right">
+        <p className={cn("text-sm font-medium tabular-nums", t.amount)}>{amount}</p>
+        {balanceAfter && (
+          <p className="text-xs text-muted-foreground tabular-nums">{balanceAfter}</p>
         )}
       </div>
     </div>

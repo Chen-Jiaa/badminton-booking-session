@@ -27,6 +27,12 @@ export const ledgerTypeEnum = pgEnum("ledger_type", [
   "MANUAL_ADJUST",
   "SESSION_DEPOSIT",
   "SESSION_REFUND",
+  "WITHDRAWAL",
+]);
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "COURT_RENTAL",
+  "SHUTTLES",
+  "OTHER",
 ]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
 export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
@@ -162,6 +168,9 @@ export const ledger = pgTable(
     topUpRequestId: text("top_up_request_id")
       .unique()
       .references(() => topUpRequests.id),
+    withdrawalRequestId: text("withdrawal_request_id")
+      .unique()
+      .references(() => withdrawalRequests.id),
     sessionId: text("session_id").references(() => sessions.id),
   },
   (table) => ({
@@ -195,6 +204,38 @@ export const attendances = pgTable(
   }),
 );
 
+// Real cash paid out for a session (court rental, shuttles) or for the club in
+// general. Distinct from `ledger`, which only tracks members' wallet credit.
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sessionId: text("session_id").references(() => sessions.id),
+    category: expenseCategoryEnum("category").notNull(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    // null = recorded but not yet actually paid to the venue/vendor
+    paidAt: timestamp("paid_at"),
+    // who fronted the money out of their own pocket
+    paidById: text("paid_by_id").references(() => users.id),
+    reimbursed: boolean("reimbursed").default(false).notNull(),
+    reimbursedAt: timestamp("reimbursed_at"),
+    note: text("note"),
+    receiptUrl: text("receipt_url"),
+    isDeleted: boolean("is_deleted").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+  },
+  (table) => ({
+    sessionIdIdx: index("expenses_session_id_idx").on(table.sessionId),
+    paidAtIdx: index("expenses_paid_at_idx").on(table.paidAt),
+    categoryIdx: index("expenses_category_idx").on(table.category),
+  }),
+);
+
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
   groupName: text("group_name").default("Badminton Group").notNull(),
@@ -221,6 +262,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   withdrawalRequests: many(withdrawalRequests),
   attendances: many(attendances),
   createdSessions: many(sessions),
+  paidExpenses: many(expenses, { relationName: "expensePayer" }),
+  createdExpenses: many(expenses, { relationName: "expenseCreator" }),
 }));
 
 export const withdrawalRequestsRelations = relations(withdrawalRequests, ({ one }) => ({
@@ -253,9 +296,31 @@ export const ledgerRelations = relations(ledger, ({ one }) => ({
     fields: [ledger.topUpRequestId],
     references: [topUpRequests.id],
   }),
+  withdrawalRequest: one(withdrawalRequests, {
+    fields: [ledger.withdrawalRequestId],
+    references: [withdrawalRequests.id],
+  }),
   session: one(sessions, {
     fields: [ledger.sessionId],
     references: [sessions.id],
+  }),
+}));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  session: one(sessions, {
+    fields: [expenses.sessionId],
+    references: [sessions.id],
+    relationName: "sessionExpenses",
+  }),
+  paidBy: one(users, {
+    fields: [expenses.paidById],
+    references: [users.id],
+    relationName: "expensePayer",
+  }),
+  createdBy: one(users, {
+    fields: [expenses.createdById],
+    references: [users.id],
+    relationName: "expenseCreator",
   }),
 }));
 
@@ -266,6 +331,7 @@ export const sessionsRelations = relations(sessions, ({ one, many }) => ({
   }),
   attendances: many(attendances),
   ledgerEntries: many(ledger),
+  expenses: many(expenses, { relationName: "sessionExpenses" }),
 }));
 
 export const attendancesRelations = relations(attendances, ({ one }) => ({
@@ -297,3 +363,5 @@ export type Court = typeof courts.$inferSelect;
 export type NewCourt = typeof courts.$inferInsert;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
 export type NewWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;

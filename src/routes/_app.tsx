@@ -20,13 +20,17 @@ export const Route = createFileRoute("/_app")({
 
 function DashboardLayout() {
   const { data: user } = useSuspenseQueryDeferred(currentUserQueryOptions());
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <Header user={user} />
-      <main className="container mx-auto px-4 py-6 max-w-lg">
+      <main className="container mx-auto max-w-lg px-4 py-6">
         <Outlet />
       </main>
-      <BottomNav userRole={user?.role} pendingTopupsCount={user?.pendingTopupsCount ?? 0} />
+      <BottomNav
+        userRole={user?.role}
+        pendingCount={(user?.pendingTopupsCount ?? 0) + (user?.pendingWithdrawalsCount ?? 0)}
+      />
     </div>
   );
 }

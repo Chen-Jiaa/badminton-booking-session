@@ -15,7 +15,7 @@ import { Plus, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createTopUpFn } from "@/features/topup/server";
 
-export function TopUpDialog() {
+export function TopUpDialog({ className }: { className?: string } = {}) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [amountInvalid, setAmountInvalid] = useState(false);
@@ -68,7 +68,7 @@ export function TopUpDialog() {
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setAmountInvalid(false); }}>
       <DialogTrigger asChild>
-        <Button size="sm">
+        <Button size="sm" className={className}>
           <Plus className="h-4 w-4 mr-1" />
           Top Up
         </Button>

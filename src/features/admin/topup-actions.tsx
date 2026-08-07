@@ -24,10 +24,20 @@ export function TopUpActions({ requestId }: { requestId: string }) {
     setLoading(true);
     try {
       const result = await confirmTopUpFn({ data: { requestId } });
-      if (result.type !== "SUCCESS") throw new Error();
+      if (result.type !== "SUCCESS") {
+        toast({
+          title: "Failed to confirm",
+          description: result.type === "BUSINESS_ERROR" ? result.code : undefined,
+          variant: "destructive",
+        });
+        return;
+      }
       toast({ title: "Top-up confirmed" });
-      await queryClient.invalidateQueries({ queryKey: ["admin", "topups"] });
-      await queryClient.invalidateQueries({ queryKey: ["current-user"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "topups"] }),
+        queryClient.invalidateQueries({ queryKey: ["current-user"] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet"] }),
+      ]);
     } catch {
       toast({ title: "Failed to confirm", variant: "destructive" });
     } finally {

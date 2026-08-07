@@ -8,9 +8,9 @@ import {
   users,
   ledger,
   topUpRequests,
-  withdrawalRequests,
+  expenses,
 } from "@/db/schema";
-import { eq, lte, desc, and, notInArray, sum } from "drizzle-orm";
+import { eq, lte, desc, and, inArray, notInArray } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import {
   createSessionSchema,
@@ -23,7 +23,8 @@ import {
   sendLowBalanceNotification,
   sendTopUpConfirmedNotification,
   sendTopUpRejectedNotification,
-} from "@/lib/fcm";
+} from "@/lib/push";
+import { appendTopUpToSheet, SheetSyncError } from "@/lib/google-sheet";
 
 type Result<T = void> =
   | { type: "SUCCESS"; value: T }
@@ -84,6 +85,7 @@ export const courtsQueryOptions = () =>
   queryOptions({
     queryKey: ["courts"],
     queryFn: () => fetchCourtsFn(),
+    staleTime: 10 * 60 * 1000, // courts rarely change
   });
 
 export const createCourtFn = createServerFn({ method: "POST" })
@@ -171,7 +173,7 @@ export const adminSessionDetailQueryOptions = (id: string) =>
 export const createAdminSessionFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => data)
   .middleware([sessionMiddleware])
-  .handler(async ({ data, context: { session } }): Promise<Result> => {
+  .handler(async ({ data, context: { session } }): Promise<Result<{ id: string }>> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
@@ -180,23 +182,46 @@ export const createAdminSessionFn = createServerFn({ method: "POST" })
     }
 
     const validated = createSessionSchema.parse(data);
+    const creatorId = session.user.id;
+    const courtCost = validated.courts * validated.costPerCourt;
 
-    await db.insert(sessions).values({
-      startTime: new Date(validated.startTime),
-      endTime: new Date(validated.endTime),
-      courts: validated.courts,
-      costPerCourt: validated.costPerCourt.toFixed(2),
-      location: validated.location || null,
-      locationMapUrl: validated.locationMapUrl || null,
-      courtNumbers: validated.courtNumbers || null,
-      maxPlayers: validated.maxPlayers,
-      minBalance: validated.minBalance.toFixed(2),
-      rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
-      note: validated.note,
-      createdById: session.user.id,
+    let newSessionId = "";
+
+    await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(sessions)
+        .values({
+          startTime: new Date(validated.startTime),
+          endTime: new Date(validated.endTime),
+          courts: validated.courts,
+          costPerCourt: validated.costPerCourt.toFixed(2),
+          location: validated.location || null,
+          locationMapUrl: validated.locationMapUrl || null,
+          courtNumbers: validated.courtNumbers || null,
+          maxPlayers: validated.maxPlayers,
+          minBalance: validated.minBalance.toFixed(2),
+          rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
+          note: validated.note,
+          createdById: creatorId,
+        })
+        .returning({ id: sessions.id });
+
+      newSessionId = created.id;
+
+      // The court is booked and paid for upfront by whoever creates the session,
+      // so the money is already gone — record it as paid now rather than at lock.
+      // It stays unreimbursed until they're paid back out of the club pot.
+      await tx.insert(expenses).values({
+        sessionId: created.id,
+        category: "COURT_RENTAL",
+        amount: courtCost.toFixed(2),
+        paidAt: new Date(),
+        paidById: creatorId,
+        createdById: creatorId,
+      });
     });
 
-    return { type: "SUCCESS", value: undefined };
+    return { type: "SUCCESS", value: { id: newSessionId } };
   });
 
 export const updateAdminSessionFn = createServerFn({ method: "POST" })
@@ -205,13 +230,14 @@ export const updateAdminSessionFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    const { sessionId, ...rest } = data as { sessionId: string } & Record<string, unknown>;
+    const [admin, gameSession] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) }),
+    ]);
     if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
       return { type: "FORBIDDEN" };
     }
-
-    const { sessionId, ...rest } = data as { sessionId: string } & Record<string, unknown>;
-    const gameSession = await db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) });
     if (!gameSession) return { type: "NOT_FOUND" };
     if (admin.role === "HOST" && gameSession.createdById !== admin.id) {
       return { type: "FORBIDDEN" };
@@ -221,24 +247,42 @@ export const updateAdminSessionFn = createServerFn({ method: "POST" })
     }
 
     const validated = updateSessionSchema.parse(rest);
+    const courtCost = validated.courts * validated.costPerCourt;
 
-    await db
-      .update(sessions)
-      .set({
-        startTime: new Date(validated.startTime),
-        endTime: new Date(validated.endTime),
-        courts: validated.courts,
-        costPerCourt: validated.costPerCourt.toFixed(2),
-        location: validated.location || null,
-        locationMapUrl: validated.locationMapUrl || null,
-        courtNumbers: validated.courtNumbers || null,
-        maxPlayers: validated.maxPlayers,
-        minBalance: validated.minBalance.toFixed(2),
-        note: validated.note || null,
-        rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
-        updatedAt: new Date(),
-      })
-      .where(eq(sessions.id, sessionId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(sessions)
+        .set({
+          startTime: new Date(validated.startTime),
+          endTime: new Date(validated.endTime),
+          courts: validated.courts,
+          costPerCourt: validated.costPerCourt.toFixed(2),
+          location: validated.location || null,
+          locationMapUrl: validated.locationMapUrl || null,
+          courtNumbers: validated.courtNumbers || null,
+          maxPlayers: validated.maxPlayers,
+          minBalance: validated.minBalance.toFixed(2),
+          note: validated.note || null,
+          rsvpDeadline: validated.rsvpDeadline ? new Date(validated.rsvpDeadline) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessions.id, sessionId));
+
+      // Keep the recorded spend in step with the booking. Skipped once the
+      // expense has been reimbursed — that money has already changed hands, so
+      // rewriting it would falsify a settled figure.
+      await tx
+        .update(expenses)
+        .set({ amount: courtCost.toFixed(2) })
+        .where(
+          and(
+            eq(expenses.sessionId, sessionId),
+            eq(expenses.category, "COURT_RENTAL"),
+            eq(expenses.isDeleted, false),
+            eq(expenses.reimbursed, false),
+          ),
+        );
+    });
 
     return { type: "SUCCESS", value: undefined };
   });
@@ -249,14 +293,19 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
   .handler(async ({ data: { sessionId }, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
-
-    const gameSession = await db.query.sessions.findFirst({
-      where: eq(sessions.id, sessionId),
-      with: { attendances: true, ledgerEntries: true },
-    });
+    const [admin, gameSession] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.sessions.findFirst({
+        where: eq(sessions.id, sessionId),
+        with: { attendances: true, ledgerEntries: true },
+      }),
+    ]);
+    if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) return { type: "FORBIDDEN" };
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (admin.role === "HOST" && gameSession.createdById !== admin.id) return { type: "FORBIDDEN" };
+    if (admin.role === "HOST" && gameSession.status === "LOCKED") {
+      return { type: "BUSINESS_ERROR", code: "Cannot cancel a finalized session" };
+    }
 
     if (gameSession.ledgerEntries.length > 0) {
       // Group entries by user and sum — then reverse the net amount for each user
@@ -277,6 +326,21 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
       await db.delete(ledger).where(eq(ledger.sessionId, sessionId));
     }
 
+    // Unlink every expense from the session before the row goes (the FK has no
+    // cascade). Unreimbursed spend is soft-deleted so it drops out of the finance
+    // figures — but a reimbursed expense is real cash that already left the club
+    // pot, so it must survive the cancellation and keep counting as cash-out.
+    // Deleting it would erase the outflow and inflate the surplus.
+    await db
+      .update(expenses)
+      .set({ isDeleted: true, sessionId: null })
+      .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, false)));
+
+    await db
+      .update(expenses)
+      .set({ sessionId: null })
+      .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, true)));
+
     await db.delete(attendances).where(eq(attendances.sessionId, sessionId));
     await db.delete(sessions).where(eq(sessions.id, sessionId));
 
@@ -284,29 +348,37 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
   });
 
 export const lockSessionFn = createServerFn({ method: "POST" })
-  .validator((data: { sessionId: string; shuttleCount: number; shuttleCost: number }) => data)
+  .validator(
+    (data: {
+      sessionId: string;
+      shuttleCount: number;
+      shuttleCost: number;
+      shuttleSupplierId?: string | null;
+    }) => data,
+  )
   .middleware([sessionMiddleware])
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    const validated = lockSessionSchema.parse(data);
+
+    const [admin, gameSession] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.sessions.findFirst({
+        where: eq(sessions.id, validated.sessionId),
+        with: {
+          attendances: {
+            where: eq(attendances.status, "YES"),
+            with: { user: true },
+          },
+          ledgerEntries: true,
+        },
+      }),
+    ]);
+
     if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
       return { type: "FORBIDDEN" };
     }
-
-    const validated = lockSessionSchema.parse(data);
-
-    const gameSession = await db.query.sessions.findFirst({
-      where: eq(sessions.id, validated.sessionId),
-      with: {
-        attendances: {
-          where: eq(attendances.status, "YES"),
-          with: { user: true },
-        },
-        ledgerEntries: true,
-      },
-    });
-
     if (!gameSession) return { type: "NOT_FOUND" };
     if (admin.role === "HOST" && gameSession.createdById !== admin.id) {
       return { type: "FORBIDDEN" };
@@ -360,6 +432,24 @@ export const lockSessionFn = createServerFn({ method: "POST" })
 
       if (!claimedSession) return false;
 
+      // The court rental was already recorded as paid when the session was
+      // created, so nothing to add for it here.
+      //
+      // Shuttles only become an expense when someone brought their own. Club
+      // stock was already expensed at bulk purchase, so charging players for it
+      // is recovery, not new spend — recording it again would double-count.
+      if (validated.shuttleCost > 0 && validated.shuttleSupplierId) {
+        await tx.insert(expenses).values({
+          sessionId: validated.sessionId,
+          category: "SHUTTLES",
+          amount: validated.shuttleCost.toFixed(2),
+          note: `${validated.shuttleCount} shuttle${validated.shuttleCount === 1 ? "" : "s"} (own stock)`,
+          paidAt: new Date(),
+          paidById: validated.shuttleSupplierId,
+          createdById: adminUserId,
+        });
+      }
+
       for (const attendance of confirmedAttendees) {
         const user = attendance.user;
         const currentBalance = parseFloat(user.balance);
@@ -410,25 +500,24 @@ export const addPlayerFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
-
     const validated = addPlayerSchema.parse({ userId: data.userId });
 
-    const gameSession = await db.query.sessions.findFirst({
-      where: eq(sessions.id, data.sessionId),
-    });
+    const [admin, gameSession, existing] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, data.sessionId) }),
+      db.query.attendances.findFirst({
+        where: and(
+          eq(attendances.sessionId, data.sessionId),
+          eq(attendances.userId, validated.userId),
+        ),
+      }),
+    ]);
+
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!gameSession) return { type: "NOT_FOUND" };
     if (gameSession.status === "LOCKED") {
       return { type: "BUSINESS_ERROR", code: "Cannot add players to a locked session" };
     }
-
-    const existing = await db.query.attendances.findFirst({
-      where: and(
-        eq(attendances.sessionId, data.sessionId),
-        eq(attendances.userId, validated.userId),
-      ),
-    });
 
     if (existing) {
       await db
@@ -441,6 +530,73 @@ export const addPlayerFn = createServerFn({ method: "POST" })
         userId: validated.userId,
         status: "YES",
       });
+    }
+
+    return { type: "SUCCESS", value: undefined };
+  });
+
+export const removePlayerFn = createServerFn({ method: "POST" })
+  .validator((data: { sessionId: string; userId: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    const [admin, gameSession, player, existing, depositLedger] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, data.sessionId) }),
+      db.query.users.findFirst({ where: eq(users.id, data.userId) }),
+      db.query.attendances.findFirst({
+        where: and(
+          eq(attendances.sessionId, data.sessionId),
+          eq(attendances.userId, data.userId),
+        ),
+      }),
+      db.query.ledger.findMany({
+        where: and(
+          eq(ledger.sessionId, data.sessionId),
+          eq(ledger.userId, data.userId),
+          inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
+        ),
+      }),
+    ]);
+
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
+    if (!gameSession) return { type: "NOT_FOUND" };
+    if (gameSession.status === "LOCKED") {
+      return { type: "BUSINESS_ERROR", code: "Cannot remove players from a locked session" };
+    }
+    if (!existing) return { type: "SUCCESS", value: undefined };
+
+    // Refund whatever deposit the player is actually holding for this session — the
+    // net of their SESSION_DEPOSIT/SESSION_REFUND ledger rows, not the session's
+    // current minBalance. The deposit was taken at the amount in force when they
+    // joined, so a later edit to minBalance must not change what's returned. If it
+    // nets to zero (never joined, or already refunded) there's nothing to reverse
+    // and we just drop the attendance row.
+    const heldDeposit = -depositLedger.reduce((total, e) => total + parseFloat(e.amount), 0);
+    if (player && heldDeposit > 0) {
+      const adminUserId = session.user.id;
+      await db.transaction(async (tx) => {
+        const newBalance = (parseFloat(player.balance) + heldDeposit).toFixed(2);
+        await tx
+          .update(users)
+          .set({ balance: newBalance, updatedAt: new Date() })
+          .where(eq(users.id, player.id));
+
+        await tx.insert(ledger).values({
+          userId: player.id,
+          type: "SESSION_REFUND",
+          amount: heldDeposit.toFixed(2),
+          balanceAfter: newBalance,
+          note: "Deposit refund",
+          createdById: adminUserId,
+          sessionId: data.sessionId,
+        });
+
+        await tx.delete(attendances).where(eq(attendances.id, existing.id));
+      });
+    } else {
+      await db.delete(attendances).where(eq(attendances.id, existing.id));
     }
 
     return { type: "SUCCESS", value: undefined };
@@ -485,13 +641,11 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
   .handler(async ({ data: { requestId }, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    const [admin, topUpRequest] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.topUpRequests.findFirst({ where: eq(topUpRequests.id, requestId), with: { user: true } }),
+    ]);
     if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
-
-    const topUpRequest = await db.query.topUpRequests.findFirst({
-      where: eq(topUpRequests.id, requestId),
-      with: { user: true },
-    });
     if (!topUpRequest || topUpRequest.status !== "PENDING") {
       return { type: "BUSINESS_ERROR", code: "Invalid request" };
     }
@@ -501,10 +655,38 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
     const newBalance = currentBalance + amount;
     const adminUserId = session.user.id;
 
+    const confirmedAt = new Date();
+
+    // Sync to the sheet first, *outside* the transaction, so we never hold a DB
+    // connection open across the network round-trip. If it fails we return here
+    // having touched nothing — no balances changed, so there's nothing to roll
+    // back. (The reverse gap — a sheet row followed by a failed local write — is
+    // negligible: a 3-statement transaction almost never fails, and a stray row
+    // is harmless next to a wrong balance.)
+    try {
+      await appendTopUpToSheet({
+        confirmedAt: confirmedAt.toISOString(),
+        requestId,
+        memberName: topUpRequest.user.name ?? "",
+        memberEmail: topUpRequest.user.email ?? "",
+        amount: amount.toFixed(2),
+        balanceAfter: newBalance.toFixed(2),
+        confirmedBy: admin.name ?? admin.email ?? adminUserId,
+      });
+    } catch (error) {
+      if (error instanceof SheetSyncError) {
+        return {
+          type: "BUSINESS_ERROR",
+          code: "Couldn't record this top-up in the Google Sheet, so it was not confirmed. Please try again.",
+        };
+      }
+      throw error;
+    }
+
     await db.transaction(async (tx) => {
       await tx
         .update(topUpRequests)
-        .set({ status: "CONFIRMED", confirmedAt: new Date(), confirmedBy: adminUserId })
+        .set({ status: "CONFIRMED", confirmedAt, confirmedBy: adminUserId })
         .where(eq(topUpRequests.id, requestId));
 
       await tx
@@ -536,15 +718,13 @@ export const rejectTopUpFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
-
     const validated = rejectTopUpSchema.parse({ requestId: data.requestId, reason: data.reason });
 
-    const topUpRequest = await db.query.topUpRequests.findFirst({
-      where: eq(topUpRequests.id, validated.requestId),
-      with: { user: true },
-    });
+    const [admin, topUpRequest] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
+      db.query.topUpRequests.findFirst({ where: eq(topUpRequests.id, validated.requestId), with: { user: true } }),
+    ]);
+    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!topUpRequest || topUpRequest.status !== "PENDING") {
       return { type: "BUSINESS_ERROR", code: "Invalid request" };
     }
@@ -591,41 +771,26 @@ export const membersQueryOptions = () =>
     queryFn: () => fetchMembersFn(),
   });
 
-// ─── Pool Balance ─────────────────────────────────────────────────────────────
-
-export const fetchPoolBalanceFn = createServerFn({ method: "GET" })
+// Shuttle-supplier candidates for the lock form. HOSTs finalize their own
+// sessions but aren't allowed the full member list (balances, roles) that
+// fetchMembersFn returns, so this exposes just id + name to ADMIN and HOST —
+// enough to record who brought their own shuttles, nothing more.
+export const fetchShuttleSuppliersFn = createServerFn({ method: "GET" })
   .middleware([sessionMiddleware])
   .handler(async ({ context: { session } }) => {
-    if (!session?.user.id) return null;
+    if (!session?.user.id) return [];
 
-    const admin = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
-    if (!admin || admin.role !== "ADMIN") return null;
+    const requester = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!requester || (requester.role !== "ADMIN" && requester.role !== "HOST")) return [];
 
-    const [topupsResult, debitsResult, withdrawalsResult] = await Promise.all([
-      db
-        .select({ total: sum(ledger.amount) })
-        .from(ledger)
-        .where(eq(ledger.type, "TOPUP")),
-      db
-        .select({ total: sum(ledger.amount) })
-        .from(ledger)
-        .where(eq(ledger.type, "SESSION_DEBIT")),
-      db
-        .select({ total: sum(withdrawalRequests.amount) })
-        .from(withdrawalRequests)
-        .where(eq(withdrawalRequests.status, "CONFIRMED")),
-    ]);
-
-    const totalTopups = parseFloat(topupsResult[0]?.total ?? "0");
-    const totalDebits = Math.abs(parseFloat(debitsResult[0]?.total ?? "0"));
-    const totalWithdrawals = parseFloat(withdrawalsResult[0]?.total ?? "0");
-    const remaining = totalTopups - totalDebits - totalWithdrawals;
-
-    return { totalTopups, totalDebits, totalWithdrawals, remaining };
+    return db.query.users.findMany({
+      columns: { id: true, name: true },
+      orderBy: [desc(users.createdAt)],
+    });
   });
 
-export const poolBalanceQueryOptions = () =>
+export const shuttleSuppliersQueryOptions = () =>
   queryOptions({
-    queryKey: ["admin", "pool-balance"],
-    queryFn: () => fetchPoolBalanceFn(),
+    queryKey: ["shuttle-suppliers"],
+    queryFn: () => fetchShuttleSuppliersFn(),
   });

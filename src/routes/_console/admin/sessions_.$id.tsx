@@ -1,17 +1,22 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
-import { adminSessionDetailQueryOptions, courtsQueryOptions } from "@/features/admin/server";
+import { adminSessionDetailQueryOptions, courtsQueryOptions, removePlayerFn } from "@/features/admin/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { UserMinus, Loader2 } from "lucide-react";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { DeleteSessionButton } from "@/features/admin/delete-session-button";
 import { ShareButton } from "@/features/admin/share-button";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
+import { useToast } from "@/hooks/use-toast";
 
-export const Route = createFileRoute("/_app/admin/sessions_/$id")({
+export const Route = createFileRoute("/_console/admin/sessions_/$id")({
   loader: async ({ context: { queryClient }, params: { id } }) => {
     const [data] = await Promise.all([
       queryClient.ensureQueryData(adminSessionDetailQueryOptions(id)),
@@ -26,10 +31,32 @@ function AdminSessionDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQueryDeferred(adminSessionDetailQueryOptions(id));
   const { gameSession, availablePlayers } = data;
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const isLocked = gameSession.status === "LOCKED";
   const hasEnded = new Date() >= gameSession.endTime;
+
+  async function handleRemove(userId: string) {
+    setRemovingUserId(userId);
+    try {
+      const result = await removePlayerFn({ data: { sessionId: id, userId } });
+      if (result.type !== "SUCCESS") {
+        throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to remove player");
+      }
+      toast({ title: "Player removed from session" });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "sessions", id] });
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : "Failed to remove player",
+        variant: "destructive",
+      });
+    } finally {
+      setRemovingUserId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -180,9 +207,26 @@ function AdminSessionDetailPage() {
                       </p>
                     </div>
                   </div>
-                  {a.finalCost && (
-                    <span className="text-red-600 font-medium">-{formatCurrency(a.finalCost)}</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {a.finalCost && (
+                      <span className="text-red-600 font-medium">-{formatCurrency(a.finalCost)}</span>
+                    )}
+                    {!isLocked && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={removingUserId === a.user.id}
+                        onClick={() => handleRemove(a.user.id)}
+                      >
+                        {removingUserId === a.user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <UserMinus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

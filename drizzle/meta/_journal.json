@@ -29,6 +29,13 @@
       "when": 1784253896167,
       "tag": "0003_add_host_role_and_shuttle_count",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786061469346,
+      "tag": "0004_optimal_amazoness",
+      "breakpoints": true
     }
   ]
 }

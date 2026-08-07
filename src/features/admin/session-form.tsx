@@ -4,8 +4,16 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { Loader2, CalendarIcon, Plus, Trash2, Share, Copy, Check } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -18,6 +26,7 @@ import {
   updateAdminSessionFn,
   createCourtFn,
   deleteCourtFn,
+  deleteSessionFn,
 } from "@/features/admin/server";
 
 interface SessionDefaultValues {
@@ -91,6 +100,10 @@ export function SessionForm({
   const [rsvpDeadline, setRsvpDeadline] = useState<Date | undefined>(initialRsvp);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data: courtsList, refetch: refetchCourts } = useSuspenseQuery(courtsQueryOptions());
   const [selectedCourtId, setSelectedCourtId] = useState<string>(() => {
@@ -166,6 +179,31 @@ export function SessionForm({
     return combined;
   }
 
+  async function handleCancelSession() {
+    if (!sessionId) return;
+    setCancelling(true);
+    try {
+      const result = await deleteSessionFn({ data: { sessionId } });
+      if (result.type !== "SUCCESS") {
+        throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to cancel session");
+      }
+      toast({ title: "Session cancelled and deposits refunded" });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
+      ]);
+      router.navigate({ to: "/sessions" });
+    } catch (err) {
+      toast({
+        title: err instanceof Error ? err.message : "Failed to cancel session",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelling(false);
+      setShowCancelDialog(false);
+    }
+  }
+
   async function handleSubmit() {
     setSubmitted(true);
 
@@ -212,14 +250,22 @@ export function SessionForm({
         if (result.type !== "SUCCESS")
           throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to update");
         toast({ title: "Session updated" });
-        await queryClient.invalidateQueries({ queryKey: ["sessions"] });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
+          queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["admin", "sessions", sessionId] }),
+        ]);
         onCancel!();
       } else {
         const result = await createAdminSessionFn({ data: payload });
         if (result.type !== "SUCCESS") throw new Error();
         toast({ title: "Session created" });
-        await queryClient.invalidateQueries({ queryKey: ["sessions"] });
-        router.history.back();
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+          queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
+        ]);
+        setShareUrl(`${window.location.origin}/sessions/${result.value.id}`);
       }
     } catch (err) {
       toast({
@@ -234,6 +280,29 @@ export function SessionForm({
     } finally {
       setLoading(false);
     }
+  }
+
+  function closeShareDialog() {
+    setShareUrl(null);
+    setLinkCopied(false);
+    router.history.back();
+  }
+
+  async function handleCopyLink() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      toast({ title: "Failed to copy link", variant: "destructive" });
+    }
+  }
+
+  function handleWhatsAppShare() {
+    if (!shareUrl) return;
+    const message = `Join our badminton session! ${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
   }
 
   return (
@@ -534,6 +603,74 @@ export function SessionForm({
           {isEdit ? "Save Changes" : loading ? "Creating..." : "Create Session"}
         </Button>
       </div>
+
+      {isEdit && (
+        <>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+          </div>
+          <Button
+            variant="destructive"
+            className="w-full"
+            onClick={() => setShowCancelDialog(true)}
+            disabled={loading || cancelling}
+          >
+            Cancel Session
+          </Button>
+
+          <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cancel Session?</DialogTitle>
+                <DialogDescription>
+                  This will permanently delete the session and refund all deposits back to players.
+                  This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelling}>
+                  Keep Session
+                </Button>
+                <Button variant="destructive" onClick={handleCancelSession} disabled={cancelling}>
+                  {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, Cancel Session"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+
+      <Dialog open={shareUrl !== null} onOpenChange={(open) => !open && closeShareDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Session created!</DialogTitle>
+            <DialogDescription>
+              Share the link with players so they can RSVP and join.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Input readOnly value={shareUrl ?? ""} className="flex-1" />
+            <Button type="button" variant="outline" size="icon" onClick={handleCopyLink}>
+              {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              type="button"
+              className="w-full bg-[#25D366] text-white hover:bg-[#1ebe5b]"
+              onClick={handleWhatsAppShare}
+            >
+              <Share className="mr-2 h-4 w-4" />
+              Share on WhatsApp
+            </Button>
+            <Button type="button" variant="ghost" className="w-full" onClick={closeShareDialog}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

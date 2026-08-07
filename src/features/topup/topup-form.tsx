@@ -45,7 +45,7 @@ export function TopUpForm() {
       toast({ title: "Top-up request submitted", description: "Waiting for host approval" });
       setAmount("");
       setFile(null);
-      await queryClient.invalidateQueries({ queryKey: ["topups"] });
+      await queryClient.invalidateQueries({ queryKey: ["wallet"] });
     } catch {
       toast({ title: "Failed to submit request", variant: "destructive" });
     } finally {
@@ -88,10 +88,10 @@ export function TopUpForm() {
         <div className="mt-1">
           <label
             htmlFor="receipt"
-            className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center gap-2 border-2 border-dashed border-input rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
           >
-            <Upload className="h-5 w-5 text-gray-400" />
-            <span className="text-sm text-gray-600">
+            <Upload className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
               {file ? file.name : "Upload receipt photo"}
             </span>
           </label>

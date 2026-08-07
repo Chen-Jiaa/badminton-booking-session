@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SessionForm } from "@/features/admin/session-form";
 import { courtsQueryOptions } from "@/features/admin/server";
 
-export const Route = createFileRoute("/_app/admin/sessions_/new")({
+export const Route = createFileRoute("/_console/admin/sessions_/new")({
   loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(courtsQueryOptions()),
   component: NewSessionPage,
 });

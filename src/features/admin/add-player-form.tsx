@@ -39,7 +39,7 @@ export function AddPlayerForm({ sessionId, availablePlayers }: AddPlayerFormProp
       }
       toast({ title: "Player added to session" });
       setSelectedUserId("");
-      await queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "sessions", sessionId] });
     } catch (err) {
       toast({
         title: err instanceof Error ? err.message : "Failed to add player",

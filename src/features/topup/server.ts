@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { topUpRequests } from "@/db/schema";
+import { topUpRequests, users } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { topUpRequestSchema } from "@/lib/validations";
+import { getAdminFcmTokens } from "@/lib/guards";
+import { sendNewTopUpRequestNotification } from "@/lib/push";
 
 type Result<T = void> =
   | { type: "SUCCESS"; value: T }
@@ -44,6 +46,25 @@ export const createTopUpFn = createServerFn({ method: "POST" })
       amount: validated.amount.toFixed(2),
       receiptUrl: validated.receiptUrl,
     });
+
+    // Alert admins with push enabled. Best-effort — a notification failure must
+    // never fail the request that was already saved.
+    try {
+      const adminTokens = await getAdminFcmTokens();
+      if (adminTokens.length > 0) {
+        const player = await db.query.users.findFirst({
+          where: eq(users.id, session.user.id),
+          columns: { name: true },
+        });
+        await sendNewTopUpRequestNotification(
+          adminTokens,
+          player?.name ?? "A player",
+          validated.amount.toFixed(2),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to notify admins of top-up request:", error);
+    }
 
     return { type: "SUCCESS", value: undefined };
   });

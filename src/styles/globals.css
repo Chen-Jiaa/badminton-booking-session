@@ -8,6 +8,39 @@
   to { transform: scaleX(0); }
 }
 
+/* Join celebration: button settles with a confident spring pop */
+@keyframes join-pop {
+  0% { transform: scale(0.9); }
+  45% { transform: scale(1.05); }
+  70% { transform: scale(0.985); }
+  100% { transform: scale(1); }
+}
+
+/* Join celebration: a shuttlecock arcs up from the button and flutters out */
+@keyframes birdie-fly {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--r-start, 0deg)) scale(0.4);
+    opacity: 0;
+  }
+  18% { opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty)))
+      rotate(var(--r-end, 0deg)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Overshoot lives in the keyframe stops; easing stays a smooth decel. */
+.join-pop { animation: join-pop 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.birdie {
+  animation: birdie-fly var(--dur, 900ms) cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .join-pop { animation: none; }
+  .birdie { display: none; }
+}
+
 /* Map shadcn CSS variables to Tailwind v4 color/radius utilities */
 @theme inline {
   --color-border: hsl(var(--border));
