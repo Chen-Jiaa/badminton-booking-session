@@ -3,7 +3,6 @@ import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
-import { VitePWA } from "vite-plugin-pwa";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
@@ -12,29 +11,6 @@ export default defineConfig({
     tanstackStart(),
     nitro(),
     tailwindcss(),
-    VitePWA({
-      registerType: "autoUpdate",
-      manifest: false,
-      injectRegister: "auto",
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallback: null,
-        // Pulls our Web Push handlers (push + notificationclick) into the
-        // workbox-generated service worker so there's a single SW.
-        importScripts: ["push-sw.js"],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/lh3\.googleusercontent\.com/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-avatars",
-              expiration: { maxAgeSeconds: 86400 },
-            },
-          },
-        ],
-      },
-      devOptions: { enabled: false },
-    }),
     viteReact(),
   ],
 });

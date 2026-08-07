@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
-import { deleteCookie } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/db";
 import { users, topUpRequests, withdrawalRequests } from "@/db/schema";
@@ -58,12 +57,13 @@ export const createSessionFn = createServerFn({ method: "POST" })
       dbUser = updated;
     }
 
-    setAuthCookies(session.access_token, session.refresh_token);
+    await setAuthCookies(session.access_token, session.refresh_token);
 
     return { success: true };
   });
 
 export const signOutFn = createServerFn({ method: "POST" }).handler(async () => {
+  const { deleteCookie } = await import("@tanstack/react-start/server");
   deleteCookie("sb-access-token");
   deleteCookie("sb-refresh-token");
 });
