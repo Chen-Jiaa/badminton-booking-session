@@ -1,5 +1,4 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 
 export type Session = {
@@ -60,7 +59,10 @@ export function authCookieOptions(maxAge: number) {
   };
 }
 
-export function setAuthCookies(accessToken: string, refreshToken: string) {
+export async function setAuthCookies(accessToken: string, refreshToken: string) {
+  // Dynamic import keeps `@tanstack/react-start/server` out of the client bundle —
+  // this module is reachable from client code via `sessionMiddleware` (see getJWKS note).
+  const { setCookie } = await import("@tanstack/react-start/server");
   setCookie("sb-access-token", accessToken, authCookieOptions(ACCESS_TOKEN_MAX_AGE));
   setCookie("sb-refresh-token", refreshToken, authCookieOptions(REFRESH_TOKEN_MAX_AGE));
 }
@@ -83,11 +85,12 @@ async function refreshSession(refreshToken: string): Promise<Session> {
   const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
   if (error || !data.session) return null;
 
-  setAuthCookies(data.session.access_token, data.session.refresh_token);
+  await setAuthCookies(data.session.access_token, data.session.refresh_token);
   return verifyAccessToken(data.session.access_token);
 }
 
 export const sessionMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const { getCookie } = await import("@tanstack/react-start/server");
   let session = await verifyAccessToken(getCookie("sb-access-token"));
 
   if (!session) {

@@ -1,6 +1,6 @@
-// Client-side Web Push subscription. Registration of the service worker itself
-// is handled by vite-plugin-pwa (injectRegister: "auto"); here we just grab the
-// ready registration and subscribe its PushManager.
+// Client-side Web Push subscription. The service worker itself (/push-sw.js) is
+// registered in src/client.tsx; here we just grab the ready registration and
+// subscribe its PushManager.
 
 /** VAPID keys are base64url; PushManager needs the raw bytes. */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
