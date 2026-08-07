@@ -41,7 +41,10 @@ export function DeleteSessionButton({
       }
       toast({ title: "Session deleted" });
       setOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
+      ]);
       navigate({ to: "/admin/sessions" });
     } catch (error) {
       toast({

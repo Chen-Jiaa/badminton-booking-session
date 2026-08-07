@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { SessionList } from "@/features/admin/session-list";
 
-export const Route = createFileRoute("/_app/admin/sessions")({
+export const Route = createFileRoute("/_console/admin/sessions")({
   loader: ({ context: { queryClient } }) =>
     queryClient.ensureQueryData(adminSessionsQueryOptions()),
   component: AdminSessionsPage,
@@ -16,9 +16,12 @@ function AdminSessionsPage() {
   const { data: allSessions } = useSuspenseQueryDeferred(adminSessionsQueryOptions());
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Sessions</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold lg:text-2xl">Sessions</h1>
+          <p className="text-sm text-muted-foreground">{allSessions.length} total</p>
+        </div>
         <Link to="/admin/sessions/new">
           <Button size="sm">
             <Plus className="h-4 w-4 mr-1" />

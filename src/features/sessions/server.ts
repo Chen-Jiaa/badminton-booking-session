@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { sessions, users, attendances, ledger } from "@/db/schema";
-import { eq, gte, lte, desc, and, or } from "drizzle-orm";
+import { eq, gte, lte, desc, and, or, inArray } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { rsvpSchema } from "@/lib/validations";
 
@@ -96,16 +96,30 @@ export const sessionDetailQueryOptions = (id: string) =>
 export const rsvpFn = createServerFn({ method: "POST" })
   .validator((data: { sessionId: string; status: "YES" | "NO" | "WAITLIST" }) => data)
   .middleware([sessionMiddleware])
-  .handler(async ({ data, context: { session } }): Promise<Result> => {
+  .handler(async ({ data, context: { session } }): Promise<Result<{ newBalance: string }>> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const validated = rsvpSchema.parse(data);
+    const userId = session.user.id;
 
-    const gameSession = await db.query.sessions.findFirst({
-      where: eq(sessions.id, validated.sessionId),
-    });
+    const [gameSession, user, existing, depositLedger] = await Promise.all([
+      db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
+      db.query.users.findFirst({ where: eq(users.id, userId) }),
+      db.query.attendances.findFirst({
+        where: and(eq(attendances.sessionId, validated.sessionId), eq(attendances.userId, userId)),
+      }),
+      db.query.ledger.findMany({
+        where: and(
+          eq(ledger.sessionId, validated.sessionId),
+          eq(ledger.userId, userId),
+          inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
+        ),
+      }),
+    ]);
 
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (!user) return { type: "AUTH_ERROR" };
+
     if (gameSession.status === "LOCKED") {
       return { type: "BUSINESS_ERROR", code: "Session is locked" };
     }
@@ -123,29 +137,22 @@ export const rsvpFn = createServerFn({ method: "POST" })
       }
     }
 
-    const userId = session.user.id;
-
-    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-    if (!user) return { type: "AUTH_ERROR" };
-
-    const existing = await db.query.attendances.findFirst({
-      where: and(eq(attendances.sessionId, validated.sessionId), eq(attendances.userId, userId)),
-    });
-
     const deposit = parseFloat(gameSession.minBalance);
-    const wasJoined = existing?.status === "YES";
+    // What the player is actually holding for this session — the net of their
+    // deposit/refund ledger rows. Refunds are driven off this, not the current
+    // minBalance, so an admin editing minBalance after they joined can't change
+    // what's returned.
+    const heldDeposit = -depositLedger.reduce((total, e) => total + parseFloat(e.amount), 0);
+    let newBalance = user.balance;
 
     if (validated.status === "YES") {
       const balance = parseFloat(user.balance);
       if (balance < deposit) {
-        return {
-          type: "BUSINESS_ERROR",
-          code: `Insufficient balance. You need at least RM${deposit.toFixed(2)} to join. Current balance: RM${balance.toFixed(2)}`,
-        };
+        return { type: "BUSINESS_ERROR", code: "INSUFFICIENT_BALANCE" };
       }
 
       await db.transaction(async (tx) => {
-        const newBalance = (parseFloat(user.balance) - deposit).toFixed(2);
+        newBalance = (parseFloat(user.balance) - deposit).toFixed(2);
         await tx
           .update(users)
           .set({ balance: newBalance, updatedAt: new Date() })
@@ -173,10 +180,10 @@ export const rsvpFn = createServerFn({ method: "POST" })
         }
       });
     } else {
-      // Leaving — refund deposit if they were previously joined
-      if (wasJoined && deposit > 0) {
+      // Leaving — refund whatever deposit they're actually holding
+      if (existing && heldDeposit > 0) {
         await db.transaction(async (tx) => {
-          const newBalance = (parseFloat(user.balance) + deposit).toFixed(2);
+          newBalance = (parseFloat(user.balance) + heldDeposit).toFixed(2);
           await tx
             .update(users)
             .set({ balance: newBalance, updatedAt: new Date() })
@@ -185,7 +192,7 @@ export const rsvpFn = createServerFn({ method: "POST" })
           await tx.insert(ledger).values({
             userId,
             type: "SESSION_REFUND",
-            amount: deposit.toFixed(2),
+            amount: heldDeposit.toFixed(2),
             balanceAfter: newBalance,
             note: "Deposit refund",
             createdById: userId,
@@ -195,7 +202,7 @@ export const rsvpFn = createServerFn({ method: "POST" })
           await tx
             .update(attendances)
             .set({ status: "NO", updatedAt: new Date() })
-            .where(eq(attendances.id, existing!.id));
+            .where(eq(attendances.id, existing.id));
         });
       } else if (existing) {
         await db
@@ -205,5 +212,5 @@ export const rsvpFn = createServerFn({ method: "POST" })
       }
     }
 
-    return { type: "SUCCESS", value: undefined };
+    return { type: "SUCCESS", value: { newBalance } };
   });

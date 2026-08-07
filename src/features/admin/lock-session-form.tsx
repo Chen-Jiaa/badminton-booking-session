@@ -1,12 +1,21 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { lockSessionFn } from "@/features/admin/server";
+import { lockSessionFn, shuttleSuppliersQueryOptions } from "@/features/admin/server";
+
+const CLUB_STOCK = "CLUB_STOCK";
 
 interface LockSessionFormProps {
   sessionId: string;
@@ -21,29 +30,44 @@ export function LockSessionForm({
   costPerCourt,
   playerCount,
 }: LockSessionFormProps) {
-  const [shuttleCount, setShuttleCount] = useState(0);
-  const [shuttleCost, setShuttleCost] = useState(0);
+  const [shuttleCost, setShuttleCost] = useState("0");
+  const [shuttleCount, setShuttleCount] = useState("0");
+  const [supplier, setSupplier] = useState<string>(CLUB_STOCK);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: members = [] } = useQuery(shuttleSuppliersQueryOptions());
 
+  const parsedShuttleCost = parseFloat(shuttleCost) || 0;
+  const parsedShuttleCount = parseInt(shuttleCount, 10) || 0;
   const courtCost = courts * costPerCourt;
-  const totalCost = courtCost + shuttleCost;
+  const totalCost = courtCost + parsedShuttleCost;
   const costPerPlayer = playerCount > 0 ? totalCost / playerCount : 0;
 
   async function handleLock() {
     setLoading(true);
     try {
-      const result = await lockSessionFn({ data: { sessionId, shuttleCount, shuttleCost } });
+      const result = await lockSessionFn({
+        data: {
+          sessionId,
+          shuttleCount: parsedShuttleCount,
+          shuttleCost: parsedShuttleCost,
+          shuttleSupplierId: supplier === CLUB_STOCK ? null : supplier,
+        },
+      });
       if (result.type !== "SUCCESS") {
         throw new Error(
           result.type === "BUSINESS_ERROR" ? result.code : "Failed to finalize session",
         );
       }
       toast({ title: "Session finalized and costs deducted" });
-      await queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] });
-      await queryClient.invalidateQueries({ queryKey: ["sessions"] });
-      await queryClient.invalidateQueries({ queryKey: ["current-user"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
+        queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["current-user"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin", "sessions", sessionId] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet"] }),
+      ]);
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : "Failed to finalize session",
@@ -56,32 +80,58 @@ export function LockSessionForm({
 
   return (
     <div className="space-y-4">
-      <div>
-        <Label htmlFor="shuttleCount">Shuttles Used</Label>
-        <Input
-          id="shuttleCount"
-          type="number"
-          step="1"
-          min="0"
-          value={shuttleCount}
-          onChange={(e) => setShuttleCount(parseInt(e.target.value, 10) || 0)}
-          className="mt-1"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label htmlFor="shuttleCount">Shuttles Used</Label>
+          <Input
+            id="shuttleCount"
+            type="number"
+            step="1"
+            min="0"
+            value={shuttleCount}
+            onChange={(e) => setShuttleCount(e.target.value)}
+            className="mt-1"
+            placeholder="0"
+          />
+        </div>
+        <div>
+          <Label htmlFor="shuttleCost">Total Shuttle Cost (RM)</Label>
+          <Input
+            id="shuttleCost"
+            type="number"
+            step="0.01"
+            min="0"
+            value={shuttleCost}
+            onChange={(e) => setShuttleCost(e.target.value)}
+            className="mt-1"
+            placeholder="0.00"
+          />
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="shuttleCost">Total Shuttle Cost (RM)</Label>
-        <Input
-          id="shuttleCost"
-          type="number"
-          step="0.01"
-          min="0"
-          value={shuttleCost}
-          onChange={(e) => setShuttleCost(parseFloat(e.target.value) || 0)}
-          className="mt-1"
-          placeholder="0.00"
-        />
-      </div>
+      {parsedShuttleCost > 0 && (
+        <div>
+          <Label>Shuttles supplied by</Label>
+          <Select value={supplier} onValueChange={setSupplier}>
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={CLUB_STOCK}>Club stock (already purchased)</SelectItem>
+              {members.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name} — brought their own
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground mt-1">
+            {supplier === CLUB_STOCK
+              ? "Players are charged, and it counts against shuttles already bought for the club."
+              : "Recorded as money they're owed back."}
+          </p>
+        </div>
+      )}
 
       <div className="bg-gray-50 rounded-lg p-4 space-y-2">
         <div className="flex justify-between text-sm">
@@ -91,8 +141,10 @@ export function LockSessionForm({
           <span>{formatCurrency(courtCost)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>Shuttle cost ({shuttleCount} used)</span>
-          <span>{formatCurrency(shuttleCost)}</span>
+          <span>
+            Shuttle cost{parsedShuttleCount > 0 ? ` (${parsedShuttleCount})` : ""}
+          </span>
+          <span>{formatCurrency(parsedShuttleCost)}</span>
         </div>
         <div className="flex justify-between font-medium border-t pt-2">
           <span>Total</span>

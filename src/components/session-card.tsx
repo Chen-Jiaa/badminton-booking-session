@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { LoginDialog } from "@/features/sessions/login-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Loader2, Users } from "lucide-react";
+import { MapPin, Loader2, Users, Check, Share } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency } from "@/lib/utils";
@@ -28,13 +28,16 @@ type SessionCardProps = {
     location: string | null;
     maxPlayers: number;
     minBalance: string;
+    costPerPlayer?: string | null;
     rsvpDeadline: Date | null;
     status: string;
-    attendances: { status: string; userId: string }[];
+    attendances: { status: string; userId: string; finalCost?: string | null }[];
     createdBy: { name: string; image: string | null };
   };
-  userRsvp?: { status: string } | null;
+  userRsvp?: { status: string; finalCost?: string | null } | null;
   userId?: string | null;
+  isPast?: boolean;
+  canManage?: boolean;
 };
 
 function formatCardDate(date: Date): string {
@@ -51,7 +54,7 @@ function formatCardTime(date: Date): string {
     .toUpperCase();
 }
 
-export function SessionCard({ session, userRsvp, userId }: SessionCardProps) {
+export function SessionCard({ session, userRsvp, userId, isPast = false, canManage = false }: SessionCardProps) {
   const now = new Date();
   const yesCount = session.attendances.filter((a) => a.status === "YES").length;
   const slotsLeft = session.maxPlayers - yesCount;
@@ -78,24 +81,70 @@ export function SessionCard({ session, userRsvp, userId }: SessionCardProps) {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const currentUser = queryClient.getQueryData<{ balance: string } | null>(["current-user"]);
+  const hasInsufficientBalance =
+    !!(userId && !isJoined && deposit > 0 && currentUser && parseFloat(currentUser.balance) < deposit);
 
   async function handleRsvp(status: "YES" | "NO", e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (!userId) return;
+
+    // Optimistically update the sessions list cache
+    type Attendance = { status: string; userId: string };
+    type SessionEntry = { id: string; attendances: Attendance[] };
+    type SessionsCache = { upcoming: SessionEntry[]; past: SessionEntry[] };
+    const prevData = queryClient.getQueryData<SessionsCache>(["sessions"]);
+    if (prevData) {
+      const toggle = (list: SessionEntry[]) =>
+        list.map((s) =>
+          s.id !== session.id
+            ? s
+            : {
+                ...s,
+                attendances:
+                  status === "YES"
+                    ? [...s.attendances.filter((a) => a.userId !== userId), { userId, status: "YES" }]
+                    : s.attendances.map((a) => (a.userId === userId ? { ...a, status: "NO" } : a)),
+              },
+        );
+      queryClient.setQueryData<SessionsCache>(["sessions"], {
+        upcoming: toggle(prevData.upcoming),
+        past: toggle(prevData.past),
+      });
+    }
+
     setLoading(true);
     try {
       const result = await rsvpFn({ data: { sessionId: session.id, status } });
       if (result.type !== "SUCCESS") {
-        toast({ title: "Failed to update RSVP", variant: "destructive" });
+        // Roll back optimistic update on failure
+        if (prevData) queryClient.setQueryData(["sessions"], prevData);
+        if (result.type === "BUSINESS_ERROR" && result.code === "INSUFFICIENT_BALANCE") {
+          toast({
+            title: "Not enough balance",
+            description: `You need ${formatCurrency(session.minBalance)} to join. Top up your wallet first.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP",
+            variant: "destructive",
+          });
+        }
         return;
       }
-      await queryClient.invalidateQueries({ queryKey: ["sessions"] });
     } catch {
+      if (prevData) queryClient.setQueryData(["sessions"], prevData);
       toast({ title: "Failed to update RSVP", variant: "destructive" });
     } finally {
       setLoading(false);
       setShowLeaveDialog(false);
+      // Sync truth from server
+      queryClient.invalidateQueries({ queryKey: ["sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["current-user"] });
     }
   }
 
@@ -109,96 +158,156 @@ export function SessionCard({ session, userRsvp, userId }: SessionCardProps) {
     }
   }
 
+  async function handleShare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/sessions/${session.id}`;
+    const text = `Join our badminton session! ${url}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url });
+        return;
+      } catch {
+        // User cancelled or share failed — fall back to WhatsApp
+      }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
+  function handleCardClick(e: React.MouseEvent) {
+    if ((e.target as HTMLElement).closest('button, a, [role="button"]')) return;
+    navigate({ to: "/sessions/$id", params: { id: session.id } });
+  }
+
+  function handleCardKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if ((e.target as HTMLElement).closest('button, a, [role="button"]')) return;
+    navigate({ to: "/sessions/$id", params: { id: session.id } });
+  }
+
   return (
     <>
-      <Link to="/sessions/$id" params={{ id: session.id }}>
-        <Card className="hover:shadow-md transition-shadow bg-white border border-gray-100 shadow-sm rounded-2xl">
-          <CardContent className="p-5 space-y-3">
-            
-            {/* Date & time */}
-            <div>
-              <p className="font-bold text-lg">{formatCardDate(session.startTime)}</p>
-              <p className="text-sm text-muted-foreground">
-                {formatCardTime(session.startTime)} – {formatCardTime(session.endTime)}
-                <span className="mx-2">·</span>
-                {courtLabel}
-              </p>
-            </div>
-
-            {/* Host */}
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={session.createdBy.image || undefined} />
-                <AvatarFallback className="text-xs bg-brand text-brand-foreground">
-                  {hostInitials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-muted-foreground">{session.createdBy.name} (Host)</span>
-            </div>
-
-            {/* Location */}
-            {session.location && (
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{session.location}</span>
+      <Card
+        onClick={handleCardClick}
+        onKeyDown={handleCardKeyDown}
+        role="link"
+        tabIndex={0}
+        className={`hover:shadow-md transition-shadow bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isPast && canManage && !isLocked ? "border-2 border-amber-400" : "border border-gray-100"}`}
+      >
+        <CardContent className="p-5">
+            {/* Primary: date & time */}
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-bold text-lg leading-tight">{formatCardDate(session.startTime)}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {formatCardTime(session.startTime)} – {formatCardTime(session.endTime)}
+                  <span className="mx-2">·</span>
+                  {courtLabel}
+                </p>
               </div>
-            )}
-            {/* Slots left */}
-            <div className={`flex items-center gap-2 text-sm ${isFull ? "text-red-500" : "text-muted-foreground"}`}>
-              <Users className="h-4 w-4 shrink-0" />
-              <span>
-                {isFull
-                  ? `${yesCount}/${session.maxPlayers} · Full`
-                  : `${slotsLeft}/${session.maxPlayers} left`}
-              </span>
+              <button
+                type="button"
+                onClick={handleShare}
+                aria-label="Share session"
+                className="-mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
+              >
+                <Share className="h-4 w-4" />
+              </button>
             </div>
 
-            
+            {/* Secondary metadata: host + location */}
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-5 w-5 shrink-0">
+                  <AvatarImage src={session.createdBy.image || undefined} />
+                  <AvatarFallback className="text-[10px] bg-brand text-brand-foreground">
+                    {hostInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-muted-foreground">{session.createdBy.name}</span>
+              </div>
+              {session.location && (
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">{session.location}</span>
+                </div>
+              )}
+            </div>
 
-            {/* Sign in button for unauthenticated users */}
-            {!isLocked && !userId && (
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginDialog(true); }}
-                className="w-full py-3 rounded-full text-sm font-semibold transition-colors bg-brand text-brand-foreground hover:bg-brand/80"
-              >
-                Sign in
-              </button>
-            )}
-
-            {/* Join/Leave button */}
-            {!isLocked && userId && (
-              <button
-                onClick={handleButtonClick}
-                disabled={loading || (!isJoined && buttonDisabled)}
-                className={`w-full py-3 rounded-full text-sm font-semibold transition-colors ${
-                  isJoined
-                    ? "bg-brand text-brand-foreground"
-                    : buttonDisabled
-                      ? "bg-brand text-brand-foreground cursor-not-allowed opacity-60"
-                      : "bg-brand text-brand-foreground hover:bg-brand/80"
-                }`}
-              >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                ) : isJoined ? (
-                  "Joined ✓"
-                ) : (
-                  "Join Game"
-                )}
-              </button>
-            )}
-
-            {/* Deposit notice */}
-            {!isLocked && deposit > 0 && !isJoined && (
-              <p className="text-xs text-muted-foreground/60 text-center">
-                {formatCurrency(session.minBalance)} deposit required to join
-              </p>
-            )}
-
-            
+            {/* Action zone */}
+            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
+              {isPast ? (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span>{yesCount} attended</span>
+                  </div>
+                  {userRsvp?.finalCost ? (
+                    <p className="text-sm font-semibold text-red-600 text-center">
+                      -{formatCurrency(userRsvp.finalCost)}
+                    </p>
+                  ) : session.costPerPlayer ? (
+                    <p className="text-sm text-muted-foreground text-center">
+                      {formatCurrency(session.costPerPlayer)}/person
+                    </p>
+                  ) : null}
+                  {canManage && !isLocked && (
+                    <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-red-500 text-white">
+                      Needs finalization
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className={`flex items-center gap-2 text-sm ${isFull ? "text-red-500" : "text-muted-foreground"}`}>
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span>
+                      {isFull
+                        ? `${yesCount}/${session.maxPlayers} · Full`
+                        : `${slotsLeft}/${session.maxPlayers} left`}
+                    </span>
+                  </div>
+                  {!isLocked && !userId && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginDialog(true); }}
+                      className="w-full py-3 rounded-full text-sm font-semibold transition-colors bg-brand text-brand-foreground hover:bg-brand/80"
+                    >
+                      Sign in
+                    </button>
+                  )}
+                  {!isLocked && userId && (
+                    <button
+                      onClick={handleButtonClick}
+                      disabled={loading || (!isJoined && buttonDisabled)}
+                      className={`w-full py-3 rounded-full text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2 ${
+                        isJoined
+                          ? "border border-brand-foreground/50 bg-brand/30 text-brand-foreground"
+                          : buttonDisabled
+                            ? "bg-brand text-brand-foreground cursor-not-allowed opacity-60"
+                            : "bg-brand text-brand-foreground hover:bg-brand/80"
+                      }`}
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isJoined ? (
+                        <><Check className="h-4 w-4" />Joined</>
+                      ) : (
+                        "Join Game"
+                      )}
+                    </button>
+                  )}
+                  {!isLocked && deposit > 0 && !isJoined && (
+                    <p className={`text-xs text-center ${hasInsufficientBalance ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
+                      {hasInsufficientBalance
+                        ? `Wallet needs ${formatCurrency(session.minBalance)} to join — top up first`
+                        : `${formatCurrency(session.minBalance)} deposit required to join`}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </CardContent>
-        </Card>
-      </Link>
+      </Card>
 
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
 
@@ -207,7 +316,9 @@ export function SessionCard({ session, userRsvp, userId }: SessionCardProps) {
           <DialogHeader>
             <DialogTitle>Leave game?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to leave this session?
+              {deposit > 0
+                ? `Your ${formatCurrency(session.minBalance)} deposit will be refunded to your wallet.`
+                : "You won't be able to undo this."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

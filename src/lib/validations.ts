@@ -30,6 +30,27 @@ export const rejectTopUpSchema = z.object({
   reason: z.string().min(1, "Rejection reason is required"),
 });
 
+export const rejectWithdrawalSchema = z.object({
+  requestId: z.string().min(1),
+  reason: z.string().min(1, "Rejection reason is required"),
+});
+
+export const createExpenseSchema = z.object({
+  category: z.enum(["COURT_RENTAL", "SHUTTLES", "OTHER"]),
+  amount: z.number().positive().multipleOf(0.01),
+  sessionId: z.string().min(1).optional(),
+  paidAt: z.string().datetime().optional(),
+  note: z.string().optional(),
+  receiptUrl: z.string().url().optional(),
+});
+
+export const updateExpenseSchema = z.object({
+  expenseId: z.string().min(1),
+  category: z.enum(["COURT_RENTAL", "SHUTTLES", "OTHER"]),
+  amount: z.number().positive().multipleOf(0.01),
+  note: z.string().optional(),
+});
+
 export const createSessionSchema = z.object({
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
@@ -73,6 +94,13 @@ export const lockSessionSchema = z.object({
   sessionId: z.string().min(1),
   shuttleCount: z.number().int().min(0),
   shuttleCost: z.number().min(0),
+  /**
+   * Who supplied the shuttles. `null` means club stock — already accounted for
+   * when the bulk purchase was recorded, so the per-session charge is pure
+   * recovery and must NOT create a second expense. A user id means that person
+   * brought their own, which is real unrecorded spend owed back to them.
+   */
+  shuttleSupplierId: z.string().min(1).nullable().optional(),
 });
 
 export const addPlayerSchema = z.object({
@@ -85,6 +113,9 @@ export type WithdrawalBankInput = Extract<WithdrawalRequestInput, { paymentMetho
 export type WithdrawalDuitnowInput = Extract<WithdrawalRequestInput, { paymentMethod: "DUITNOW" }>;
 export type ConfirmTopUpInput = z.infer<typeof confirmTopUpSchema>;
 export type RejectTopUpInput = z.infer<typeof rejectTopUpSchema>;
+export type RejectWithdrawalInput = z.infer<typeof rejectWithdrawalSchema>;
+export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
+export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type RsvpInput = z.infer<typeof rsvpSchema>;
 export type ManualAdjustInput = z.infer<typeof manualAdjustSchema>;

@@ -161,9 +161,7 @@ function SessionDetailPage() {
         {/* Location */}
         {gameSession.location && (
           <div className="py-4 border-b space-y-2">
-            <p className="text-xs font-bold text-brand-foreground uppercase tracking-widest">
-              Location
-            </p>
+            <p className="text-sm font-semibold">Location</p>
             <p className="font-bold">{gameSession.location}</p>
             <a
               href={
@@ -172,7 +170,7 @@ function SessionDetailPage() {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 border border-brand text-brand-foreground rounded px-3 py-1 text-sm"
+              className="inline-flex items-center gap-1.5 border border-brand text-brand-foreground rounded-md px-3 py-1.5 text-sm hover:bg-brand/20 transition-colors"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -195,9 +193,7 @@ function SessionDetailPage() {
         {/* Description */}
         {gameSession.note && (
           <div className="py-4 border-b space-y-1">
-            <p className="text-xs font-bold text-brand-foreground uppercase tracking-widest">
-              Description of Game
-            </p>
+            <p className="text-sm font-semibold">Description</p>
             <p className="text-sm">{gameSession.note}</p>
           </div>
         )}
@@ -205,10 +201,13 @@ function SessionDetailPage() {
         {/* Player Grid */}
         {yesAttendees.length > 0 && (
           <div className="py-4 space-y-3">
-            <p className="text-xs font-bold text-brand-foreground uppercase tracking-widest">
-              Attendees · {yesAttendees.length}/{gameSession.maxPlayers} joined
+            <p className="text-sm font-semibold">
+              Attendees
+              <span className="font-normal text-muted-foreground ml-1">
+                · {yesAttendees.length}/{gameSession.maxPlayers}
+              </span>
             </p>
-            <div className="grid grid-cols-6 gap-x-2 gap-y-4">
+            <div className="grid grid-cols-5 gap-x-3 gap-y-4">
               {yesAttendees.map((a) => (
                 <div key={a.id} className="flex flex-col items-center gap-1">
                   <Avatar className="h-12 w-12">
@@ -254,20 +253,21 @@ function SessionDetailPage() {
 
       {/* Sticky RSVP Button */}
       {!isLocked && !hasStarted && !pastDeadline && (
-        <div className="fixed bottom-20 left-0 right-0 z-10 pointer-events-none">
+        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <RsvpButtons
               sessionId={id}
               currentStatus={myAttendance?.status}
               isLoggedIn={!!userId}
               isFull={isFull && myAttendance?.status !== "YES"}
+              deposit={parseFloat(gameSession.minBalance)}
             />
           </div>
         </div>
       )}
 
       {isLocked && (
-        <div className="fixed bottom-20 left-0 right-0 z-10 pointer-events-none">
+        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <div className="flex items-center justify-center gap-2 w-full h-11 rounded-md bg-brand text-brand-foreground text-sm font-medium">
               <Lock className="h-4 w-4" />
@@ -278,7 +278,7 @@ function SessionDetailPage() {
       )}
 
       {!isLocked && !hasStarted && pastDeadline && (
-        <div className="fixed bottom-20 left-0 right-0 z-10 pointer-events-none">
+        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <div className="flex items-center justify-center gap-2 w-full h-11 rounded-md bg-brand text-brand-foreground text-sm font-medium">
               RSVP Deadline Passed

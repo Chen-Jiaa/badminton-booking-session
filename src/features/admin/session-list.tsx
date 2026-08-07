@@ -26,16 +26,16 @@ export function SessionList({ sessions }: SessionListProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {sessions.map((s) => {
         const yesCount = s.attendances.filter((a) => a.status === "YES").length;
         return (
           <Card key={s.id} className="hover:shadow-md transition-shadow">
             <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <Link to="/admin/sessions/$id" params={{ id: s.id }} className="flex-1">
-                  <div>
-                    <p className="font-medium">{formatDateTime(s.startTime)}</p>
+              <div className="flex items-center justify-between gap-2">
+                <Link to="/admin/sessions/$id" params={{ id: s.id }} className="min-w-0 flex-1">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{formatDateTime(s.startTime)}</p>
                     <p className="text-sm text-muted-foreground">
                       {s.courts} court{s.courts > 1 ? "s" : ""} • {yesCount} confirmed
                     </p>

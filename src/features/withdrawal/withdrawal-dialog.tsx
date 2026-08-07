@@ -13,13 +13,18 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowDownCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createWithdrawalFn, savedPaymentDetailsQueryOptions } from "@/features/withdrawal/server";
+import {
+  createWithdrawalFn,
+  savedPaymentDetailsQueryOptions,
+  withdrawableQueryOptions,
+} from "@/features/withdrawal/server";
 
 interface WithdrawalDialogProps {
   balance: number;
+  className?: string;
 }
 
-export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
+export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [amountInvalid, setAmountInvalid] = useState(false);
@@ -32,9 +37,15 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
   const queryClient = useQueryClient();
 
   const { data: savedDetails } = useQuery(savedPaymentDetailsQueryOptions());
+  const { data: withdrawable, refetch: refetchWithdrawable } = useQuery(withdrawableQueryOptions());
+
+  // How much can still be requested = balance − already-pending requests.
+  // Falls back to the passed balance until the fresh figure loads.
+  const available = withdrawable ? parseFloat(withdrawable.available) : balance;
+  const pending = withdrawable ? parseFloat(withdrawable.pending) : 0;
 
   const parsed = parseFloat(amount);
-  const amountExceedsBalance = amount !== "" && !isNaN(parsed) && parsed > balance;
+  const amountExceedsBalance = amount !== "" && !isNaN(parsed) && parsed > available;
 
   useEffect(() => {
     if (savedDetails?.duitnowPhone && paymentMethod === "DUITNOW" && !duitnowPhone) {
@@ -67,7 +78,7 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
       return;
     }
     if (amountExceedsBalance) {
-      toast({ title: "Amount exceeds your current balance", variant: "destructive" });
+      toast({ title: "Amount exceeds what you can withdraw", variant: "destructive" });
       return;
     }
 
@@ -97,10 +108,12 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
       });
       if (result.type === "BUSINESS_ERROR") {
         if (result.code === "INSUFFICIENT_BALANCE") {
-          toast({ title: "Insufficient balance", variant: "destructive" });
-        } else if (result.code === "PENDING_EXISTS") {
+          // The available figure moved since the dialog opened (e.g. a session
+          // charge or another request). Refresh so the user sees the new cap.
+          await refetchWithdrawable();
           toast({
-            title: "You already have a pending withdrawal request",
+            title: "Amount exceeds what you can withdraw",
+            description: "Your available balance changed — please check and try again.",
             variant: "destructive",
           });
         } else {
@@ -114,8 +127,11 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
       setAccountNumber("");
       setDuitnowPhone(savedDetails?.duitnowPhone ?? "");
       setOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ["wallet"] });
-      await queryClient.invalidateQueries({ queryKey: ["saved-payment-details"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["wallet"] }),
+        queryClient.invalidateQueries({ queryKey: ["withdrawable"] }),
+        queryClient.invalidateQueries({ queryKey: ["saved-payment-details"] }),
+      ]);
     } catch {
       toast({ title: "Failed to submit request", variant: "destructive" });
     } finally {
@@ -124,9 +140,16 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setAmountInvalid(false); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) refetchWithdrawable();
+        else setAmountInvalid(false);
+      }}
+    >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" disabled={balance <= 0}>
+        <Button size="sm" variant="outline" disabled={balance <= 0} className={className}>
           <ArrowDownCircle className="h-4 w-4 mr-1" />
           Withdraw
         </Button>
@@ -150,11 +173,12 @@ export function WithdrawalDialog({ balance }: WithdrawalDialogProps) {
             />
             {amountExceedsBalance ? (
               <p className="text-xs text-red-600 mt-1">
-                Cannot withdraw more than your wallet balance (RM {balance.toFixed(2)})
+                You can withdraw up to RM {available.toFixed(2)}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
-                Available balance: RM {balance.toFixed(2)}
+                Available to withdraw: RM {available.toFixed(2)}
+                {pending > 0 && ` (RM ${balance.toFixed(2)} balance − RM ${pending.toFixed(2)} pending)`}
               </p>
             )}
           </div>

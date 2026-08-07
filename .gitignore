@@ -18,6 +18,8 @@
 /dist
 /.nitro
 /.output
+/.tanstack
+/.impeccable
 
 # misc
 .DS_Store
