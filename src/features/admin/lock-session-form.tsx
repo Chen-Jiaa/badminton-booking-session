@@ -86,6 +86,7 @@ export function LockSessionForm({
           <Input
             id="shuttleCount"
             type="number"
+            inputMode="numeric"
             step="1"
             min="0"
             value={shuttleCount}
@@ -99,6 +100,7 @@ export function LockSessionForm({
           <Input
             id="shuttleCost"
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0"
             value={shuttleCost}

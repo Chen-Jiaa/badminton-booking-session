@@ -56,7 +56,10 @@ export function TopUpActions({ requestId }: { requestId: string }) {
       if (result.type !== "SUCCESS") throw new Error();
       toast({ title: "Top-up rejected" });
       setShowRejectDialog(false);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "topups"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin", "topups"] }),
+        queryClient.invalidateQueries({ queryKey: ["current-user"] }),
+      ]);
     } catch {
       toast({ title: "Failed to reject", variant: "destructive" });
     } finally {

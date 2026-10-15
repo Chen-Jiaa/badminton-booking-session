@@ -109,10 +109,10 @@ function MemberDetailPage() {
                 className={cn(
                   "text-2xl font-bold",
                   member.balance < 0
-                    ? "text-red-600"
+                    ? "text-danger"
                     : member.balance < 20
-                      ? "text-yellow-600"
-                      : "text-green-600",
+                      ? "text-warning"
+                      : "text-success",
                 )}
               >
                 {formatCurrency(member.balance)}
@@ -259,7 +259,7 @@ function ActivityTab({ member }: { member: MemberDetail }) {
               <TableCell
                 className={cn(
                   "text-right font-medium",
-                  a.amount < 0 ? "text-red-600" : "text-green-600",
+                  a.amount < 0 ? "text-danger" : "text-success",
                 )}
               >
                 {a.amount < 0 ? "−" : "+"}

@@ -209,13 +209,15 @@ function AdminSessionDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {a.finalCost && (
-                      <span className="text-red-600 font-medium">-{formatCurrency(a.finalCost)}</span>
+                      <span className="text-danger font-medium">
+                        -{formatCurrency(a.finalCost)}
+                      </span>
                     )}
                     {!isLocked && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        className="h-10 w-10 text-muted-foreground hover:text-destructive"
                         disabled={removingUserId === a.user.id}
                         onClick={() => handleRemove(a.user.id)}
                       >

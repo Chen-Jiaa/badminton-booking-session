@@ -58,7 +58,7 @@ function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p
-                className={`text-3xl font-bold ${finance.trueSurplus < 0 ? "text-red-600" : "text-green-600"}`}
+                className={`text-3xl font-bold ${finance.trueSurplus < 0 ? "text-danger" : "text-success"}`}
               >
                 {formatCurrency(finance.trueSurplus)}
               </p>
@@ -69,13 +69,13 @@ function ProfilePage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Owed to members</span>
-                  <span className="text-red-500 font-medium">
+                  <span className="text-danger font-medium">
                     −{formatCurrency(finance.memberLiability)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Unpaid / unreimbursed</span>
-                  <span className="text-red-500 font-medium">
+                  <span className="text-danger font-medium">
                     −{formatCurrency(finance.owedToAccountant + finance.unpaidExpenses)}
                   </span>
                 </div>
@@ -96,7 +96,7 @@ function ProfilePage() {
             <div className="grid grid-cols-2 gap-3">
               <Link to="/admin/topups" className="relative">
                 {pendingCount > 0 && (
-                  <span className="absolute -top-2 -right-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                  <span className="absolute -top-2 -right-2 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-white">
                     {pendingCount}
                   </span>
                 )}

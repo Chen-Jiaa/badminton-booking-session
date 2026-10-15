@@ -164,15 +164,16 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
             <Input
               id="withdrawal-amount"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0.01"
               placeholder="Enter amount"
               value={amount}
               onChange={(e) => { setAmount(e.target.value); setAmountInvalid(false); }}
-              className={cn("mt-1", (amountInvalid || amountExceedsBalance) && "border-red-500 focus-visible:ring-red-500")}
+              className={cn("mt-1", (amountInvalid || amountExceedsBalance) && "border-danger focus-visible:ring-danger")}
             />
             {amountExceedsBalance ? (
-              <p className="text-xs text-red-600 mt-1">
+              <p className="text-xs text-danger mt-1">
                 You can withdraw up to RM {available.toFixed(2)}
               </p>
             ) : (

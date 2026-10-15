@@ -49,7 +49,7 @@ function SessionsPage() {
             <span className="relative inline-flex items-center gap-1.5">
               Past
               {unfinalizedCount > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[11px] font-bold text-white leading-none">
                   {unfinalizedCount}
                 </span>
               )}

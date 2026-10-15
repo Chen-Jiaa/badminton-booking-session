@@ -71,7 +71,7 @@ function MembersPage() {
             {owing.length > 0 && (
               <>
                 {" · "}
-                <span className="text-red-600">{owing.length} with a negative balance</span>
+                <span className="text-danger">{owing.length} with a negative balance</span>
               </>
             )}
           </p>
@@ -143,7 +143,7 @@ function MembersPage() {
                           <span className="flex items-center gap-2">
                             <span className="font-medium">{m.name}</span>
                             {m.role !== "PLAYER" && (
-                              <Badge variant="outline" className="text-[10px]">
+                              <Badge variant="outline" className="text-[11px]">
                                 {m.role}
                               </Badge>
                             )}
@@ -185,7 +185,7 @@ function MembersPage() {
                         <div className="flex items-center gap-2">
                           <p className="truncate font-medium">{m.name}</p>
                           {m.role !== "PLAYER" && (
-                            <Badge variant="outline" className="text-[10px]">
+                            <Badge variant="outline" className="text-[11px]">
                               {m.role}
                             </Badge>
                           )}
@@ -213,8 +213,8 @@ function MembersPage() {
 }
 
 function balanceClass(balance: number) {
-  if (balance < 0) return "text-red-600";
-  if (balance < 20) return "text-yellow-600";
+  if (balance < 0) return "text-danger";
+  if (balance < 20) return "text-warning";
   return "";
 }
 

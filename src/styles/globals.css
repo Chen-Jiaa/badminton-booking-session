@@ -39,6 +39,24 @@
 @media (prefers-reduced-motion: reduce) {
   .join-pop { animation: none; }
   .birdie { display: none; }
+
+  /* Replace slides, zooms and scale presses with near-instant changes */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin { animation-duration: 1.5s !important; animation-iteration-count: infinite !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  header.sticky, nav.fixed, [data-state] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  header.sticky { background-color: #000 !important; }
+  nav.fixed { background-color: #fff !important; }
 }
 
 /* Map shadcn CSS variables to Tailwind v4 color/radius utilities */
@@ -62,6 +80,12 @@
   --color-popover-foreground: hsl(var(--popover-foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
+  --color-danger: hsl(var(--danger));
+  --color-danger-soft: hsl(var(--danger-soft));
+  --color-success: hsl(var(--success));
+  --color-success-soft: hsl(var(--success-soft));
+  --color-warning: hsl(var(--warning));
+  --color-warning-soft: hsl(var(--warning-soft));
   --color-brand: hsl(var(--brand));
   --color-brand-foreground: hsl(var(--brand-foreground));
 
@@ -94,6 +118,15 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 0 0% 0%;
     --radius: 0.5rem;
+
+    /* Status colors. Each is >= 4.5:1 on white and on gray-50, so they are safe
+       for text as well as fills under white text. */
+    --danger: 0 72% 51%;
+    --danger-soft: 0 86% 97%;
+    --success: 142 72% 29%;
+    --success-soft: 138 76% 97%;
+    --warning: 26 90% 37%;
+    --warning-soft: 48 100% 96%;
   }
 
   .dark {
@@ -116,15 +149,42 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 0 0% 0%;
+    --danger: 0 91% 71%;
+    --danger-soft: 0 63% 15%;
+    --success: 142 69% 58%;
+    --success-soft: 145 50% 12%;
+    --warning: 38 92% 60%;
+    --warning-soft: 35 60% 12%;
   }
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
     font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
   }
+  /* Remove the tap delay on everything interactive */
+  a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [role="tab"] {
+    touch-action: manipulation;
+  }
+  /* Controls aren't content: no long-press text selection or callout */
+  button, [role="button"], [role="tab"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Size-specific tracking: tighter as text grows, looser when small */
+  h1, h2, .text-2xl, .text-3xl { letter-spacing: -0.02em; }
+  h3, .text-xl { letter-spacing: -0.02em; line-height: 1.2; }
+  .text-lg { letter-spacing: -0.01em; }
+  .text-xs, .text-\[11px\] { letter-spacing: 0.01em; }
 }

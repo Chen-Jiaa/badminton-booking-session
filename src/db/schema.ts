@@ -131,6 +131,7 @@ export const sessions = pgTable(
     location: text("location"),
     locationMapUrl: text("location_map_url"),
     courtNumbers: text("court_numbers"),
+    courtsiteRef: text("courtsite_ref"),
     maxPlayers: integer("max_players").default(20).notNull(),
     minBalance: decimal("min_balance", { precision: 10, scale: 2 }).default("20").notNull(),
     status: sessionStatusEnum("status").default("OPEN").notNull(),

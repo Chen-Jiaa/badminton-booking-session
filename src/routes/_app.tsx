@@ -22,7 +22,7 @@ function DashboardLayout() {
   const { data: user } = useSuspenseQueryDeferred(currentUserQueryOptions());
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+    <div className="min-h-dvh bg-gray-50" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
       <Header user={user} />
       <main className="container mx-auto max-w-lg px-4 py-6">
         <Outlet />

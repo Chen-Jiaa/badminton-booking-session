@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "courtsite_ref" text;

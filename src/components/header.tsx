@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <header className="bg-black text-white px-4 py-4 sticky top-0 z-40">
+    <header className="bg-black/80 backdrop-blur-xl backdrop-saturate-150 supports-[not(backdrop-filter)]:bg-black text-white px-4 py-4 sticky top-0 z-40">
       <div className="container mx-auto max-w-lg flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
           <span className="text-xl">🏸</span>
