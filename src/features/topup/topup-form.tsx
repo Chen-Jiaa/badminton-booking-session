@@ -60,6 +60,7 @@ export function TopUpForm() {
         <Input
           id="amount"
           type="number"
+          inputMode="decimal"
           step="0.01"
           min="1"
           placeholder="Enter amount"

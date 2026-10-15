@@ -37,7 +37,7 @@ function ConsoleLayout() {
   const { data: user } = useSuspenseQueryDeferred(currentUserQueryOptions());
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-40 bg-black px-4 py-3 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">

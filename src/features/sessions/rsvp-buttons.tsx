@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,60 +15,7 @@ import { LoginDialog } from "@/features/sessions/login-dialog";
 import { rsvpFn, sessionDetailQueryOptions } from "@/features/sessions/server";
 import { currentUserQueryOptions } from "@/features/auth/server";
 import { formatCurrency } from "@/lib/utils";
-
-/** A single stylized shuttlecock: feather skirt with a cork tip. */
-function Shuttlecock() {
-  return (
-    <svg viewBox="0 0 24 28" width="18" height="21" fill="none" aria-hidden="true">
-      <path
-        d="M12 20 L6.5 4.5 L17.5 4.5 Z"
-        fill="hsl(var(--background))"
-        stroke="hsl(var(--brand-foreground))"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
-      />
-      <line x1="12" y1="20" x2="9.2" y2="4.7" stroke="hsl(var(--brand-foreground))" strokeWidth="0.8" />
-      <line x1="12" y1="20" x2="14.8" y2="4.7" stroke="hsl(var(--brand-foreground))" strokeWidth="0.8" />
-      <circle cx="12" cy="21.2" r="3.2" fill="hsl(var(--brand-foreground))" />
-    </svg>
-  );
-}
-
-// Birdies fan upward in an arc from the button center.
-const BIRDIES = [
-  { tx: "0px", ty: "-116px", rStart: "-6deg", rEnd: "8deg", dur: "980ms" },
-  { tx: "-34px", ty: "-98px", rStart: "-18deg", rEnd: "-34deg", dur: "900ms" },
-  { tx: "34px", ty: "-98px", rStart: "18deg", rEnd: "34deg", dur: "900ms" },
-  { tx: "-70px", ty: "-64px", rStart: "-30deg", rEnd: "-58deg", dur: "820ms" },
-  { tx: "70px", ty: "-64px", rStart: "30deg", rEnd: "58deg", dur: "820ms" },
-  { tx: "-104px", ty: "-30px", rStart: "-46deg", rEnd: "-78deg", dur: "760ms" },
-  { tx: "104px", ty: "-30px", rStart: "46deg", rEnd: "78deg", dur: "760ms" },
-];
-
-/** Burst of shuttlecocks fired when a player claims their spot. */
-function JoinBurst() {
-  return (
-    <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 h-0 w-0">
-      {BIRDIES.map((b, i) => (
-        <span
-          key={i}
-          className="birdie absolute left-0 top-0 block will-change-transform"
-          style={
-            {
-              "--tx": b.tx,
-              "--ty": b.ty,
-              "--r-start": b.rStart,
-              "--r-end": b.rEnd,
-              "--dur": b.dur,
-            } as CSSProperties
-          }
-        >
-          <Shuttlecock />
-        </span>
-      ))}
-    </div>
-  );
-}
+import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
 
 interface RsvpButtonsProps {
   sessionId: string;
@@ -83,26 +30,9 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
   const [showLogin, setShowLogin] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<"YES" | "NO" | null>(null);
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { celebrating, celebrateJoin } = useJoinCelebration();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    return () => {
-      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-    };
-  }, []);
-
-  function celebrateJoin() {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      // A little "birdie landing" tap-tap.
-      navigator.vibrate?.([12, 28, 16]);
-    }
-    setCelebrating(true);
-    if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-    celebrateTimer.current = setTimeout(() => setCelebrating(false), 1500);
-  }
 
   const currentUser = queryClient.getQueryData<{
     id: string;
@@ -242,6 +172,9 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
         currentUserQueryOptions().queryKey,
         (old: typeof prevUserData) => old ? { ...old, balance: result.value.newBalance } : old,
       );
+      queryClient.setQueryData<{ balance: string } | null>(["wallet"], (old) =>
+        old ? { ...old, balance: result.value.newBalance } : old,
+      );
 
       // You're in — mark the moment you claimed a spot on the court.
       if (status === "YES") celebrateJoin();
@@ -255,6 +188,8 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
       // Background sync — no UI blocking
       queryClient.invalidateQueries({ queryKey: ["sessions"] });
       queryClient.invalidateQueries({ queryKey: currentUserQueryOptions().queryKey });
+      // Wallet page has its own cache (balance + timeline) that the RSVP changes
+      queryClient.invalidateQueries({ queryKey: ["wallet"], refetchType: "all" });
     }
   }
 
@@ -268,7 +203,8 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
         <Button
           disabled
           aria-live="polite"
-          className="join-pop w-full gap-2 bg-brand-foreground font-semibold shadow-sm disabled:opacity-100"
+          size="cta"
+          className="join-pop bg-brand-foreground shadow-sm disabled:opacity-100"
           style={{ color: "hsl(var(--background))" }}
         >
           <Check className="h-4 w-4" strokeWidth={3} />
@@ -279,28 +215,31 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
           onClick={() => setShowLeaveDialog(true)}
           disabled={loading}
           variant="outline"
-          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+          size="cta"
+          className="border-danger/25 text-danger hover:bg-danger-soft hover:text-danger"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Leave Game"}
         </Button>
       ) : !isLoggedIn ? (
-        <Button
-          onClick={() => setShowLogin(true)}
-          className="w-full bg-brand text-brand-foreground hover:bg-brand/80"
-        >
+        <Button variant="brand" size="cta" onClick={() => setShowLogin(true)}>
           Sign in
         </Button>
       ) : (
         <Button
           onClick={() => handleRsvp("YES")}
+          variant="brand"
+          size="cta"
           disabled={loading || isFull || hasInsufficientBalance}
-          className={
-            isFull || hasInsufficientBalance
-              ? "w-full bg-brand text-brand-foreground cursor-not-allowed opacity-60"
-              : "w-full bg-brand text-brand-foreground hover:bg-brand/80"
-          }
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Join Game"}
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isFull ? (
+            "Session full"
+          ) : hasInsufficientBalance ? (
+            "Insufficient balance"
+          ) : (
+            "Join Game"
+          )}
         </Button>
       )}
 

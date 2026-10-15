@@ -157,12 +157,12 @@ function WalletPage() {
 type TransactionTone = "credit" | "debit" | "pending" | "rejected";
 
 const TONE: Record<TransactionTone, { chip: string; icon: string; amount: string }> = {
-  credit: { chip: "bg-green-50", icon: "text-green-600", amount: "text-green-700" },
+  credit: { chip: "bg-success-soft", icon: "text-success", amount: "text-success" },
   debit: { chip: "bg-muted", icon: "text-muted-foreground", amount: "text-foreground" },
-  pending: { chip: "bg-amber-50", icon: "text-amber-600", amount: "text-muted-foreground" },
+  pending: { chip: "bg-warning-soft", icon: "text-warning", amount: "text-muted-foreground" },
   rejected: {
-    chip: "bg-red-50",
-    icon: "text-red-600",
+    chip: "bg-danger-soft",
+    icon: "text-danger",
     amount: "text-muted-foreground line-through",
   },
 };

@@ -104,7 +104,7 @@ function SummarySection({ summary }: { summary: Summary }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <p className={`text-3xl font-bold ${short ? "text-red-600" : "text-green-600"}`}>
+            <p className={`text-3xl font-bold ${short ? "text-danger" : "text-success"}`}>
               {formatCurrency(summary.trueSurplus)}
             </p>
             {awaiting ? (
@@ -143,7 +143,7 @@ function SummarySection({ summary }: { summary: Summary }) {
               {summary.owedBreakdown.map((p) => (
                 <div key={p.id} className="flex justify-between">
                   <span>{p.name}</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(p.amount)}</span>
+                  <span className="font-semibold text-danger">{formatCurrency(p.amount)}</span>
                 </div>
               ))}
             </CardContent>
@@ -177,7 +177,7 @@ function StatCard({ label, value, negative }: { label: string; value: number; ne
     <Card>
       <CardContent className="py-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`text-lg font-semibold ${negative && value > 0 ? "text-red-600" : ""}`}>
+        <p className={`text-lg font-semibold ${negative && value > 0 ? "text-danger" : ""}`}>
           {formatCurrency(value)}
         </p>
       </CardContent>
@@ -407,7 +407,7 @@ function TopUpsTab() {
                   <p className="text-sm font-semibold">{formatCurrency(r.amount)}</p>
                   <p className="text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</p>
                   {r.rejectReason && (
-                    <p className="text-xs text-red-600">{r.rejectReason}</p>
+                    <p className="text-xs text-danger">{r.rejectReason}</p>
                   )}
                 </div>
                 <StatusBadge status={r.status} />
@@ -543,7 +543,7 @@ function CashFlowTab() {
         <Card className="lg:w-72">
           <CardContent className="py-3 flex justify-between text-sm">
             <span className="text-muted-foreground">Net cash movement</span>
-            <span className={`font-semibold ${net < 0 ? "text-red-600" : "text-green-600"}`}>
+            <span className={`font-semibold ${net < 0 ? "text-danger" : "text-success"}`}>
               {formatCurrency(net)}
             </span>
           </CardContent>
@@ -578,7 +578,7 @@ function CashFlowTab() {
                     <TableCell>{e.who ?? "—"}</TableCell>
                     <TableCell
                       className={`text-right font-semibold whitespace-nowrap ${
-                        e.amount < 0 ? "text-red-600" : "text-green-600"
+                        e.amount < 0 ? "text-danger" : "text-success"
                       }`}
                     >
                       {e.amount < 0 ? "−" : "+"}
@@ -602,7 +602,7 @@ function CashFlowTab() {
                   </div>
                   <span
                     className={`font-semibold whitespace-nowrap ${
-                      e.amount < 0 ? "text-red-600" : "text-green-600"
+                      e.amount < 0 ? "text-danger" : "text-success"
                     }`}
                   >
                     {e.amount < 0 ? "−" : "+"}

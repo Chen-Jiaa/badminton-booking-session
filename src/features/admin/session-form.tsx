@@ -475,6 +475,7 @@ export function SessionForm({
           <Input
             id="courts"
             type="number"
+            inputMode="numeric"
             min="1"
             value={numCourts}
             onChange={(e) => {
@@ -497,6 +498,7 @@ export function SessionForm({
             <Input
               id="costPerCourt"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={costPerCourt}
@@ -533,6 +535,7 @@ export function SessionForm({
           <Input
             id="maxPlayers"
             type="number"
+            inputMode="numeric"
             min="1"
             value={maxPlayers}
             onChange={(e) => {
@@ -555,6 +558,7 @@ export function SessionForm({
             <Input
               id="minBalance"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={minBalance}

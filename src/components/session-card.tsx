@@ -17,6 +17,7 @@ import { MapPin, Loader2, Users, Check, Share } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency } from "@/lib/utils";
+import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
 
 type SessionCardProps = {
   session: {
@@ -80,6 +81,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const queryClient = useQueryClient();
+  const { celebrating, celebrateJoin } = useJoinCelebration();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -136,6 +138,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
         }
         return;
       }
+      if (status === "YES") celebrateJoin();
     } catch {
       if (prevData) queryClient.setQueryData(["sessions"], prevData);
       toast({ title: "Failed to update RSVP", variant: "destructive" });
@@ -192,7 +195,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
         onKeyDown={handleCardKeyDown}
         role="link"
         tabIndex={0}
-        className={`hover:shadow-md transition-shadow bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isPast && canManage && !isLocked ? "border-2 border-amber-400" : "border border-gray-100"}`}
+        className={`hover:shadow-md transition-[box-shadow,scale] active:scale-[0.99] bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isPast && canManage && !isLocked ? "border-2 border-warning" : "border border-gray-100"}`}
       >
         <CardContent className="p-5">
             {/* Primary: date & time */}
@@ -209,7 +212,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
                 type="button"
                 onClick={handleShare}
                 aria-label="Share session"
-                className="-mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
+                className="relative -mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-foreground active:scale-90 after:absolute after:-inset-1 after:content-['']"
               >
                 <Share className="h-4 w-4" />
               </button>
@@ -220,7 +223,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
               <div className="flex items-center gap-2">
                 <Avatar className="h-5 w-5 shrink-0">
                   <AvatarImage src={session.createdBy.image || undefined} />
-                  <AvatarFallback className="text-[10px] bg-brand text-brand-foreground">
+                  <AvatarFallback className="text-[11px] bg-brand text-brand-foreground">
                     {hostInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -243,7 +246,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
                     <span>{yesCount} attended</span>
                   </div>
                   {userRsvp?.finalCost ? (
-                    <p className="text-sm font-semibold text-red-600 text-center">
+                    <p className="text-sm font-semibold text-danger text-center">
                       -{formatCurrency(userRsvp.finalCost)}
                     </p>
                   ) : session.costPerPlayer ? (
@@ -252,14 +255,14 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
                     </p>
                   ) : null}
                   {canManage && !isLocked && (
-                    <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-red-500 text-white">
+                    <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-danger text-white">
                       Needs finalization
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <div className={`flex items-center gap-2 text-sm ${isFull ? "text-red-500" : "text-muted-foreground"}`}>
+                  <div className={`flex items-center gap-2 text-sm ${isFull ? "text-danger" : "text-muted-foreground"}`}>
                     <Users className="h-4 w-4 shrink-0" />
                     <span>
                       {isFull
@@ -268,36 +271,53 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
                     </span>
                   </div>
                   {!isLocked && !userId && (
-                    <button
+                    <Button
+                      variant="brand"
+                      size="cta"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginDialog(true); }}
-                      className="w-full py-3 rounded-full text-sm font-semibold transition-colors bg-brand text-brand-foreground hover:bg-brand/80"
                     >
                       Sign in
-                    </button>
+                    </Button>
                   )}
-                  {!isLocked && userId && (
-                    <button
+                  {!isLocked && userId && celebrating && (
+                    <div className="relative">
+                      <JoinBurst />
+                      <Button
+                        disabled
+                        aria-live="polite"
+                        size="cta"
+                        className="join-pop bg-brand-foreground shadow-sm disabled:pointer-events-auto disabled:opacity-100"
+                        style={{ color: "hsl(var(--background))" }}
+                      >
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                        You&rsquo;re in!
+                      </Button>
+                    </div>
+                  )}
+                  {!isLocked && userId && !celebrating && (
+                    <Button
+                      variant={isJoined ? "joined" : "brand"}
+                      size="cta"
                       onClick={handleButtonClick}
                       disabled={loading || (!isJoined && buttonDisabled)}
-                      className={`w-full py-3 rounded-full text-sm font-semibold transition-colors inline-flex items-center justify-center gap-2 ${
-                        isJoined
-                          ? "border border-brand-foreground/50 bg-brand/30 text-brand-foreground"
-                          : buttonDisabled
-                            ? "bg-brand text-brand-foreground cursor-not-allowed opacity-60"
-                            : "bg-brand text-brand-foreground hover:bg-brand/80"
-                      }`}
+                      // Keep taps on a disabled button from falling through to the card link
+                      className="disabled:pointer-events-auto"
                     >
                       {loading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : isJoined ? (
                         <><Check className="h-4 w-4" />Joined</>
+                      ) : pastDeadline ? (
+                        "RSVP closed"
+                      ) : isFull ? (
+                        "Session full"
                       ) : (
                         "Join Game"
                       )}
-                    </button>
+                    </Button>
                   )}
                   {!isLocked && deposit > 0 && !isJoined && (
-                    <p className={`text-xs text-center ${hasInsufficientBalance ? "text-red-500 font-medium" : "text-muted-foreground"}`}>
+                    <p className={`text-xs text-center ${hasInsufficientBalance ? "text-danger font-medium" : "text-muted-foreground"}`}>
                       {hasInsufficientBalance
                         ? `Wallet needs ${formatCurrency(session.minBalance)} to join — top up first`
                         : `${formatCurrency(session.minBalance)} deposit required to join`}

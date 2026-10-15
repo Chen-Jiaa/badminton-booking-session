@@ -83,12 +83,13 @@ export function TopUpDialog({ className }: { className?: string } = {}) {
             <Input
               id="topup-amount"
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="1"
               placeholder="Enter amount"
               value={amount}
               onChange={(e) => { setAmount(e.target.value); setAmountInvalid(false); }}
-              className={cn("mt-1", amountInvalid && "border-red-500 focus-visible:ring-red-500")}
+              className={cn("mt-1", amountInvalid && "border-danger focus-visible:ring-danger")}
             />
           </div>
 

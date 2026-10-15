@@ -216,11 +216,11 @@ function SessionDetailPage() {
                       {a.user.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <p className="text-[10px] text-center leading-tight line-clamp-2 w-full">
+                  <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">
                     {a.user.name}
                   </p>
                   {a.userId === gameSession.createdById && (
-                    <p className="text-[10px] text-muted-foreground">Host</p>
+                    <p className="text-[11px] text-muted-foreground">Host</p>
                   )}
                 </div>
               ))}
