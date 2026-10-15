@@ -9,64 +9,49 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ConsoleRouteImport } from './routes/_console'
-import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
-import { Route as ApiUploadRouteImport } from './routes/api/upload'
-import { Route as AppWalletRouteImport } from './routes/_app/wallet'
-import { Route as AppTopupRouteImport } from './routes/_app/topup'
-import { Route as AppSessionsRouteImport } from './routes/_app/sessions'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as ConsoleRouteImport } from './routes/_console'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
-import { Route as ApiCronCleanupReceiptsRouteImport } from './routes/api/cron/cleanup-receipts'
-import { Route as ApiAdminExportRouteImport } from './routes/api/admin/export'
-import { Route as ConsoleAdminTopupsRouteImport } from './routes/_console/admin/topups'
-import { Route as ConsoleAdminSessionsRouteImport } from './routes/_console/admin/sessions'
-import { Route as ConsoleAdminMembersRouteImport } from './routes/_console/admin/members'
-import { Route as ConsoleAdminFinanceRouteImport } from './routes/_console/admin/finance'
-import { Route as AppSessionsNewRouteImport } from './routes/_app/sessions_.new'
+import { Route as AppSessionsRouteImport } from './routes/_app/sessions'
+import { Route as AppTopupRouteImport } from './routes/_app/topup'
+import { Route as AppWalletRouteImport } from './routes/_app/wallet'
+import { Route as ApiUploadRouteImport } from './routes/api/upload'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AppSessionsIdRouteImport } from './routes/_app/sessions_.$id'
-import { Route as ConsoleAdminSessionsNewRouteImport } from './routes/_console/admin/sessions_.new'
-import { Route as ConsoleAdminSessionsIdRouteImport } from './routes/_console/admin/sessions_.$id'
+import { Route as AppSessionsNewRouteImport } from './routes/_app/sessions_.new'
+import { Route as ConsoleAdminFinanceRouteImport } from './routes/_console/admin/finance'
+import { Route as ConsoleAdminMembersRouteImport } from './routes/_console/admin/members'
+import { Route as ConsoleAdminSessionsRouteImport } from './routes/_console/admin/sessions'
+import { Route as ConsoleAdminTopupsRouteImport } from './routes/_console/admin/topups'
+import { Route as ApiAdminExportRouteImport } from './routes/api/admin/export'
+import { Route as ApiCronCleanupReceiptsRouteImport } from './routes/api/cron/cleanup-receipts'
 import { Route as ConsoleAdminMembersIdRouteImport } from './routes/_console/admin/members_.$id'
+import { Route as ConsoleAdminSessionsIdRouteImport } from './routes/_console/admin/sessions_.$id'
+import { Route as ConsoleAdminSessionsNewRouteImport } from './routes/_console/admin/sessions_.new'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConsoleRoute = ConsoleRouteImport.update({
-  id: '/_console',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ConsoleRoute = ConsoleRouteImport.update({
+  id: '/_console',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiUploadRoute = ApiUploadRouteImport.update({
-  id: '/api/upload',
-  path: '/api/upload',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppWalletRoute = AppWalletRouteImport.update({
-  id: '/wallet',
-  path: '/wallet',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTopupRoute = AppTopupRouteImport.update({
-  id: '/topup',
-  path: '/topup',
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSessionsRoute = AppSessionsRouteImport.update({
@@ -74,29 +59,39 @@ const AppSessionsRoute = AppSessionsRouteImport.update({
   path: '/sessions',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProfileRoute = AppProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+const AppTopupRoute = AppTopupRouteImport.update({
+  id: '/topup',
+  path: '/topup',
   getParentRoute: () => AppRoute,
 } as any)
-const ApiCronCleanupReceiptsRoute = ApiCronCleanupReceiptsRouteImport.update({
-  id: '/api/cron/cleanup-receipts',
-  path: '/api/cron/cleanup-receipts',
+const AppWalletRoute = AppWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AppRoute,
+} as any)
+const ApiUploadRoute = ApiUploadRouteImport.update({
+  id: '/api/upload',
+  path: '/api/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminExportRoute = ApiAdminExportRouteImport.update({
-  id: '/api/admin/export',
-  path: '/api/admin/export',
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConsoleAdminTopupsRoute = ConsoleAdminTopupsRouteImport.update({
-  id: '/admin/topups',
-  path: '/admin/topups',
-  getParentRoute: () => ConsoleRoute,
+const AppSessionsIdRoute = AppSessionsIdRouteImport.update({
+  id: '/sessions_/$id',
+  path: '/sessions/$id',
+  getParentRoute: () => AppRoute,
 } as any)
-const ConsoleAdminSessionsRoute = ConsoleAdminSessionsRouteImport.update({
-  id: '/admin/sessions',
-  path: '/admin/sessions',
+const AppSessionsNewRoute = AppSessionsNewRouteImport.update({
+  id: '/sessions_/new',
+  path: '/sessions/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const ConsoleAdminFinanceRoute = ConsoleAdminFinanceRouteImport.update({
+  id: '/admin/finance',
+  path: '/admin/finance',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleAdminMembersRoute = ConsoleAdminMembersRouteImport.update({
@@ -104,24 +99,29 @@ const ConsoleAdminMembersRoute = ConsoleAdminMembersRouteImport.update({
   path: '/admin/members',
   getParentRoute: () => ConsoleRoute,
 } as any)
-const ConsoleAdminFinanceRoute = ConsoleAdminFinanceRouteImport.update({
-  id: '/admin/finance',
-  path: '/admin/finance',
+const ConsoleAdminSessionsRoute = ConsoleAdminSessionsRouteImport.update({
+  id: '/admin/sessions',
+  path: '/admin/sessions',
   getParentRoute: () => ConsoleRoute,
 } as any)
-const AppSessionsNewRoute = AppSessionsNewRouteImport.update({
-  id: '/sessions_/new',
-  path: '/sessions/new',
-  getParentRoute: () => AppRoute,
+const ConsoleAdminTopupsRoute = ConsoleAdminTopupsRouteImport.update({
+  id: '/admin/topups',
+  path: '/admin/topups',
+  getParentRoute: () => ConsoleRoute,
 } as any)
-const AppSessionsIdRoute = AppSessionsIdRouteImport.update({
-  id: '/sessions_/$id',
-  path: '/sessions/$id',
-  getParentRoute: () => AppRoute,
+const ApiAdminExportRoute = ApiAdminExportRouteImport.update({
+  id: '/api/admin/export',
+  path: '/api/admin/export',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ConsoleAdminSessionsNewRoute = ConsoleAdminSessionsNewRouteImport.update({
-  id: '/admin/sessions_/new',
-  path: '/admin/sessions/new',
+const ApiCronCleanupReceiptsRoute = ApiCronCleanupReceiptsRouteImport.update({
+  id: '/api/cron/cleanup-receipts',
+  path: '/api/cron/cleanup-receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsoleAdminMembersIdRoute = ConsoleAdminMembersIdRouteImport.update({
+  id: '/admin/members_/$id',
+  path: '/admin/members/$id',
   getParentRoute: () => ConsoleRoute,
 } as any)
 const ConsoleAdminSessionsIdRoute = ConsoleAdminSessionsIdRouteImport.update({
@@ -129,9 +129,9 @@ const ConsoleAdminSessionsIdRoute = ConsoleAdminSessionsIdRouteImport.update({
   path: '/admin/sessions/$id',
   getParentRoute: () => ConsoleRoute,
 } as any)
-const ConsoleAdminMembersIdRoute = ConsoleAdminMembersIdRouteImport.update({
-  id: '/admin/members_/$id',
-  path: '/admin/members/$id',
+const ConsoleAdminSessionsNewRoute = ConsoleAdminSessionsNewRouteImport.update({
+  id: '/admin/sessions_/new',
+  path: '/admin/sessions/new',
   getParentRoute: () => ConsoleRoute,
 } as any)
 
@@ -282,18 +282,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_console': {
-      id: '/_console'
-      path: ''
+    '/': {
+      id: '/'
+      path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof ConsoleRouteImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -303,39 +296,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
+    '/_console': {
+      id: '/_console'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof ConsoleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/upload': {
-      id: '/api/upload'
-      path: '/api/upload'
-      fullPath: '/api/upload'
-      preLoaderRoute: typeof ApiUploadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_app/wallet': {
-      id: '/_app/wallet'
-      path: '/wallet'
-      fullPath: '/wallet'
-      preLoaderRoute: typeof AppWalletRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/topup': {
-      id: '/_app/topup'
-      path: '/topup'
-      fullPath: '/topup'
-      preLoaderRoute: typeof AppTopupRouteImport
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sessions': {
@@ -345,39 +324,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSessionsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/profile': {
-      id: '/_app/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AppProfileRouteImport
+    '/_app/topup': {
+      id: '/_app/topup'
+      path: '/topup'
+      fullPath: '/topup'
+      preLoaderRoute: typeof AppTopupRouteImport
       parentRoute: typeof AppRoute
     }
-    '/api/cron/cleanup-receipts': {
-      id: '/api/cron/cleanup-receipts'
-      path: '/api/cron/cleanup-receipts'
-      fullPath: '/api/cron/cleanup-receipts'
-      preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport
+    '/_app/wallet': {
+      id: '/_app/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AppWalletRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/api/upload': {
+      id: '/api/upload'
+      path: '/api/upload'
+      fullPath: '/api/upload'
+      preLoaderRoute: typeof ApiUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/export': {
-      id: '/api/admin/export'
-      path: '/api/admin/export'
-      fullPath: '/api/admin/export'
-      preLoaderRoute: typeof ApiAdminExportRouteImport
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_console/admin/topups': {
-      id: '/_console/admin/topups'
-      path: '/admin/topups'
-      fullPath: '/admin/topups'
-      preLoaderRoute: typeof ConsoleAdminTopupsRouteImport
-      parentRoute: typeof ConsoleRoute
+    '/_app/sessions_/$id': {
+      id: '/_app/sessions_/$id'
+      path: '/sessions/$id'
+      fullPath: '/sessions/$id'
+      preLoaderRoute: typeof AppSessionsIdRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/_console/admin/sessions': {
-      id: '/_console/admin/sessions'
-      path: '/admin/sessions'
-      fullPath: '/admin/sessions'
-      preLoaderRoute: typeof ConsoleAdminSessionsRouteImport
+    '/_app/sessions_/new': {
+      id: '/_app/sessions_/new'
+      path: '/sessions/new'
+      fullPath: '/sessions/new'
+      preLoaderRoute: typeof AppSessionsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_console/admin/finance': {
+      id: '/_console/admin/finance'
+      path: '/admin/finance'
+      fullPath: '/admin/finance'
+      preLoaderRoute: typeof ConsoleAdminFinanceRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/_console/admin/members': {
@@ -387,32 +380,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleAdminMembersRouteImport
       parentRoute: typeof ConsoleRoute
     }
-    '/_console/admin/finance': {
-      id: '/_console/admin/finance'
-      path: '/admin/finance'
-      fullPath: '/admin/finance'
-      preLoaderRoute: typeof ConsoleAdminFinanceRouteImport
+    '/_console/admin/sessions': {
+      id: '/_console/admin/sessions'
+      path: '/admin/sessions'
+      fullPath: '/admin/sessions'
+      preLoaderRoute: typeof ConsoleAdminSessionsRouteImport
       parentRoute: typeof ConsoleRoute
     }
-    '/_app/sessions_/new': {
-      id: '/_app/sessions_/new'
-      path: '/sessions/new'
-      fullPath: '/sessions/new'
-      preLoaderRoute: typeof AppSessionsNewRouteImport
-      parentRoute: typeof AppRoute
+    '/_console/admin/topups': {
+      id: '/_console/admin/topups'
+      path: '/admin/topups'
+      fullPath: '/admin/topups'
+      preLoaderRoute: typeof ConsoleAdminTopupsRouteImport
+      parentRoute: typeof ConsoleRoute
     }
-    '/_app/sessions_/$id': {
-      id: '/_app/sessions_/$id'
-      path: '/sessions/$id'
-      fullPath: '/sessions/$id'
-      preLoaderRoute: typeof AppSessionsIdRouteImport
-      parentRoute: typeof AppRoute
+    '/api/admin/export': {
+      id: '/api/admin/export'
+      path: '/api/admin/export'
+      fullPath: '/api/admin/export'
+      preLoaderRoute: typeof ApiAdminExportRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_console/admin/sessions_/new': {
-      id: '/_console/admin/sessions_/new'
-      path: '/admin/sessions/new'
-      fullPath: '/admin/sessions/new'
-      preLoaderRoute: typeof ConsoleAdminSessionsNewRouteImport
+    '/api/cron/cleanup-receipts': {
+      id: '/api/cron/cleanup-receipts'
+      path: '/api/cron/cleanup-receipts'
+      fullPath: '/api/cron/cleanup-receipts'
+      preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_console/admin/members_/$id': {
+      id: '/_console/admin/members_/$id'
+      path: '/admin/members/$id'
+      fullPath: '/admin/members/$id'
+      preLoaderRoute: typeof ConsoleAdminMembersIdRouteImport
       parentRoute: typeof ConsoleRoute
     }
     '/_console/admin/sessions_/$id': {
@@ -422,11 +422,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsoleAdminSessionsIdRouteImport
       parentRoute: typeof ConsoleRoute
     }
-    '/_console/admin/members_/$id': {
-      id: '/_console/admin/members_/$id'
-      path: '/admin/members/$id'
-      fullPath: '/admin/members/$id'
-      preLoaderRoute: typeof ConsoleAdminMembersIdRouteImport
+    '/_console/admin/sessions_/new': {
+      id: '/_console/admin/sessions_/new'
+      path: '/admin/sessions/new'
+      fullPath: '/admin/sessions/new'
+      preLoaderRoute: typeof ConsoleAdminSessionsNewRouteImport
       parentRoute: typeof ConsoleRoute
     }
   }
