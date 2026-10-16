@@ -11,14 +11,14 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <header className="bg-black/80 backdrop-blur-xl backdrop-saturate-150 supports-[not(backdrop-filter)]:bg-black text-white px-4 py-4 sticky top-0 z-40">
+    <header className="sticky top-0 z-40 bg-black px-4 py-3 text-white">
       <div className="container mx-auto max-w-lg flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl">🏸</span>
+          <span className="text-lg">🏸</span>
           <span className="font-semibold">Badminton Club</span>
         </Link>
         {user ? (
-          <Link to="/profile" className="flex items-center justify-center h-11 w-11 rounded-full -mr-1">
+          <Link to="/profile" className="-my-1 -mr-1.5 flex h-11 w-11 items-center justify-center rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.image || undefined} alt={user.name || ""} />
               <AvatarFallback className="bg-brand text-brand-foreground text-sm">

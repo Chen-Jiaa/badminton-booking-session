@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Upload, Loader2, Download } from "lucide-react";
+import { Plus, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createTopUpFn } from "@/features/topup/server";
 
@@ -77,24 +77,13 @@ export function TopUpDialog({ className }: { className?: string } = {}) {
           <DialogTitle>Request Top Up</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          <div className="flex flex-col items-center gap-2 rounded-lg border bg-muted/30 p-3">
-            <p className="text-sm font-medium">Scan this DuitNow QR to top up</p>
-            <img
-              src="/duitnow-qr.jpg"
-              alt="DuitNow QR code for club top-ups (Lim Siew Ping, Ryt Bank)"
-              width={732}
-              height={983}
-              className="h-auto w-full max-w-[200px] rounded-md"
-            />
-            <a
-              href="/duitnow-qr.jpg"
-              download="ss-badminton-duitnow-qr.jpg"
-              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Save QR to scan from your banking app
-            </a>
-          </div>
+          <img
+            src="/duitnow-qr.jpg"
+            alt="DuitNow QR code for club top-ups (Lim Siew Ping, Ryt Bank)"
+            width={732}
+            height={983}
+            className="h-auto w-full rounded-lg border"
+          />
 
           <div>
             <Label htmlFor="topup-amount">Amount (RM)</Label>

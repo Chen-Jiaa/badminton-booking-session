@@ -89,35 +89,84 @@ function SheetHandle({ sheetRef }: { sheetRef: React.RefObject<HTMLElement | nul
   );
 }
 
+const TEXT_ENTRY =
+  "input:not([type=checkbox],[type=radio],[type=file],[type=button],[type=submit],[type=range],[type=color]), textarea, select, [contenteditable=true]";
+const HANDLE_HEIGHT = 32; // px; the drag handle strip at the top of the sheet
+
+/**
+ * Scrolls the focused field to the middle of whatever part of the sheet is still
+ * on screen, so its label above and any controls just below stay visible too.
+ * Does nothing while the field is already comfortably in view.
+ */
+function revealFocusedField(sheet: HTMLElement) {
+  const field = document.activeElement;
+  if (!(field instanceof HTMLElement) || !sheet.contains(field) || !field.matches(TEXT_ENTRY)) {
+    return;
+  }
+  const vv = window.visualViewport;
+  const sheetRect = sheet.getBoundingClientRect();
+  const fieldRect = field.getBoundingClientRect();
+  const visibleTop = Math.max(sheetRect.top + HANDLE_HEIGHT, vv?.offsetTop ?? 0);
+  const visibleBottom = Math.min(
+    sheetRect.bottom,
+    vv ? vv.offsetTop + vv.height : window.innerHeight,
+  );
+  const margin = 12;
+  if (fieldRect.top >= visibleTop + margin && fieldRect.bottom <= visibleBottom - margin) return;
+  const delta = (fieldRect.top + fieldRect.bottom) / 2 - (visibleTop + visibleBottom) / 2;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  sheet.scrollBy({ top: delta, behavior: reduce ? "auto" : "smooth" });
+}
+
 /**
  * Keeps the mobile bottom sheet above the on-screen keyboard. iOS Safari ignores
  * `interactive-widget=resizes-content`, so the keyboard overlays fixed elements;
  * the visual viewport is the only reliable signal of how much screen is left.
  * Exposes `--kb-inset` (distance from layout bottom to keyboard top) and
- * `--sheet-max-h` (90% of the visible area) on the sheet element.
+ * `--sheet-max-h` (90% of the visible area) on the sheet element, and scrolls
+ * the field being typed into back into view once the keyboard has opened.
  */
 function useKeyboardInset(sheetRef: React.RefObject<HTMLElement | null>) {
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    let frame = 0;
+    let timer = 0;
+    const reveal = () => {
+      cancelAnimationFrame(frame);
+      // Wait a frame so the sheet has moved/shrunk before measuring
+      frame = requestAnimationFrame(() => {
+        if (sheetRef.current) revealFocusedField(sheetRef.current);
+      });
+    };
     const update = () => {
       const sheet = sheetRef.current;
       if (!sheet) return;
       const inset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
       sheet.style.setProperty("--kb-inset", `${inset}px`);
       sheet.style.setProperty("--sheet-max-h", `${Math.round(vv.height * 0.9)}px`);
-      // Keep the field being typed into visible inside the (now shorter) sheet
-      const active = document.activeElement;
-      if (inset > 0 && active instanceof HTMLElement && sheet.contains(active)) {
-        active.scrollIntoView({ block: "nearest" });
-      }
+    };
+    const onResize = () => {
+      update();
+      reveal();
+    };
+    // Covers switching fields with the keyboard already up, and browsers that
+    // report the keyboard late (iOS fires `resize` only once it has settled)
+    const onFocusIn = () => {
+      reveal();
+      window.clearTimeout(timer);
+      timer = window.setTimeout(reveal, 400);
     };
     update();
-    vv.addEventListener("resize", update);
+    vv.addEventListener("resize", onResize);
     vv.addEventListener("scroll", update);
+    document.addEventListener("focusin", onFocusIn);
     return () => {
-      vv.removeEventListener("resize", update);
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      vv.removeEventListener("resize", onResize);
       vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", onFocusIn);
     };
   }, [sheetRef]);
 }
