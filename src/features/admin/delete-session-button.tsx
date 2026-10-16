@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { deleteSessionFn } from "@/features/admin/server";
 
 interface DeleteSessionButtonProps {
@@ -28,7 +28,6 @@ export function DeleteSessionButton({
 }: DeleteSessionButtonProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -39,7 +38,7 @@ export function DeleteSessionButton({
       if (result.type !== "SUCCESS") {
         throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to delete");
       }
-      toast({ title: "Session deleted" });
+      toast.success("Session deleted");
       setOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
@@ -47,10 +46,7 @@ export function DeleteSessionButton({
       ]);
       navigate({ to: "/admin/sessions" });
     } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : "Failed to delete session",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to delete session");
     } finally {
       setIsDeleting(false);
     }

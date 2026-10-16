@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Check, Loader2 } from "lucide-react";
 import { LoginDialog } from "@/features/sessions/login-dialog";
 import { rsvpFn, sessionDetailQueryOptions } from "@/features/sessions/server";
@@ -31,7 +31,6 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<"YES" | "NO" | null>(null);
   const { celebrating, celebrateJoin } = useJoinCelebration();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const currentUser = queryClient.getQueryData<{
@@ -142,7 +141,7 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
       if (result.type === "AUTH_ERROR") {
         setPendingStatus(null);
         rollback();
-        toast({ title: "Please sign in to RSVP", variant: "destructive" });
+        toast.error("Please sign in to RSVP");
         setShowLogin(true);
         return;
       }
@@ -151,18 +150,13 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
         setPendingStatus(null);
         rollback();
         if (result.type === "BUSINESS_ERROR" && result.code === "INSUFFICIENT_BALANCE") {
-          toast({
-            title: "Not enough balance",
+          toast.error("Not enough balance", {
             description: deposit > 0
               ? `You need ${formatCurrency(deposit.toFixed(2))} to join. Top up your wallet first.`
               : "Top up your wallet to join this session.",
-            variant: "destructive",
           });
         } else {
-          toast({
-            title: result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP",
-            variant: "destructive",
-          });
+          toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP");
         }
         return;
       }
@@ -181,7 +175,7 @@ export function RsvpButtons({ sessionId, currentStatus, isLoggedIn, isFull, depo
     } catch {
       setPendingStatus(null);
       rollback();
-      toast({ title: "Failed to update RSVP", variant: "destructive" });
+      toast.error("Failed to update RSVP");
     } finally {
       setLoading(false);
       setShowLeaveDialog(false);

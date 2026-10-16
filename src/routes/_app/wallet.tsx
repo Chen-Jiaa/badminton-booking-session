@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
+import { useArrivals } from "@/hooks/use-arrivals";
 import { walletQueryOptions } from "@/features/wallet/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
@@ -29,6 +30,8 @@ export const Route = createFileRoute("/_app/wallet")({
 function WalletPage() {
   const { data } = useSuspenseQueryDeferred(walletQueryOptions());
   const { balance, pendingWithdrawalTotal, timeline } = data;
+  // A request you just submitted (or one that just got approved) rises into the history
+  const arrived = useArrivals(timeline.map(timelineKey));
 
   const balanceNum = parseFloat(balance);
   const pendingWithdrawalNum = parseFloat(pendingWithdrawalTotal);
@@ -91,7 +94,8 @@ function WalletPage() {
                   const isPending = req.status === "PENDING";
                   return (
                     <TransactionRow
-                      key={`topup-${req.id}`}
+                      key={timelineKey(item)}
+                      className={arrived.has(timelineKey(item)) ? "rise-in" : undefined}
                       icon={isPending ? Clock : XCircle}
                       tone={isPending ? "pending" : "rejected"}
                       title={isPending ? "Top Up Pending" : "Top Up Rejected"}
@@ -107,7 +111,8 @@ function WalletPage() {
                   const isPending = req.status === "PENDING";
                   return (
                     <TransactionRow
-                      key={`withdrawal-${req.id}`}
+                      key={timelineKey(item)}
+                      className={arrived.has(timelineKey(item)) ? "rise-in" : undefined}
                       icon={isPending ? Clock : XCircle}
                       tone={isPending ? "pending" : "rejected"}
                       title={isPending ? "Withdrawal Pending" : "Withdrawal Rejected"}
@@ -126,7 +131,8 @@ function WalletPage() {
 
                 return (
                   <TransactionRow
-                    key={entry.id}
+                    key={timelineKey(item)}
+                    className={arrived.has(timelineKey(item)) ? "rise-in" : undefined}
                     icon={Icon}
                     tone={isCredit ? "credit" : "debit"}
                     title={LEDGER_LABELS[entry.type as Ledger["type"]]}
@@ -147,6 +153,10 @@ function WalletPage() {
       </div>
     </div>
   );
+}
+
+function timelineKey(item: { kind: string; data: { id: string } }) {
+  return `${item.kind}-${item.data.id}`;
 }
 
 // Status tone drives the icon chip (the at-a-glance status cue) and the amount.
@@ -175,6 +185,7 @@ function TransactionRow({
   note,
   amount,
   balanceAfter,
+  className,
 }: {
   icon: LucideIcon;
   tone: TransactionTone;
@@ -183,10 +194,11 @@ function TransactionRow({
   note?: string;
   amount: string;
   balanceAfter?: string;
+  className?: string;
 }) {
   const t = TONE[tone];
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className={cn("flex items-center gap-3 px-4 py-3", className)}>
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",

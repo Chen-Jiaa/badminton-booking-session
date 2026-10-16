@@ -4,7 +4,7 @@ import { sessionsQueryOptions } from "@/features/sessions/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SessionCard } from "@/components/session-card";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_app/sessions")({
@@ -39,6 +39,22 @@ function SessionsPage() {
           </Link>
         )}
       </div>
+
+      {user?.pendingMatchSessionId && (
+        <Link
+          to="/sessions/$id"
+          params={{ id: user.pendingMatchSessionId }}
+          className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2.5 text-sm text-warning transition-[scale] active:scale-[0.98]"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full bg-warning" />
+          <span className="flex-1">
+            {user.pendingMatchesCount === 1
+              ? "A match is waiting for you"
+              : `${user.pendingMatchesCount} matches are waiting for you`}
+          </span>
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      )}
 
       <Tabs defaultValue="upcoming" className="w-full">
         <TabsList className="w-full">

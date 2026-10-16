@@ -9,6 +9,7 @@ import {
   ledger,
   topUpRequests,
   expenses,
+  matches,
 } from "@/db/schema";
 import { eq, lte, desc, and, inArray, notInArray } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
@@ -341,6 +342,8 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
       .set({ sessionId: null })
       .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, true)));
 
+    // match_players rows go with their match (ON DELETE CASCADE)
+    await db.delete(matches).where(eq(matches.sessionId, sessionId));
     await db.delete(attendances).where(eq(attendances.sessionId, sessionId));
     await db.delete(sessions).where(eq(sessions.id, sessionId));
 

@@ -48,7 +48,7 @@ const TabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={setRefs}
       className={cn(
-        "relative inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        "relative inline-flex h-11 items-center justify-center rounded-full bg-muted p-1 text-muted-foreground",
         className,
       )}
       {...props}
@@ -56,7 +56,7 @@ const TabsList = React.forwardRef<
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-sm bg-background shadow-sm",
+          "pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-background shadow-sm",
           animate &&
             "transition-[transform,width,height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         )}
@@ -80,7 +80,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-[color,scale] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground",
+      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium ring-offset-background transition-[color,scale] duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:text-foreground",
       className,
     )}
     {...props}

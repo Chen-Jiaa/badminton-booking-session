@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MapPin, Loader2, Users, Check, Share } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency } from "@/lib/utils";
 import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
@@ -82,7 +82,6 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const queryClient = useQueryClient();
   const { celebrating, celebrateJoin } = useJoinCelebration();
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   const currentUser = queryClient.getQueryData<{ balance: string } | null>(["current-user"]);
@@ -125,23 +124,19 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
         // Roll back optimistic update on failure
         if (prevData) queryClient.setQueryData(["sessions"], prevData);
         if (result.type === "BUSINESS_ERROR" && result.code === "INSUFFICIENT_BALANCE") {
-          toast({
-            title: "Not enough balance",
-            description: `You need ${formatCurrency(session.minBalance)} to join. Top up your wallet first.`,
-            variant: "destructive",
+          toast.error("Not enough balance", {
+            description:
+              `You need ${formatCurrency(session.minBalance)} to join. Top up your wallet first.`,
           });
         } else {
-          toast({
-            title: result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP",
-            variant: "destructive",
-          });
+          toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP");
         }
         return;
       }
       if (status === "YES") celebrateJoin();
     } catch {
       if (prevData) queryClient.setQueryData(["sessions"], prevData);
-      toast({ title: "Failed to update RSVP", variant: "destructive" });
+      toast.error("Failed to update RSVP");
     } finally {
       setLoading(false);
       setShowLeaveDialog(false);

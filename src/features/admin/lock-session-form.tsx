@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Lock, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { lockSessionFn, shuttleSuppliersQueryOptions } from "@/features/admin/server";
@@ -34,7 +34,6 @@ export function LockSessionForm({
   const [shuttleCount, setShuttleCount] = useState("0");
   const [supplier, setSupplier] = useState<string>(CLUB_STOCK);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: members = [] } = useQuery(shuttleSuppliersQueryOptions());
 
@@ -60,7 +59,7 @@ export function LockSessionForm({
           result.type === "BUSINESS_ERROR" ? result.code : "Failed to finalize session",
         );
       }
-      toast({ title: "Session finalized and costs deducted" });
+      toast.success("Session finalized and costs deducted");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
@@ -69,10 +68,7 @@ export function LockSessionForm({
         queryClient.invalidateQueries({ queryKey: ["wallet"] }),
       ]);
     } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : "Failed to finalize session",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to finalize session");
     } finally {
       setLoading(false);
     }

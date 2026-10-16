@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ArrowDownCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,7 +33,8 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
   const [accountNumber, setAccountNumber] = useState("");
   const [duitnowPhone, setDuitnowPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  // Only fade fields in when the player switches method, not when the sheet opens
+  const [methodSwitched, setMethodSwitched] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: savedDetails } = useQuery(savedPaymentDetailsQueryOptions());
@@ -61,6 +62,7 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
 
   function handlePaymentMethodChange(value: "BANK" | "DUITNOW") {
     setPaymentMethod(value);
+    setMethodSwitched(true);
     if (value === "DUITNOW" && savedDetails?.duitnowPhone && !duitnowPhone) {
       setDuitnowPhone(savedDetails.duitnowPhone);
     }
@@ -74,26 +76,26 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
     e.preventDefault();
     if (!amount || isNaN(parsed) || parsed <= 0) {
       setAmountInvalid(true);
-      toast({ title: "Please enter a valid amount", variant: "destructive" });
+      toast.error("Please enter a valid amount");
       return;
     }
     if (amountExceedsBalance) {
-      toast({ title: "Amount exceeds what you can withdraw", variant: "destructive" });
+      toast.error("Amount exceeds what you can withdraw");
       return;
     }
 
     if (paymentMethod === "BANK") {
       if (!bankName.trim()) {
-        toast({ title: "Please enter a bank name", variant: "destructive" });
+        toast.error("Please enter a bank name");
         return;
       }
       if (!accountNumber.trim()) {
-        toast({ title: "Please enter an account number", variant: "destructive" });
+        toast.error("Please enter an account number");
         return;
       }
     } else {
       if (!duitnowPhone.trim()) {
-        toast({ title: "Please enter a phone number", variant: "destructive" });
+        toast.error("Please enter a phone number");
         return;
       }
     }
@@ -111,17 +113,15 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
           // The available figure moved since the dialog opened (e.g. a session
           // charge or another request). Refresh so the user sees the new cap.
           await refetchWithdrawable();
-          toast({
-            title: "Amount exceeds what you can withdraw",
+          toast.error("Amount exceeds what you can withdraw", {
             description: "Your available balance changed — please check and try again.",
-            variant: "destructive",
           });
         } else {
-          toast({ title: "Failed to submit request", variant: "destructive" });
+          toast.error("Failed to submit request");
         }
         return;
       }
-      toast({ title: "Withdrawal request submitted", description: "Waiting for host approval" });
+      toast.success("Withdrawal request submitted", { description: "Waiting for host approval" });
       setAmount("");
       setBankName("");
       setAccountNumber("");
@@ -133,7 +133,7 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
         queryClient.invalidateQueries({ queryKey: ["saved-payment-details"] }),
       ]);
     } catch {
-      toast({ title: "Failed to submit request", variant: "destructive" });
+      toast.error("Failed to submit request");
     } finally {
       setLoading(false);
     }
@@ -145,7 +145,10 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
       onOpenChange={(o) => {
         setOpen(o);
         if (o) refetchWithdrawable();
-        else setAmountInvalid(false);
+        else {
+          setAmountInvalid(false);
+          setMethodSwitched(false);
+        }
       }}
     >
       <DialogTrigger asChild>
@@ -214,7 +217,7 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
           </div>
 
           {paymentMethod === "BANK" && (
-            <>
+            <div className={cn("space-y-4", methodSwitched && "reveal")}>
               <div>
                 <Label htmlFor="bank-name">Bank Name</Label>
                 <Input
@@ -237,11 +240,11 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
                   className="mt-1"
                 />
               </div>
-            </>
+            </div>
           )}
 
           {paymentMethod === "DUITNOW" && (
-            <div>
+            <div className={cn(methodSwitched && "reveal")}>
               <Label htmlFor="duitnow-phone">Phone Number</Label>
               <Input
                 id="duitnow-phone"

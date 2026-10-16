@@ -100,8 +100,9 @@ export function ConsoleNav({ pendingCount = 0 }: ConsoleNavProps) {
         );
       })}
 
-      {/* The divider lives on the wrapper so the hover fill matches the other items */}
-      <div className="shrink-0 lg:mt-4 lg:border-t lg:border-gray-200 lg:pt-3">
+      {/* Desktop only (phones get a back button in the header). The divider lives on
+          the wrapper so the hover fill matches the other items */}
+      <div className="hidden shrink-0 lg:mt-4 lg:block lg:border-t lg:border-gray-200 lg:pt-3">
         <Link
           to="/sessions"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-gray-900 active:scale-[0.97]"

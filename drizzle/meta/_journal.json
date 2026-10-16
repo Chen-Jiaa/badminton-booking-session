@@ -43,6 +43,13 @@
       "when": 1792062568604,
       "tag": "0005_modern_post",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792140200711,
+      "tag": "0006_sparkling_red_ghost",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
 import { savePushSubscriptionFn, clearPushSubscriptionFn } from "@/features/profile/server";
@@ -10,7 +10,6 @@ import { savePushSubscriptionFn, clearPushSubscriptionFn } from "@/features/prof
 export function NotificationToggle({ enabled }: { enabled: boolean }) {
   const [loading, setLoading] = useState(false);
   const [supported, setSupported] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Push needs a service worker + PushManager; hide the control where the
@@ -29,14 +28,14 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
     try {
       const subscription = await subscribeToPush();
       if (!subscription) {
-        toast({ title: "Notifications not enabled", variant: "destructive" });
+        toast.error("Notifications not enabled");
         return;
       }
       await savePushSubscriptionFn({ data: { subscription } });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: "Notifications enabled" });
+      toast.success("Notifications enabled");
     } catch {
-      toast({ title: "Couldn't enable notifications", variant: "destructive" });
+      toast.error("Couldn't enable notifications");
     } finally {
       setLoading(false);
     }
@@ -48,9 +47,9 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
       await unsubscribeFromPush();
       await clearPushSubscriptionFn();
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast({ title: "Notifications disabled" });
+      toast.success("Notifications disabled");
     } catch {
-      toast({ title: "Couldn't disable notifications", variant: "destructive" });
+      toast.error("Couldn't disable notifications");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import "@fontsource/inter/latin.css";
 import "@/styles/globals.css";
 
@@ -21,7 +21,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "apple-mobile-web-app-status-bar-style", content: "default" },
       { name: "apple-mobile-web-app-title", content: "SS Badminton Club" },
     ],
-    links: [{ rel: "manifest", href: "/manifest.json" }],
+    links: [
+      { rel: "manifest", href: "/manifest.json" },
+      { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+    ],
   }),
   component: RootLayout,
   notFoundComponent: NotFound,

@@ -89,6 +89,39 @@ function SheetHandle({ sheetRef }: { sheetRef: React.RefObject<HTMLElement | nul
   );
 }
 
+/**
+ * Keeps the mobile bottom sheet above the on-screen keyboard. iOS Safari ignores
+ * `interactive-widget=resizes-content`, so the keyboard overlays fixed elements;
+ * the visual viewport is the only reliable signal of how much screen is left.
+ * Exposes `--kb-inset` (distance from layout bottom to keyboard top) and
+ * `--sheet-max-h` (90% of the visible area) on the sheet element.
+ */
+function useKeyboardInset(sheetRef: React.RefObject<HTMLElement | null>) {
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const sheet = sheetRef.current;
+      if (!sheet) return;
+      const inset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+      sheet.style.setProperty("--kb-inset", `${inset}px`);
+      sheet.style.setProperty("--sheet-max-h", `${Math.round(vv.height * 0.9)}px`);
+      // Keep the field being typed into visible inside the (now shorter) sheet
+      const active = document.activeElement;
+      if (inset > 0 && active instanceof HTMLElement && sheet.contains(active)) {
+        active.scrollIntoView({ block: "nearest" });
+      }
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [sheetRef]);
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -102,6 +135,7 @@ const DialogContent = React.forwardRef<
     },
     [ref],
   );
+  useKeyboardInset(sheetRef);
 
   return (
   <DialogPortal>
@@ -110,7 +144,7 @@ const DialogContent = React.forwardRef<
       ref={setRefs}
       className={cn(
         // Mobile: bottom sheet anchored to the bottom edge. sm+: centered dialog.
-        "fixed inset-x-0 bottom-0 mx-auto z-50 grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[90svh] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
+        "fixed inset-x-0 bottom-[var(--kb-inset,0px)] mx-auto z-50 grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[var(--sheet-max-h,90svh)] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:max-h-[90svh] sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
         className,
       )}
       {...props}
