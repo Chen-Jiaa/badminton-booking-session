@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { UserPlus, Loader2 } from "lucide-react";
 import {
   Select,
@@ -26,7 +26,6 @@ interface AddPlayerFormProps {
 export function AddPlayerForm({ sessionId, availablePlayers }: AddPlayerFormProps) {
   const [selectedUserId, setSelectedUserId] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   async function handleAdd() {
@@ -37,14 +36,11 @@ export function AddPlayerForm({ sessionId, availablePlayers }: AddPlayerFormProp
       if (result.type !== "SUCCESS") {
         throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to add player");
       }
-      toast({ title: "Player added to session" });
+      toast.success("Player added to session");
       setSelectedUserId("");
       await queryClient.invalidateQueries({ queryKey: ["admin", "sessions", sessionId] });
     } catch (err) {
-      toast({
-        title: err instanceof Error ? err.message : "Failed to add player",
-        variant: "destructive",
-      });
+      toast.error(err instanceof Error ? err.message : "Failed to add player");
     } finally {
       setLoading(false);
     }

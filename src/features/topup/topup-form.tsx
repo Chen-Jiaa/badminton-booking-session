@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Upload, Loader2 } from "lucide-react";
 import { createTopUpFn } from "@/features/topup/server";
 
@@ -11,7 +11,6 @@ export function TopUpForm() {
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const presetAmounts = [50, 100, 150, 200];
@@ -19,7 +18,7 @@ export function TopUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount || parseFloat(amount) <= 0) {
-      toast({ title: "Please enter a valid amount", variant: "destructive" });
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -42,12 +41,12 @@ export function TopUpForm() {
         throw new Error("Failed to submit");
       }
 
-      toast({ title: "Top-up request submitted", description: "Waiting for host approval" });
+      toast.success("Top-up request submitted", { description: "Waiting for host approval" });
       setAmount("");
       setFile(null);
       await queryClient.invalidateQueries({ queryKey: ["wallet"] });
     } catch {
-      toast({ title: "Failed to submit request", variant: "destructive" });
+      toast.error("Failed to submit request");
     } finally {
       setLoading(false);
     }
@@ -104,7 +103,7 @@ export function TopUpForm() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f && f.size > 5 * 1024 * 1024) {
-                toast({ title: "File too large (max 5 MB)", variant: "destructive" });
+                toast.error("File too large (max 5 MB)");
                 e.target.value = "";
                 return;
               }

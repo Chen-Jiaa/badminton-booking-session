@@ -30,6 +30,7 @@ function DashboardLayout() {
       <BottomNav
         userRole={user?.role}
         pendingCount={(user?.pendingTopupsCount ?? 0) + (user?.pendingWithdrawalsCount ?? 0)}
+        pendingMatchesCount={user?.pendingMatchesCount ?? 0}
       />
     </div>
   );

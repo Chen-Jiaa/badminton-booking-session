@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a2463"/><stop offset="1" stop-color="#1c0716"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="cork" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#f3d3e9"/></linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity=".45"/></filter>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="14" fill="url(#sheen)"/>
+  <rect x=".5" y=".5" width="63" height="63" rx="13.5" fill="none" stroke="#fff" stroke-opacity=".1"/>
+  <g filter="url(#shadow)" transform="translate(0 1)">
+    <path d="M18.5 13 Q32 8 45.5 13 L37.5 44 H26.5 Z" fill="#fff" fill-opacity=".2"/>
+    <path d="M18.5 13 L26.5 44 M32 11 V44 M45.5 13 L37.5 44 M18.5 13 Q32 8 45.5 13 M22 26 Q32 23.5 42 26" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M25 44 H39 V46 A7 7 0 0 1 25 46 Z" fill="url(#cork)" stroke="url(#cork)" stroke-width="2.76" stroke-linejoin="round"/>
+  </g>
+</svg>

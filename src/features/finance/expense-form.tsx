@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import { createExpenseFn } from "@/features/finance/server";
 
@@ -30,7 +30,6 @@ export function AddExpenseButton() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [alreadyPaid, setAlreadyPaid] = useState(true);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   function reset() {
@@ -43,7 +42,7 @@ export function AddExpenseButton() {
   async function handleSubmit() {
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      toast({ title: "Enter a valid amount", variant: "destructive" });
+      toast.error("Enter a valid amount");
       return;
     }
 
@@ -58,7 +57,7 @@ export function AddExpenseButton() {
         },
       });
       if (result.type !== "SUCCESS") throw new Error();
-      toast({ title: "Expense recorded" });
+      toast.success("Expense recorded");
       setOpen(false);
       reset();
       await Promise.all([
@@ -67,7 +66,7 @@ export function AddExpenseButton() {
         queryClient.invalidateQueries({ queryKey: ["admin", "cash-flow"] }),
       ]);
     } catch {
-      toast({ title: "Failed to record expense", variant: "destructive" });
+      toast.error("Failed to record expense");
     } finally {
       setLoading(false);
     }

@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, CalendarIcon, Plus, Trash2, Share, Copy, Check } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -118,8 +118,6 @@ export function SessionForm({
   const [newCourtUrl, setNewCourtUrl] = useState("");
   const [resolvingCourt, setResolvingCourt] = useState(false);
 
-  const { toast } = useToast();
-
   function handleCourtSelect(value: string) {
     if (value === ADD_NEW_COURT_VALUE) {
       setShowAddCourt(true);
@@ -147,7 +145,7 @@ export function SessionForm({
       }
       await refetchCourts();
     } catch {
-      toast({ title: "Failed to delete court", variant: "destructive" });
+      toast.error("Failed to delete court");
     }
   }
 
@@ -164,9 +162,9 @@ export function SessionForm({
       setLocationMapUrl(court.mapUrl);
       setShowAddCourt(false);
       setNewCourtUrl("");
-      toast({ title: `Added "${court.name}"` });
+      toast.success(`Added "${court.name}"`);
     } catch {
-      toast({ title: "Failed to add court", variant: "destructive" });
+      toast.error("Failed to add court");
     } finally {
       setResolvingCourt(false);
     }
@@ -187,17 +185,14 @@ export function SessionForm({
       if (result.type !== "SUCCESS") {
         throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to cancel session");
       }
-      toast({ title: "Session cancelled and deposits refunded" });
+      toast.success("Session cancelled and deposits refunded");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
       ]);
       router.navigate({ to: "/sessions" });
     } catch (err) {
-      toast({
-        title: err instanceof Error ? err.message : "Failed to cancel session",
-        variant: "destructive",
-      });
+      toast.error(err instanceof Error ? err.message : "Failed to cancel session");
     } finally {
       setCancelling(false);
       setShowCancelDialog(false);
@@ -217,7 +212,7 @@ export function SessionForm({
       !location;
 
     if (missingRequired) {
-      toast({ title: "Please fill in all required fields", variant: "destructive" });
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -225,7 +220,7 @@ export function SessionForm({
     const endDateTime = combineDateTime(sessionDate, endTime);
 
     if (endDateTime <= startDateTime) {
-      toast({ title: "End time must be after start time", variant: "destructive" });
+      toast.error("End time must be after start time");
       return;
     }
 
@@ -249,7 +244,7 @@ export function SessionForm({
         const result = await updateAdminSessionFn({ data: { sessionId: sessionId!, ...payload } });
         if (result.type !== "SUCCESS")
           throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to update");
-        toast({ title: "Session updated" });
+        toast.success("Session updated");
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["sessions"] }),
           queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
@@ -260,7 +255,7 @@ export function SessionForm({
       } else {
         const result = await createAdminSessionFn({ data: payload });
         if (result.type !== "SUCCESS") throw new Error();
-        toast({ title: "Session created" });
+        toast.success("Session created");
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["sessions"] }),
           queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
@@ -268,15 +263,13 @@ export function SessionForm({
         setShareUrl(`${window.location.origin}/sessions/${result.value.id}`);
       }
     } catch (err) {
-      toast({
-        title:
-          err instanceof Error
-            ? err.message
-            : isEdit
-              ? "Failed to update session"
-              : "Failed to create session",
-        variant: "destructive",
-      });
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : isEdit
+            ? "Failed to update session"
+            : "Failed to create session",
+      );
     } finally {
       setLoading(false);
     }
@@ -295,7 +288,7 @@ export function SessionForm({
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
-      toast({ title: "Failed to copy link", variant: "destructive" });
+      toast.error("Failed to copy link");
     }
   }
 
@@ -450,7 +443,8 @@ export function SessionForm({
         </div>
 
         {showAddCourt && (
-          <div className="mt-2 flex gap-2">
+          // Drops down from the Location picker that revealed it
+          <div className="reveal mt-2 flex gap-2" style={{ "--reveal-from": "-4px" } as React.CSSProperties}>
             <Input
               placeholder="Add Google Maps link"
               value={newCourtUrl}

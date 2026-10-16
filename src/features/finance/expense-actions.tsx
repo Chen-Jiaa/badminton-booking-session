@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Trash2 } from "lucide-react";
 import {
   deleteExpenseFn,
@@ -28,7 +28,6 @@ export function ExpenseActions({
 }) {
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   async function run(action: () => Promise<{ type: string; code?: string }>, success: string) {
@@ -36,20 +35,17 @@ export function ExpenseActions({
     try {
       const result = await action();
       if (result.type !== "SUCCESS") {
-        toast({
-          title: result.type === "BUSINESS_ERROR" ? result.code! : "Something went wrong",
-          variant: "destructive",
-        });
+        toast.error(result.type === "BUSINESS_ERROR" ? result.code! : "Something went wrong");
         return;
       }
-      toast({ title: success });
+      toast.success(success);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "expenses"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "finance-summary"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "cash-flow"] }),
       ]);
     } catch {
-      toast({ title: "Something went wrong", variant: "destructive" });
+      toast.error("Something went wrong");
     } finally {
       setLoading(false);
     }

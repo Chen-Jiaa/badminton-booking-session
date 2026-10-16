@@ -1,4 +1,5 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ConsoleNav } from "@/components/console-nav";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
@@ -41,6 +42,16 @@ function ConsoleLayout() {
       <header className="sticky top-0 z-40 bg-black px-4 py-3 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            {/* Phones: an iOS-style back button where the thumb expects the way out.
+                Desktop keeps "Back to app" at the foot of the rail instead. */}
+            <Link
+              to="/sessions"
+              className="-my-1 -ml-2 flex min-h-11 items-center gap-0.5 rounded-lg pr-2.5 pl-1 text-sm font-medium text-brand transition-[opacity,scale] duration-100 active:scale-[0.97] active:opacity-60 lg:hidden"
+            >
+              <ChevronLeft className="h-5 w-5 shrink-0" />
+              <span>App</span>
+            </Link>
+            <span className="h-5 w-px bg-white/20 lg:hidden" aria-hidden />
             <span className="text-lg">🏸</span>
             <span className="font-semibold">Console</span>
           </div>

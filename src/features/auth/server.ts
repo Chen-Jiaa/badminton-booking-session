@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { db } from "@/db";
 import { users, topUpRequests, withdrawalRequests } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
+import { countMatchesWaitingOn } from "@/features/matches/queries";
 import { sessionMiddleware, setAuthCookies } from "@/middleware/auth";
 
 export const createSessionFn = createServerFn({ method: "POST" })
@@ -73,10 +74,14 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return null;
 
-    const dbUser = await db.query.users.findFirst({
-      where: eq(users.id, session.user.id),
-      columns: { role: true, balance: true, name: true, image: true },
-    });
+    // Runs on every page load, so don't make the match count wait on the user row
+    const [dbUser, pendingMatches] = await Promise.all([
+      db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+        columns: { role: true, balance: true, name: true, image: true },
+      }),
+      countMatchesWaitingOn(session.user.id),
+    ]);
 
     let pendingTopupsCount = 0;
     let pendingWithdrawalsCount = 0;
@@ -103,6 +108,9 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
       image: dbUser?.image ?? null,
       pendingTopupsCount,
       pendingWithdrawalsCount,
+      // Matches this player still has to accept or confirm, and a session to jump to
+      pendingMatchesCount: pendingMatches.count,
+      pendingMatchSessionId: pendingMatches.sessionId,
     };
   });
 

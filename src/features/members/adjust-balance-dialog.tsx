@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { createManualAdjustFn } from "@/features/finance/server";
 import { formatCurrency } from "@/lib/utils";
 
@@ -34,7 +34,6 @@ export function AdjustBalanceDialog({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const parsed = parseFloat(amount);
@@ -50,14 +49,11 @@ export function AdjustBalanceDialog({
         data: { userId, amount: Math.round(parsed * 100) / 100, note: note.trim() },
       });
       if (result.type !== "SUCCESS") {
-        toast({
-          title: result.type === "BUSINESS_ERROR" ? result.code : "Something went wrong",
-          variant: "destructive",
-        });
+        toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Something went wrong");
         return;
       }
 
-      toast({ title: `Balance adjusted by ${formatCurrency(parsed)}` });
+      toast.success(`Balance adjusted by ${formatCurrency(parsed)}`);
       setOpen(false);
       setAmount("");
       setNote("");
@@ -68,7 +64,7 @@ export function AdjustBalanceDialog({
         queryClient.invalidateQueries({ queryKey: ["admin", "finance-summary"] }),
       ]);
     } catch {
-      toast({ title: "Something went wrong", variant: "destructive" });
+      toast.error("Something went wrong");
     } finally {
       setLoading(false);
     }

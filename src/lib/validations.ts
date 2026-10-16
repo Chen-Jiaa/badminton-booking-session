@@ -107,6 +107,43 @@ export const addPlayerSchema = z.object({
   userId: z.string().min(1),
 });
 
+const matchScore = z.number().int().min(0).max(30);
+
+export const createMatchSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    format: z.enum(["SINGLES", "DOUBLES"]),
+    partnerId: z.string().min(1).nullable(),
+    opponentIds: z.array(z.string().min(1)).min(1).max(2),
+    // null: not played yet, the match goes out as an invite
+    score: z.tuple([matchScore, matchScore]).nullable(),
+  })
+  .refine(
+    (d) =>
+      d.format === "SINGLES"
+        ? d.partnerId === null && d.opponentIds.length === 1
+        : d.partnerId !== null && d.opponentIds.length === 2,
+    { message: "Wrong number of players for the format" },
+  );
+
+export const submitMatchResultSchema = z.object({
+  matchId: z.string().min(1),
+  // enter: first score for a match in play · dispute: replace a score you disagree with
+  mode: z.enum(["enter", "dispute"]),
+  scoreA: matchScore,
+  scoreB: matchScore,
+});
+
+export const respondToMatchSchema = z.object({
+  matchId: z.string().min(1),
+  // accept/decline an invite · confirm a result · decline a result as "we didn't play"
+  action: z.enum(["accept", "decline", "confirm"]),
+});
+
+export const deleteMatchSchema = z.object({
+  matchId: z.string().min(1),
+});
+
 export type TopUpRequestInput = z.infer<typeof topUpRequestSchema>;
 export type WithdrawalRequestInput = z.infer<typeof withdrawalRequestSchema>;
 export type WithdrawalBankInput = Extract<WithdrawalRequestInput, { paymentMethod: "BANK" }>;
@@ -122,3 +159,7 @@ export type ManualAdjustInput = z.infer<typeof manualAdjustSchema>;
 export type LockSessionInput = z.infer<typeof lockSessionSchema>;
 export type AddPlayerInput = z.infer<typeof addPlayerSchema>;
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
+export type CreateMatchInput = z.infer<typeof createMatchSchema>;
+export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>;
+export type RespondToMatchInput = z.infer<typeof respondToMatchSchema>;
+export type DeleteMatchInput = z.infer<typeof deleteMatchSchema>;

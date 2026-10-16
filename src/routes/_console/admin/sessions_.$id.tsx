@@ -14,7 +14,7 @@ import { DeleteSessionButton } from "@/features/admin/delete-session-button";
 import { ShareButton } from "@/features/admin/share-button";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_console/admin/sessions_/$id")({
   loader: async ({ context: { queryClient }, params: { id } }) => {
@@ -32,7 +32,6 @@ function AdminSessionDetailPage() {
   const { data } = useSuspenseQueryDeferred(adminSessionDetailQueryOptions(id));
   const { gameSession, availablePlayers } = data;
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
@@ -46,13 +45,10 @@ function AdminSessionDetailPage() {
       if (result.type !== "SUCCESS") {
         throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to remove player");
       }
-      toast({ title: "Player removed from session" });
+      toast.success("Player removed from session");
       await queryClient.invalidateQueries({ queryKey: ["admin", "sessions", id] });
     } catch (err) {
-      toast({
-        title: err instanceof Error ? err.message : "Failed to remove player",
-        variant: "destructive",
-      });
+      toast.error(err instanceof Error ? err.message : "Failed to remove player");
     } finally {
       setRemovingUserId(null);
     }

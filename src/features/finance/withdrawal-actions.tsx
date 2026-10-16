@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Check, X, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -17,7 +17,6 @@ export function WithdrawalActions({ requestId }: { requestId: string }) {
   const [loading, setLoading] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   async function refresh() {
@@ -39,18 +38,16 @@ export function WithdrawalActions({ requestId }: { requestId: string }) {
       if (result.type !== "SUCCESS") {
         const isInsufficient =
           result.type === "BUSINESS_ERROR" && result.code === "INSUFFICIENT_BALANCE";
-        toast({
-          title: isInsufficient ? "Member no longer has enough balance" : "Failed to confirm",
+        toast.error(isInsufficient ? "Member no longer has enough balance" : "Failed to confirm", {
           description:
             result.type === "BUSINESS_ERROR" && !isInsufficient ? result.code : undefined,
-          variant: "destructive",
         });
         return;
       }
-      toast({ title: "Withdrawal marked as paid" });
+      toast.success("Withdrawal marked as paid");
       await refresh();
     } catch {
-      toast({ title: "Failed to confirm", variant: "destructive" });
+      toast.error("Failed to confirm");
     } finally {
       setLoading(false);
     }
@@ -58,18 +55,18 @@ export function WithdrawalActions({ requestId }: { requestId: string }) {
 
   async function handleReject() {
     if (!rejectReason.trim()) {
-      toast({ title: "Please provide a reason", variant: "destructive" });
+      toast.error("Please provide a reason");
       return;
     }
     setLoading(true);
     try {
       const result = await rejectWithdrawalFn({ data: { requestId, reason: rejectReason } });
       if (result.type !== "SUCCESS") throw new Error();
-      toast({ title: "Withdrawal rejected" });
+      toast.success("Withdrawal rejected");
       setShowRejectDialog(false);
       await refresh();
     } catch {
-      toast({ title: "Failed to reject", variant: "destructive" });
+      toast.error("Failed to reject");
     } finally {
       setLoading(false);
     }

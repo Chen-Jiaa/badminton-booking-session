@@ -1,14 +1,17 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
+import { useArrivals } from "@/hooks/use-arrivals";
 import { sessionDetailQueryOptions } from "@/features/sessions/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Lock, ChevronLeft } from "lucide-react";
 import { RsvpButtons } from "@/features/sessions/rsvp-buttons";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { courtsQueryOptions } from "@/features/admin/server";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SessionMatches } from "@/features/matches/session-matches";
+import { sessionMatchesQueryOptions } from "@/features/matches/server";
 
 function formatSessionDate(date: Date): string {
   const day = date.getDate();
@@ -28,6 +31,7 @@ function formatTime(date: Date): string {
 export const Route = createFileRoute("/_app/sessions_/$id")({
   loader: async ({ context: { queryClient, user }, params: { id } }) => {
     const detailPromise = queryClient.ensureQueryData(sessionDetailQueryOptions(id));
+    queryClient.prefetchQuery(sessionMatchesQueryOptions(id));
     const data =
       user?.role === "HOST" || user?.role === "ADMIN"
         ? (await Promise.all([detailPromise, queryClient.ensureQueryData(courtsQueryOptions())]))[0]
@@ -47,6 +51,8 @@ function SessionDetailPage() {
   const myAttendance = userId ? gameSession.attendances.find((a) => a.userId === userId) : null;
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
+  // Someone who joins while you're looking lands in the grid like a court slot filling
+  const arrivedIds = useArrivals(yesAttendees.map((a) => a.userId));
   const now = new Date();
   const isLocked = gameSession.status === "LOCKED";
   const hasStarted = now >= gameSession.startTime;
@@ -210,7 +216,7 @@ function SessionDetailPage() {
             <div className="grid grid-cols-5 gap-x-3 gap-y-4">
               {yesAttendees.map((a) => (
                 <div key={a.id} className="flex flex-col items-center gap-1">
-                  <Avatar className="h-12 w-12">
+                  <Avatar className={cn("h-12 w-12", arrivedIds.has(a.userId) && "slot-fill")}>
                     <AvatarImage src={a.user.image || undefined} />
                     <AvatarFallback className="text-xs bg-brand text-brand-foreground">
                       {a.user.name?.charAt(0).toUpperCase()}
@@ -227,6 +233,14 @@ function SessionDetailPage() {
             </div>
           </div>
         )}
+
+        <SessionMatches
+          sessionId={id}
+          startTime={gameSession.startTime}
+          endTime={gameSession.endTime}
+          me={myAttendance?.status === "YES" ? myAttendance.user : null}
+          attendees={yesAttendees.map((a) => a.user)}
+        />
 
         {canManage && !isLocked && hasEnded && (
           <Card className="mt-4">

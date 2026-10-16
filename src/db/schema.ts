@@ -36,6 +36,18 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
 ]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
 export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
+export const matchFormatEnum = pgEnum("match_format", ["SINGLES", "DOUBLES"]);
+// INVITED: waiting for an opponent to accept · IN_PLAY: accepted, no score yet ·
+// AWAITING_CONFIRM: a score is in, the other side must confirm · CONFIRMED: counts ·
+// DECLINED: turned down, or "we didn't play"
+export const matchStatusEnum = pgEnum("match_status", [
+  "INVITED",
+  "IN_PLAY",
+  "AWAITING_CONFIRM",
+  "CONFIRMED",
+  "DECLINED",
+]);
+export const matchSideEnum = pgEnum("match_side", ["A", "B"]);
 
 // TABLES
 export const users = pgTable(
@@ -255,6 +267,63 @@ export const courts = pgTable("courts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// A game played during a session. Side A is always the recorder's side. Only
+// CONFIRMED matches count towards stats and the leaderboard.
+export const matches = pgTable(
+  "matches",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    sessionId: text("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    format: matchFormatEnum("format").notNull(),
+    status: matchStatusEnum("status").notNull(),
+    // null until someone enters a result
+    scoreA: integer("score_a"),
+    scoreB: integer("score_b"),
+    // The score a dispute replaced, so both sides can see what changed
+    previousScoreA: integer("previous_score_a"),
+    previousScoreB: integer("previous_score_b"),
+    createdById: text("created_by_id")
+      .notNull()
+      .references(() => users.id),
+    // Who entered the current score; someone on the other side has to confirm it
+    submittedById: text("submitted_by_id").references(() => users.id),
+    confirmedAt: timestamp("confirmed_at"),
+    // Unanswered invites and results stop being actionable after this
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    sessionIdIdx: index("matches_session_id_idx").on(table.sessionId),
+    statusIdx: index("matches_status_idx").on(table.status),
+  }),
+);
+
+export const matchPlayers = pgTable(
+  "match_players",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    matchId: text("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    side: matchSideEnum("side").notNull(),
+  },
+  (table) => ({
+    matchUserUnique: unique("match_players_match_user_unique").on(table.matchId, table.userId),
+    matchIdIdx: index("match_players_match_id_idx").on(table.matchId),
+    userIdIdx: index("match_players_user_id_idx").on(table.userId),
+  }),
+);
+
 // RELATIONS
 export const usersRelations = relations(users, ({ many }) => ({
   ledgerEntries: many(ledger, { relationName: "userLedger" }),
@@ -333,6 +402,26 @@ export const sessionsRelations = relations(sessions, ({ one, many }) => ({
   attendances: many(attendances),
   ledgerEntries: many(ledger),
   expenses: many(expenses, { relationName: "sessionExpenses" }),
+  matches: many(matches),
+}));
+
+export const matchesRelations = relations(matches, ({ one, many }) => ({
+  session: one(sessions, {
+    fields: [matches.sessionId],
+    references: [sessions.id],
+  }),
+  players: many(matchPlayers),
+}));
+
+export const matchPlayersRelations = relations(matchPlayers, ({ one }) => ({
+  match: one(matches, {
+    fields: [matchPlayers.matchId],
+    references: [matches.id],
+  }),
+  user: one(users, {
+    fields: [matchPlayers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const attendancesRelations = relations(attendances, ({ one }) => ({
@@ -365,4 +454,6 @@ export type NewCourt = typeof courts.$inferInsert;
 export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
 export type NewWithdrawalRequest = typeof withdrawalRequests.$inferInsert;
 export type Expense = typeof expenses.$inferSelect;
+export type Match = typeof matches.$inferSelect;
+export type MatchPlayer = typeof matchPlayers.$inferSelect;
 export type NewExpense = typeof expenses.$inferInsert;

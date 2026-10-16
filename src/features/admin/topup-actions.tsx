@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Check, X, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -17,7 +17,6 @@ export function TopUpActions({ requestId }: { requestId: string }) {
   const [loading, setLoading] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   async function handleConfirm() {
@@ -25,21 +24,19 @@ export function TopUpActions({ requestId }: { requestId: string }) {
     try {
       const result = await confirmTopUpFn({ data: { requestId } });
       if (result.type !== "SUCCESS") {
-        toast({
-          title: "Failed to confirm",
+        toast.error("Failed to confirm", {
           description: result.type === "BUSINESS_ERROR" ? result.code : undefined,
-          variant: "destructive",
         });
         return;
       }
-      toast({ title: "Top-up confirmed" });
+      toast.success("Top-up confirmed");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "topups"] }),
         queryClient.invalidateQueries({ queryKey: ["current-user"] }),
         queryClient.invalidateQueries({ queryKey: ["wallet"] }),
       ]);
     } catch {
-      toast({ title: "Failed to confirm", variant: "destructive" });
+      toast.error("Failed to confirm");
     } finally {
       setLoading(false);
     }
@@ -47,21 +44,21 @@ export function TopUpActions({ requestId }: { requestId: string }) {
 
   async function handleReject() {
     if (!rejectReason.trim()) {
-      toast({ title: "Please provide a reason", variant: "destructive" });
+      toast.error("Please provide a reason");
       return;
     }
     setLoading(true);
     try {
       const result = await rejectTopUpFn({ data: { requestId, reason: rejectReason } });
       if (result.type !== "SUCCESS") throw new Error();
-      toast({ title: "Top-up rejected" });
+      toast.success("Top-up rejected");
       setShowRejectDialog(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin", "topups"] }),
         queryClient.invalidateQueries({ queryKey: ["current-user"] }),
       ]);
     } catch {
-      toast({ title: "Failed to reject", variant: "destructive" });
+      toast.error("Failed to reject");
     } finally {
       setLoading(false);
     }
