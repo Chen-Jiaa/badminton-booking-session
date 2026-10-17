@@ -69,6 +69,7 @@ function ConsoleLayout() {
           <div className="lg:sticky lg:top-24">
             <ConsoleNav
               pendingCount={(user?.pendingTopupsCount ?? 0) + (user?.pendingWithdrawalsCount ?? 0)}
+              lateCancelCount={user?.pendingLateCancelsCount ?? 0}
             />
           </div>
         </aside>

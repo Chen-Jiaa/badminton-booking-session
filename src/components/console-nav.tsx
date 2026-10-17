@@ -6,17 +6,23 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/admin/finance", icon: BarChart3, label: "Finance" },
   { href: "/admin/members", icon: Users, label: "Members" },
-  { href: "/admin/sessions", icon: CalendarDays, label: "Sessions" },
+  {
+    href: "/admin/sessions",
+    icon: CalendarDays,
+    label: "Sessions",
+    badgeKey: "lateCancels" as const,
+  },
   { href: "/admin/topups", icon: Wallet, label: "Transactions", badgeKey: "pending" as const },
 ] satisfies {
   href: string;
   icon: typeof Users;
   label: string;
-  badgeKey?: "pending";
+  badgeKey?: "pending" | "lateCancels";
 }[];
 
 interface ConsoleNavProps {
   pendingCount?: number;
+  lateCancelCount?: number;
 }
 
 /**
@@ -24,7 +30,7 @@ interface ConsoleNavProps {
  * strip under the header on phones — the console is a desktop-first surface,
  * but the accountant still opens it on their phone.
  */
-export function ConsoleNav({ pendingCount = 0 }: ConsoleNavProps) {
+export function ConsoleNav({ pendingCount = 0, lateCancelCount = 0 }: ConsoleNavProps) {
   const matchRoute = useMatchRoute();
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -62,7 +68,8 @@ export function ConsoleNav({ pendingCount = 0 }: ConsoleNavProps) {
         aria-hidden
         className={cn(
           "pointer-events-none absolute left-0 top-0 rounded-lg bg-brand/30",
-          animate && "transition-[transform,width,height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          animate &&
+            "transition-[transform,width,height,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
         )}
         style={{
           width: pill?.w ?? 0,
@@ -73,7 +80,12 @@ export function ConsoleNav({ pendingCount = 0 }: ConsoleNavProps) {
       />
       {items.map((item, i) => {
         const isActive = !!matchRoute({ to: item.href, fuzzy: true });
-        const badge = item.badgeKey === "pending" ? pendingCount : 0;
+        const badge =
+          item.badgeKey === "pending"
+            ? pendingCount
+            : item.badgeKey === "lateCancels"
+              ? lateCancelCount
+              : 0;
 
         return (
           <Link

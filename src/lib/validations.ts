@@ -84,6 +84,19 @@ export const rsvpSchema = z.object({
   status: z.enum(["YES", "NO", "WAITLIST"]),
 });
 
+export const resolveLateCancelSchema = z.object({
+  sessionId: z.string().min(1),
+  userId: z.string().min(1),
+  decision: z.enum(["APPROVE", "REJECT"]),
+  // Waitlisted player to take the spot when approving; omit to leave it open
+  replacementUserId: z.string().min(1).nullish(),
+});
+
+export const promoteWaitlistSchema = z.object({
+  sessionId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
 export const manualAdjustSchema = z.object({
   userId: z.string().min(1),
   amount: z.number().multipleOf(0.01),

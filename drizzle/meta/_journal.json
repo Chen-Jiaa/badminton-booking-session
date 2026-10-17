@@ -50,6 +50,13 @@
       "when": 1792140200711,
       "tag": "0006_sparkling_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792148982612,
+      "tag": "0007_sloppy_mauler",
+      "breakpoints": true
     }
   ]
 }

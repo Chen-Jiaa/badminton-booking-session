@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency } from "@/lib/utils";
 import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
+import { isLateCancel } from "@/features/sessions/rules";
 
 type SessionCardProps = {
   session: {
@@ -35,7 +36,7 @@ type SessionCardProps = {
     attendances: { status: string; userId: string; finalCost?: string | null }[];
     createdBy: { name: string; image: string | null };
   };
-  userRsvp?: { status: string; finalCost?: string | null } | null;
+  userRsvp?: { status: string; finalCost?: string | null; lateCancelStatus?: string | null } | null;
   userId?: string | null;
   isPast?: boolean;
   canManage?: boolean;
@@ -55,15 +56,23 @@ function formatCardTime(date: Date): string {
     .toUpperCase();
 }
 
-export function SessionCard({ session, userRsvp, userId, isPast = false, canManage = false }: SessionCardProps) {
+export function SessionCard({
+  session,
+  userRsvp,
+  userId,
+  isPast = false,
+  canManage = false,
+}: SessionCardProps) {
   const now = new Date();
   const yesCount = session.attendances.filter((a) => a.status === "YES").length;
   const slotsLeft = session.maxPlayers - yesCount;
   const isFull = slotsLeft <= 0;
+  const waitlistCount = session.attendances.filter((a) => a.status === "WAITLIST").length;
   const isJoined = userRsvp?.status === "YES";
+  const isWaitlisted = userRsvp?.status === "WAITLIST";
   const isLocked = session.status === "LOCKED";
   const pastDeadline = session.rsvpDeadline ? now >= session.rsvpDeadline : false;
-  const buttonDisabled = (isFull && !isJoined) || pastDeadline;
+  const buttonDisabled = pastDeadline && !isWaitlisted;
   const deposit = parseFloat(session.minBalance);
 
   const courtLabel = session.courtNumbers
@@ -85,8 +94,13 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
   const navigate = useNavigate();
 
   const currentUser = queryClient.getQueryData<{ balance: string } | null>(["current-user"]);
-  const hasInsufficientBalance =
-    !!(userId && !isJoined && deposit > 0 && currentUser && parseFloat(currentUser.balance) < deposit);
+  const hasInsufficientBalance = !!(
+    userId &&
+    !isJoined &&
+    deposit > 0 &&
+    currentUser &&
+    parseFloat(currentUser.balance) < deposit
+  );
 
   async function handleRsvp(status: "YES" | "NO", e: React.MouseEvent) {
     e.preventDefault();
@@ -107,7 +121,10 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
                 ...s,
                 attendances:
                   status === "YES"
-                    ? [...s.attendances.filter((a) => a.userId !== userId), { userId, status: "YES" }]
+                    ? [
+                        ...s.attendances.filter((a) => a.userId !== userId),
+                        { userId, status: "YES" },
+                      ]
                     : s.attendances.map((a) => (a.userId === userId ? { ...a, status: "NO" } : a)),
               },
         );
@@ -125,8 +142,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
         if (prevData) queryClient.setQueryData(["sessions"], prevData);
         if (result.type === "BUSINESS_ERROR" && result.code === "INSUFFICIENT_BALANCE") {
           toast.error("Not enough balance", {
-            description:
-              `You need ${formatCurrency(session.minBalance)} to join. Top up your wallet first.`,
+            description: `You need ${formatCurrency(session.minBalance)} to join. Top up your wallet first.`,
           });
         } else {
           toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to update RSVP");
@@ -149,7 +165,11 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
   function handleButtonClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (isJoined) {
+    // The waitlist and late cancellations have rules to explain, so they live on
+    // the session page rather than in a quick tap here
+    if (isWaitlisted || (isJoined && isLateCancel(session.startTime)) || (!isJoined && isFull)) {
+      navigate({ to: "/sessions/$id", params: { id: session.id } });
+    } else if (isJoined) {
       setShowLeaveDialog(true);
     } else {
       handleRsvp("YES", e);
@@ -193,135 +213,150 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
         className={`hover:shadow-md transition-[box-shadow,scale] active:scale-[0.99] bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isPast && canManage && !isLocked ? "border-2 border-warning" : "border border-gray-100"}`}
       >
         <CardContent className="p-5">
-            {/* Primary: date & time */}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-bold text-lg leading-tight">{formatCardDate(session.startTime)}</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {formatCardTime(session.startTime)} – {formatCardTime(session.endTime)}
-                  <span className="mx-2">·</span>
-                  {courtLabel}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleShare}
-                aria-label="Share session"
-                className="relative -mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-foreground active:scale-90 after:absolute after:-inset-1 after:content-['']"
-              >
-                <Share className="h-4 w-4" />
-              </button>
+          {/* Primary: date & time */}
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="font-bold text-lg leading-tight">{formatCardDate(session.startTime)}</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {formatCardTime(session.startTime)} – {formatCardTime(session.endTime)}
+                <span className="mx-2">·</span>
+                {courtLabel}
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={handleShare}
+              aria-label="Share session"
+              className="relative -mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-foreground active:scale-90 after:absolute after:-inset-1 after:content-['']"
+            >
+              <Share className="h-4 w-4" />
+            </button>
+          </div>
 
-            {/* Secondary metadata: host + location */}
-            <div className="mt-3 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-5 w-5 shrink-0">
-                  <AvatarImage src={session.createdBy.image || undefined} />
-                  <AvatarFallback className="text-[11px] bg-brand text-brand-foreground">
-                    {hostInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-muted-foreground">{session.createdBy.name}</span>
+          {/* Secondary metadata: host + location */}
+          <div className="mt-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-5 w-5 shrink-0">
+                <AvatarImage src={session.createdBy.image || undefined} />
+                <AvatarFallback className="text-[11px] bg-brand text-brand-foreground">
+                  {hostInitials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm text-muted-foreground">{session.createdBy.name}</span>
+            </div>
+            {session.location && (
+              <div className="flex items-start gap-2">
+                <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{session.location}</span>
               </div>
-              {session.location && (
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">{session.location}</span>
+            )}
+          </div>
+
+          {/* Action zone */}
+          <div className="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
+            {isPast ? (
+              <>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>{yesCount} attended</span>
                 </div>
-              )}
-            </div>
-
-            {/* Action zone */}
-            <div className="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
-              {isPast ? (
-                <>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Users className="h-4 w-4 shrink-0" />
-                    <span>{yesCount} attended</span>
+                {userRsvp?.finalCost ? (
+                  <p className="text-sm font-semibold text-danger text-center">
+                    -{formatCurrency(userRsvp.finalCost)}
+                  </p>
+                ) : session.costPerPlayer ? (
+                  <p className="text-sm text-muted-foreground text-center">
+                    {formatCurrency(session.costPerPlayer)}/person
+                  </p>
+                ) : null}
+                {canManage && !isLocked && (
+                  <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-danger text-white">
+                    Needs finalization
                   </div>
-                  {userRsvp?.finalCost ? (
-                    <p className="text-sm font-semibold text-danger text-center">
-                      -{formatCurrency(userRsvp.finalCost)}
-                    </p>
-                  ) : session.costPerPlayer ? (
-                    <p className="text-sm text-muted-foreground text-center">
-                      {formatCurrency(session.costPerPlayer)}/person
-                    </p>
-                  ) : null}
-                  {canManage && !isLocked && (
-                    <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-danger text-white">
-                      Needs finalization
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className={`flex items-center gap-2 text-sm ${isFull ? "text-danger" : "text-muted-foreground"}`}>
-                    <Users className="h-4 w-4 shrink-0" />
-                    <span>
-                      {isFull
-                        ? `${yesCount}/${session.maxPlayers} · Full`
-                        : `${slotsLeft}/${session.maxPlayers} left`}
-                    </span>
+                )}
+              </>
+            ) : (
+              <>
+                <div
+                  className={`flex items-center gap-2 text-sm ${isFull ? "text-danger" : "text-muted-foreground"}`}
+                >
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>
+                    {isFull
+                      ? `${yesCount}/${session.maxPlayers} · Full${waitlistCount > 0 ? ` · ${waitlistCount} waiting` : ""}`
+                      : `${slotsLeft}/${session.maxPlayers} left`}
+                  </span>
+                </div>
+                {!isLocked && !userId && (
+                  <Button
+                    variant="brand"
+                    size="cta"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowLoginDialog(true);
+                    }}
+                  >
+                    Sign in
+                  </Button>
+                )}
+                {!isLocked && userId && celebrating && (
+                  <div className="relative">
+                    <JoinBurst />
+                    <Button
+                      disabled
+                      aria-live="polite"
+                      size="cta"
+                      className="join-pop bg-brand-foreground shadow-sm disabled:pointer-events-auto disabled:opacity-100"
+                      style={{ color: "hsl(var(--background))" }}
+                    >
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                      You&rsquo;re in!
+                    </Button>
                   </div>
-                  {!isLocked && !userId && (
-                    <Button
-                      variant="brand"
-                      size="cta"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowLoginDialog(true); }}
-                    >
-                      Sign in
-                    </Button>
-                  )}
-                  {!isLocked && userId && celebrating && (
-                    <div className="relative">
-                      <JoinBurst />
-                      <Button
-                        disabled
-                        aria-live="polite"
-                        size="cta"
-                        className="join-pop bg-brand-foreground shadow-sm disabled:pointer-events-auto disabled:opacity-100"
-                        style={{ color: "hsl(var(--background))" }}
-                      >
-                        <Check className="h-4 w-4" strokeWidth={3} />
-                        You&rsquo;re in!
-                      </Button>
-                    </div>
-                  )}
-                  {!isLocked && userId && !celebrating && (
-                    <Button
-                      variant={isJoined ? "joined" : "brand"}
-                      size="cta"
-                      onClick={handleButtonClick}
-                      disabled={loading || (!isJoined && buttonDisabled)}
-                      // Keep taps on a disabled button from falling through to the card link
-                      className="disabled:pointer-events-auto"
-                    >
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isJoined ? (
-                        <><Check className="h-4 w-4" />Joined</>
-                      ) : pastDeadline ? (
-                        "RSVP closed"
-                      ) : isFull ? (
-                        "Session full"
-                      ) : (
-                        "Join Game"
-                      )}
-                    </Button>
-                  )}
-                  {!isLocked && deposit > 0 && !isJoined && (
-                    <p className={`text-xs text-center ${hasInsufficientBalance ? "text-danger font-medium" : "text-muted-foreground"}`}>
-                      {hasInsufficientBalance
-                        ? `Wallet needs ${formatCurrency(session.minBalance)} to join — top up first`
-                        : `${formatCurrency(session.minBalance)} deposit required to join`}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </CardContent>
+                )}
+                {!isLocked && userId && !celebrating && (
+                  <Button
+                    variant={isJoined || isWaitlisted ? "joined" : "brand"}
+                    size="cta"
+                    onClick={handleButtonClick}
+                    disabled={loading || (!isJoined && buttonDisabled)}
+                    // Keep taps on a disabled button from falling through to the card link
+                    className="disabled:pointer-events-auto"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isJoined && userRsvp?.lateCancelStatus === "PENDING" ? (
+                      "Joined · cancellation pending"
+                    ) : isJoined ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Joined
+                      </>
+                    ) : isWaitlisted ? (
+                      "On the waitlist"
+                    ) : pastDeadline ? (
+                      "RSVP closed"
+                    ) : isFull ? (
+                      "Session full · Join waitlist"
+                    ) : (
+                      "Join Game"
+                    )}
+                  </Button>
+                )}
+                {!isLocked && deposit > 0 && !isJoined && (
+                  <p
+                    className={`text-xs text-center ${hasInsufficientBalance ? "text-danger font-medium" : "text-muted-foreground"}`}
+                  >
+                    {hasInsufficientBalance
+                      ? `Wallet needs ${formatCurrency(session.minBalance)} to join — top up first`
+                      : `${formatCurrency(session.minBalance)} deposit required to join`}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
@@ -340,11 +375,7 @@ export function SessionCard({ session, userRsvp, userId, isPast = false, canMana
             <Button variant="outline" onClick={() => setShowLeaveDialog(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              disabled={loading}
-              onClick={(e) => handleRsvp("NO", e)}
-            >
+            <Button variant="destructive" disabled={loading} onClick={(e) => handleRsvp("NO", e)}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Leave"}
             </Button>
           </DialogFooter>

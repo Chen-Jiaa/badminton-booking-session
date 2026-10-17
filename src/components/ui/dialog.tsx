@@ -174,7 +174,7 @@ function useKeyboardInset(sheetRef: React.RefObject<HTMLElement | null>) {
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onOpenAutoFocus, ...props }, ref) => {
   const sheetRef = React.useRef<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -193,9 +193,19 @@ const DialogContent = React.forwardRef<
       ref={setRefs}
       className={cn(
         // Mobile: bottom sheet anchored to the bottom edge. sm+: centered dialog.
-        "fixed inset-x-0 bottom-[var(--kb-inset,0px)] mx-auto z-50 grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[var(--sheet-max-h,90svh)] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:max-h-[90svh] sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
+        "fixed inset-x-0 bottom-[var(--kb-inset,0px)] mx-auto z-50 outline-none grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[var(--sheet-max-h,90svh)] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:max-h-[90svh] sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
         className,
       )}
+      onOpenAutoFocus={(e) => {
+        onOpenAutoFocus?.(e);
+        // On touch devices, focusing the first field would pop the keyboard the
+        // moment the sheet opens. Focus the sheet itself; the keyboard comes up
+        // only when the user taps a field.
+        if (!e.defaultPrevented && window.matchMedia("(pointer: coarse)").matches) {
+          e.preventDefault();
+          sheetRef.current?.focus({ preventScroll: true });
+        }
+      }}
       {...props}
     >
       <SheetHandle sheetRef={sheetRef} />

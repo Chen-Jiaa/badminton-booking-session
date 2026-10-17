@@ -36,6 +36,14 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
 ]);
 export const rsvpStatusEnum = pgEnum("rsvp_status", ["YES", "NO", "WAITLIST"]);
 export const sessionStatusEnum = pgEnum("session_status", ["OPEN", "LOCKED"]);
+// Leaving within LATE_CANCEL_WINDOW_MS of the start needs a host/admin's say-so.
+// PENDING: asked, still holding the spot · APPROVED: let go, deposit refunded ·
+// REJECTED: kept on the roster and charged their share at finalize
+export const lateCancelStatusEnum = pgEnum("late_cancel_status", [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
 export const matchFormatEnum = pgEnum("match_format", ["SINGLES", "DOUBLES"]);
 // INVITED: waiting for an opponent to accept · IN_PLAY: accepted, no score yet ·
 // AWAITING_CONFIRM: a score is in, the other side must confirm · CONFIRMED: counts ·
@@ -207,6 +215,12 @@ export const attendances = pgTable(
       .references(() => users.id),
     status: rsvpStatusEnum("status").default("YES").notNull(),
     finalCost: decimal("final_cost", { precision: 10, scale: 2 }),
+    // Queue position: the waitlist is served oldest first
+    waitlistedAt: timestamp("waitlisted_at"),
+    lateCancelStatus: lateCancelStatusEnum("late_cancel_status"),
+    lateCancelRequestedAt: timestamp("late_cancel_requested_at"),
+    lateCancelResolvedAt: timestamp("late_cancel_resolved_at"),
+    lateCancelResolvedById: text("late_cancel_resolved_by_id").references(() => users.id),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

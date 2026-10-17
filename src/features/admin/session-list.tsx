@@ -11,7 +11,7 @@ interface Session {
   courts: number;
   costPerPlayer: string | null;
   status: "OPEN" | "LOCKED";
-  attendances: { status: string }[];
+  attendances: { status: string; lateCancelStatus: string | null }[];
 }
 
 interface SessionListProps {
@@ -29,6 +29,10 @@ export function SessionList({ sessions }: SessionListProps) {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {sessions.map((s) => {
         const yesCount = s.attendances.filter((a) => a.status === "YES").length;
+        const waitlistCount = s.attendances.filter((a) => a.status === "WAITLIST").length;
+        const lateCancelCount = s.attendances.filter(
+          (a) => a.status === "YES" && a.lateCancelStatus === "PENDING",
+        ).length;
         return (
           <Card key={s.id} className="hover:shadow-md transition-shadow">
             <CardContent className="py-4">
@@ -38,7 +42,14 @@ export function SessionList({ sessions }: SessionListProps) {
                     <p className="truncate font-medium">{formatDateTime(s.startTime)}</p>
                     <p className="text-sm text-muted-foreground">
                       {s.courts} court{s.courts > 1 ? "s" : ""} • {yesCount} confirmed
+                      {waitlistCount > 0 && ` • ${waitlistCount} waitlisted`}
                     </p>
+                    {lateCancelCount > 0 && (
+                      <p className="text-sm font-medium text-warning">
+                        {lateCancelCount} late cancellation{lateCancelCount > 1 ? "s" : ""} to
+                        review
+                      </p>
+                    )}
                     {s.costPerPlayer && (
                       <p className="text-sm text-muted-foreground">
                         {formatCurrency(s.costPerPlayer)}/person

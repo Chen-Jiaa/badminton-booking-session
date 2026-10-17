@@ -1,10 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { sessions, users, attendances, ledger } from "@/db/schema";
-import { eq, gte, lte, desc, and, or, inArray } from "drizzle-orm";
+import { sessions, users, attendances } from "@/db/schema";
+import { eq, gte, lte, desc, and, or, count } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { rsvpSchema } from "@/lib/validations";
+import { sendLateCancelRequestedNotification, sendWaitlistPromotedNotification } from "@/lib/push";
+import { approverTokens, promoteFromWaitlist, refundDeposit, takeDeposit } from "./roster";
+import { isLateCancel } from "./rules";
 
 type Result<T = void> =
   | { type: "SUCCESS"; value: T }
@@ -93,124 +96,217 @@ export const sessionDetailQueryOptions = (id: string) =>
     queryFn: () => fetchSessionDetailFn({ data: { id } }),
   });
 
+export type RsvpOutcome =
+  | "JOINED"
+  | "WAITLISTED"
+  | "LEFT"
+  | "LEFT_WAITLIST"
+  | "LATE_CANCEL_REQUESTED";
+
 export const rsvpFn = createServerFn({ method: "POST" })
   .validator((data: { sessionId: string; status: "YES" | "NO" | "WAITLIST" }) => data)
   .middleware([sessionMiddleware])
-  .handler(async ({ data, context: { session } }): Promise<Result<{ newBalance: string }>> => {
-    if (!session?.user.id) return { type: "AUTH_ERROR" };
+  .handler(
+    async ({
+      data,
+      context: { session },
+    }): Promise<Result<{ newBalance: string; outcome: RsvpOutcome }>> => {
+      if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const validated = rsvpSchema.parse(data);
-    const userId = session.user.id;
+      const validated = rsvpSchema.parse(data);
+      const userId = session.user.id;
 
-    const [gameSession, user, existing, depositLedger] = await Promise.all([
-      db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
-      db.query.users.findFirst({ where: eq(users.id, userId) }),
-      db.query.attendances.findFirst({
-        where: and(eq(attendances.sessionId, validated.sessionId), eq(attendances.userId, userId)),
-      }),
-      db.query.ledger.findMany({
-        where: and(
-          eq(ledger.sessionId, validated.sessionId),
-          eq(ledger.userId, userId),
-          inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
-        ),
-      }),
-    ]);
+      const [gameSession, user, existing, confirmedCount] = await Promise.all([
+        db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
+        db.query.users.findFirst({ where: eq(users.id, userId) }),
+        db.query.attendances.findFirst({
+          where: and(
+            eq(attendances.sessionId, validated.sessionId),
+            eq(attendances.userId, userId),
+          ),
+        }),
+        db
+          .select({ n: count() })
+          .from(attendances)
+          .where(and(eq(attendances.sessionId, validated.sessionId), eq(attendances.status, "YES")))
+          .then((r) => r[0]?.n ?? 0),
+      ]);
 
-    if (!gameSession) return { type: "NOT_FOUND" };
-    if (!user) return { type: "AUTH_ERROR" };
+      if (!gameSession) return { type: "NOT_FOUND" };
+      if (!user) return { type: "AUTH_ERROR" };
 
-    if (gameSession.status === "LOCKED") {
-      return { type: "BUSINESS_ERROR", code: "Session is locked" };
-    }
-
-    if (validated.status === "YES" || validated.status === "WAITLIST") {
-      const now = new Date();
-      if (gameSession.rsvpDeadline && now >= gameSession.rsvpDeadline) {
-        return { type: "BUSINESS_ERROR", code: "RSVP deadline has passed" };
+      if (gameSession.status === "LOCKED") {
+        return { type: "BUSINESS_ERROR", code: "Session is locked" };
       }
-      if (now >= gameSession.startTime) {
+
+      const now = new Date();
+      const deposit = parseFloat(gameSession.minBalance);
+
+      // ── Joining, or joining the waitlist ──
+      if (validated.status === "YES" || validated.status === "WAITLIST") {
+        if (gameSession.rsvpDeadline && now >= gameSession.rsvpDeadline) {
+          return { type: "BUSINESS_ERROR", code: "RSVP deadline has passed" };
+        }
+        if (now >= gameSession.startTime) {
+          return {
+            type: "BUSINESS_ERROR",
+            code: "RSVPs are closed — the session has already started",
+          };
+        }
+        if (existing?.status === validated.status) {
+          return {
+            type: "SUCCESS",
+            value: {
+              newBalance: user.balance,
+              outcome: validated.status === "YES" ? "JOINED" : "WAITLISTED",
+            },
+          };
+        }
+        if (existing?.status === "YES") {
+          return { type: "BUSINESS_ERROR", code: "You're already in this session" };
+        }
+        // Both need the deposit on hand: waitlisters pay it when a spot opens up
+        if (parseFloat(user.balance) < deposit) {
+          return { type: "BUSINESS_ERROR", code: "INSUFFICIENT_BALANCE" };
+        }
+
+        const isFull = confirmedCount >= gameSession.maxPlayers;
+        if (validated.status === "YES" && isFull) {
+          return { type: "BUSINESS_ERROR", code: "Session is full — join the waitlist instead" };
+        }
+        if (validated.status === "WAITLIST" && !isFull) {
+          return { type: "BUSINESS_ERROR", code: "There's a spot open — join the game instead" };
+        }
+
+        // A fresh RSVP starts with a clean late-cancellation record
+        const fresh = {
+          status: validated.status,
+          waitlistedAt: validated.status === "WAITLIST" ? now : null,
+          lateCancelStatus: null,
+          lateCancelRequestedAt: null,
+          lateCancelResolvedAt: null,
+          lateCancelResolvedById: null,
+          updatedAt: now,
+        };
+
+        let newBalance = user.balance;
+        await db.transaction(async (tx) => {
+          if (validated.status === "YES") {
+            newBalance = await takeDeposit(tx, { session: gameSession, user, actorId: userId });
+          }
+          if (existing) {
+            await tx.update(attendances).set(fresh).where(eq(attendances.id, existing.id));
+          } else {
+            await tx
+              .insert(attendances)
+              .values({ sessionId: validated.sessionId, userId, ...fresh });
+          }
+        });
+
         return {
-          type: "BUSINESS_ERROR",
-          code: "RSVPs are closed — the session has already started",
+          type: "SUCCESS",
+          value: { newBalance, outcome: validated.status === "YES" ? "JOINED" : "WAITLISTED" },
         };
       }
-    }
 
-    const deposit = parseFloat(gameSession.minBalance);
-    // What the player is actually holding for this session — the net of their
-    // deposit/refund ledger rows. Refunds are driven off this, not the current
-    // minBalance, so an admin editing minBalance after they joined can't change
-    // what's returned.
-    const heldDeposit = -depositLedger.reduce((total, e) => total + parseFloat(e.amount), 0);
-    let newBalance = user.balance;
-
-    if (validated.status === "YES") {
-      const balance = parseFloat(user.balance);
-      if (balance < deposit) {
-        return { type: "BUSINESS_ERROR", code: "INSUFFICIENT_BALANCE" };
+      // ── Leaving ──
+      if (!existing || existing.status === "NO") {
+        return { type: "SUCCESS", value: { newBalance: user.balance, outcome: "LEFT" } };
       }
 
-      await db.transaction(async (tx) => {
-        newBalance = (parseFloat(user.balance) - deposit).toFixed(2);
-        await tx
-          .update(users)
-          .set({ balance: newBalance, updatedAt: new Date() })
-          .where(eq(users.id, userId));
-
-        await tx.insert(ledger).values({
-          userId,
-          type: "SESSION_DEPOSIT",
-          amount: (-deposit).toFixed(2),
-          balanceAfter: newBalance,
-          note: "Session deposit",
-          createdById: userId,
-          sessionId: validated.sessionId,
-        });
-
-        if (existing) {
-          await tx
-            .update(attendances)
-            .set({ status: "YES", updatedAt: new Date() })
-            .where(eq(attendances.id, existing.id));
-        } else {
-          await tx
-            .insert(attendances)
-            .values({ sessionId: validated.sessionId, userId, status: "YES" });
-        }
-      });
-    } else {
-      // Leaving — refund whatever deposit they're actually holding
-      if (existing && heldDeposit > 0) {
-        await db.transaction(async (tx) => {
-          newBalance = (parseFloat(user.balance) + heldDeposit).toFixed(2);
-          await tx
-            .update(users)
-            .set({ balance: newBalance, updatedAt: new Date() })
-            .where(eq(users.id, userId));
-
-          await tx.insert(ledger).values({
-            userId,
-            type: "SESSION_REFUND",
-            amount: heldDeposit.toFixed(2),
-            balanceAfter: newBalance,
-            note: "Deposit refund",
-            createdById: userId,
-            sessionId: validated.sessionId,
-          });
-
-          await tx
-            .update(attendances)
-            .set({ status: "NO", updatedAt: new Date() })
-            .where(eq(attendances.id, existing.id));
-        });
-      } else if (existing) {
+      if (existing.status === "WAITLIST") {
         await db
           .update(attendances)
-          .set({ status: "NO", updatedAt: new Date() })
+          .set({ status: "NO", waitlistedAt: null, updatedAt: now })
           .where(eq(attendances.id, existing.id));
+        return { type: "SUCCESS", value: { newBalance: user.balance, outcome: "LEFT_WAITLIST" } };
       }
-    }
 
-    return { type: "SUCCESS", value: { newBalance } };
+      // Inside 24h: hold the spot and ask a host/admin
+      if (isLateCancel(gameSession.startTime, now)) {
+        if (existing.lateCancelStatus === "PENDING") {
+          return {
+            type: "SUCCESS",
+            value: { newBalance: user.balance, outcome: "LATE_CANCEL_REQUESTED" },
+          };
+        }
+        if (existing.lateCancelStatus === "REJECTED") {
+          return {
+            type: "BUSINESS_ERROR",
+            code: "Your late cancellation was declined — you're still on for this game",
+          };
+        }
+
+        await db
+          .update(attendances)
+          .set({
+            lateCancelStatus: "PENDING",
+            lateCancelRequestedAt: now,
+            lateCancelResolvedAt: null,
+            lateCancelResolvedById: null,
+            updatedAt: now,
+          })
+          .where(eq(attendances.id, existing.id));
+
+        await sendLateCancelRequestedNotification(
+          await approverTokens(gameSession),
+          user.name,
+          gameSession.id,
+          gameSession.startTime,
+        );
+
+        return {
+          type: "SUCCESS",
+          value: { newBalance: user.balance, outcome: "LATE_CANCEL_REQUESTED" },
+        };
+      }
+
+      // Early enough: refund, free the spot, and hand it to the waitlist
+      let newBalance = user.balance;
+      const promoted = await db.transaction(async (tx) => {
+        newBalance =
+          (await refundDeposit(tx, { sessionId: gameSession.id, userId, actorId: userId })) ??
+          user.balance;
+        await tx
+          .update(attendances)
+          .set({ status: "NO", updatedAt: now })
+          .where(eq(attendances.id, existing.id));
+        return promoteFromWaitlist(tx, { session: gameSession, actorId: userId });
+      });
+
+      if (promoted?.fcmToken) {
+        await sendWaitlistPromotedNotification(
+          promoted.fcmToken,
+          gameSession.id,
+          gameSession.startTime,
+        );
+      }
+
+      return { type: "SUCCESS", value: { newBalance, outcome: "LEFT" } };
+    },
+  );
+
+/** Changed your mind about a late cancellation: keep the spot. */
+export const withdrawLateCancelFn = createServerFn({ method: "POST" })
+  .validator((data: { sessionId: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    const [updated] = await db
+      .update(attendances)
+      .set({ lateCancelStatus: null, lateCancelRequestedAt: null, updatedAt: new Date() })
+      .where(
+        and(
+          eq(attendances.sessionId, data.sessionId),
+          eq(attendances.userId, session.user.id),
+          eq(attendances.lateCancelStatus, "PENDING"),
+        ),
+      )
+      .returning({ id: attendances.id });
+
+    if (!updated) {
+      return { type: "BUSINESS_ERROR", code: "No pending cancellation to withdraw" };
+    }
+    return { type: "SUCCESS", value: undefined };
   });
