@@ -177,3 +177,59 @@ export async function sendMatchConfirmedNotification(
     link: `/sessions/${sessionId}`,
   });
 }
+
+// ---- Late cancellations & waitlist ------------------------------------------
+
+function sessionLabel(startTime: Date) {
+  return startTime.toLocaleString("en-MY", {
+    timeZone: "Asia/Kuala_Lumpur",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export async function sendLateCancelRequestedNotification(
+  tokens: string[],
+  playerName: string,
+  sessionId: string,
+  startTime: Date,
+) {
+  await sendToTokens(
+    tokens,
+    "Late cancellation request",
+    `${playerName} wants to drop out of ${sessionLabel(startTime)}. Approve or reject.`,
+    { type: "LATE_CANCEL_REQUESTED", link: `/sessions/${sessionId}` },
+  );
+}
+
+export async function sendLateCancelResolvedNotification(
+  token: string,
+  approved: boolean,
+  sessionId: string,
+  startTime: Date,
+) {
+  await sendPushNotification(
+    token,
+    approved ? "Cancellation approved" : "Cancellation declined",
+    approved
+      ? `You're out of ${sessionLabel(startTime)} and your deposit is back in your wallet.`
+      : `You're still on for ${sessionLabel(startTime)} and will be charged your share.`,
+    { type: "LATE_CANCEL_RESOLVED", link: `/sessions/${sessionId}` },
+  );
+}
+
+export async function sendWaitlistPromotedNotification(
+  token: string,
+  sessionId: string,
+  startTime: Date,
+) {
+  await sendPushNotification(
+    token,
+    "You're in!",
+    `A spot opened up for ${sessionLabel(startTime)}. Your deposit has been taken.`,
+    { type: "WAITLIST_PROMOTED", link: `/sessions/${sessionId}` },
+  );
+}

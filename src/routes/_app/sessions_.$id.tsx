@@ -12,6 +12,8 @@ import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SessionMatches } from "@/features/matches/session-matches";
 import { sessionMatchesQueryOptions } from "@/features/matches/server";
+import { LateCancelRequests, WaitlistPanel } from "@/features/sessions/roster-manage";
+import { isLateCancel, waitlistOrder } from "@/features/sessions/rules";
 
 function formatSessionDate(date: Date): string {
   const day = date.getDate();
@@ -61,6 +63,20 @@ function SessionDetailPage() {
   const isFull = yesAttendees.length >= gameSession.maxPlayers;
   const canManage =
     user?.role === "ADMIN" || (user?.role === "HOST" && gameSession.createdById === user.id);
+  const waitlist = waitlistOrder(gameSession.attendances);
+  const myWaitlistPosition = waitlist.findIndex((a) => a.userId === userId) + 1;
+  const rsvpOpen = !hasStarted && !pastDeadline;
+  // Once RSVPs close you can still ask out of the game or leave the waitlist
+  const showRsvp =
+    !isLocked &&
+    !hasEnded &&
+    (rsvpOpen || myAttendance?.status === "YES" || myAttendance?.status === "WAITLIST");
+  const rosterProps = {
+    sessionId: id,
+    maxPlayers: gameSession.maxPlayers,
+    deposit: parseFloat(gameSession.minBalance),
+    attendances: gameSession.attendances,
+  };
 
   const mapQuery = gameSession.location ? encodeURIComponent(gameSession.location) : null;
 
@@ -121,6 +137,12 @@ function SessionDetailPage() {
           <p className="font-semibold">{groupName}</p>
           <p className="text-sm text-muted-foreground">Hosted by {gameSession.createdBy.name}</p>
         </div>
+
+        {canManage && !isLocked && (
+          <div className="pt-4">
+            <LateCancelRequests {...rosterProps} />
+          </div>
+        )}
 
         {/* Details */}
         <div className="py-4 border-b space-y-3">
@@ -228,10 +250,51 @@ function SessionDetailPage() {
                   {a.userId === gameSession.createdById && (
                     <p className="text-[11px] text-muted-foreground">Host</p>
                   )}
+                  {canManage && a.lateCancelStatus === "PENDING" && (
+                    <p className="text-[11px] font-medium text-warning">Wants out</p>
+                  )}
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {/* Waitlist */}
+        {canManage && !isLocked ? (
+          <div className="py-4">
+            <WaitlistPanel {...rosterProps} />
+          </div>
+        ) : (
+          waitlist.length > 0 &&
+          !isLocked && (
+            <div className="py-4 space-y-3 border-t">
+              <p className="text-sm font-semibold">
+                Waitlist
+                <span className="font-normal text-muted-foreground ml-1">
+                  · {waitlist.length} waiting
+                </span>
+              </p>
+              <ol className="space-y-2">
+                {waitlist.map((a, i) => (
+                  <li key={a.id} className="flex items-center gap-3">
+                    <span className="w-5 text-center text-xs font-semibold text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={a.user.image || undefined} />
+                      <AvatarFallback className="text-xs bg-muted text-muted-foreground">
+                        {a.user.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className={cn("text-sm", a.userId === userId && "font-semibold")}>
+                      {a.user.name}
+                      {a.userId === userId && " (you)"}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )
         )}
 
         <SessionMatches
@@ -266,12 +329,18 @@ function SessionDetailPage() {
       </div>
 
       {/* Sticky RSVP Button */}
-      {!isLocked && !hasStarted && !pastDeadline && (
-        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      {showRsvp && (
+        <div
+          className="fixed left-0 right-0 z-10 pointer-events-none"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+        >
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <RsvpButtons
               sessionId={id}
               currentStatus={myAttendance?.status}
+              lateCancelStatus={myAttendance?.lateCancelStatus}
+              waitlistPosition={myWaitlistPosition || undefined}
+              isLateCancel={isLateCancel(gameSession.startTime, now)}
               isLoggedIn={!!userId}
               isFull={isFull && myAttendance?.status !== "YES"}
               deposit={parseFloat(gameSession.minBalance)}
@@ -281,7 +350,10 @@ function SessionDetailPage() {
       )}
 
       {isLocked && (
-        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        <div
+          className="fixed left-0 right-0 z-10 pointer-events-none"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+        >
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <div className="flex items-center justify-center gap-2 w-full h-11 rounded-md bg-brand text-brand-foreground text-sm font-medium">
               <Lock className="h-4 w-4" />
@@ -291,8 +363,11 @@ function SessionDetailPage() {
         </div>
       )}
 
-      {!isLocked && !hasStarted && pastDeadline && (
-        <div className="fixed left-0 right-0 z-10 pointer-events-none" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      {!showRsvp && !isLocked && !hasStarted && pastDeadline && (
+        <div
+          className="fixed left-0 right-0 z-10 pointer-events-none"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+        >
           <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
             <div className="flex items-center justify-center gap-2 w-full h-11 rounded-md bg-brand text-brand-foreground text-sm font-medium">
               RSVP Deadline Passed

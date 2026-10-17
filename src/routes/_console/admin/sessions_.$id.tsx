@@ -2,7 +2,11 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
-import { adminSessionDetailQueryOptions, courtsQueryOptions, removePlayerFn } from "@/features/admin/server";
+import {
+  adminSessionDetailQueryOptions,
+  courtsQueryOptions,
+  removePlayerFn,
+} from "@/features/admin/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +19,7 @@ import { ShareButton } from "@/features/admin/share-button";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 import { toast } from "sonner";
+import { LateCancelRequests, WaitlistPanel } from "@/features/sessions/roster-manage";
 
 export const Route = createFileRoute("/_console/admin/sessions_/$id")({
   loader: async ({ context: { queryClient }, params: { id } }) => {
@@ -83,6 +88,15 @@ function AdminSessionDetailPage() {
         </div>
       </div>
 
+      {!isLocked && (
+        <LateCancelRequests
+          sessionId={id}
+          maxPlayers={gameSession.maxPlayers}
+          deposit={parseFloat(gameSession.minBalance)}
+          attendances={gameSession.attendances}
+        />
+      )}
+
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -112,7 +126,15 @@ function AdminSessionDetailPage() {
             </div>
             <div>
               <p className="text-muted-foreground">Confirmed Players</p>
-              <p className="font-medium">{yesAttendees.length}</p>
+              <p className="font-medium">
+                {yesAttendees.length}/{gameSession.maxPlayers}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Waitlist</p>
+              <p className="font-medium">
+                {gameSession.attendances.filter((a) => a.status === "WAITLIST").length}
+              </p>
             </div>
             {isLocked && (
               <div>
@@ -197,7 +219,19 @@ function AdminSessionDetailPage() {
                       <AvatarFallback>{a.user.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{a.user.name}</p>
+                      <p className="font-medium">
+                        {a.user.name}
+                        {a.lateCancelStatus === "PENDING" && (
+                          <Badge variant="warning" className="ml-2">
+                            Wants out
+                          </Badge>
+                        )}
+                        {a.lateCancelStatus === "REJECTED" && (
+                          <Badge variant="outline" className="ml-2">
+                            Late cancel declined
+                          </Badge>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Balance: {formatCurrency(a.user.balance)}
                       </p>
@@ -231,6 +265,15 @@ function AdminSessionDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {!isLocked && (
+        <WaitlistPanel
+          sessionId={id}
+          maxPlayers={gameSession.maxPlayers}
+          deposit={parseFloat(gameSession.minBalance)}
+          attendances={gameSession.attendances}
+        />
+      )}
     </div>
   );
 }

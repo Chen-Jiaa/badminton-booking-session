@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/db";
-import { users, topUpRequests, withdrawalRequests } from "@/db/schema";
+import { users, topUpRequests, withdrawalRequests, attendances } from "@/db/schema";
 import { eq, count } from "drizzle-orm";
 import { countMatchesWaitingOn } from "@/features/matches/queries";
 import { sessionMiddleware, setAuthCookies } from "@/middleware/auth";
@@ -85,8 +85,9 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
 
     let pendingTopupsCount = 0;
     let pendingWithdrawalsCount = 0;
+    let pendingLateCancelsCount = 0;
     if (dbUser?.role === "ADMIN") {
-      const [topupResult, withdrawalResult] = await Promise.all([
+      const [topupResult, withdrawalResult, lateCancelResult] = await Promise.all([
         db
           .select({ count: count() })
           .from(topUpRequests)
@@ -95,9 +96,14 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
           .select({ count: count() })
           .from(withdrawalRequests)
           .where(eq(withdrawalRequests.status, "PENDING")),
+        db
+          .select({ count: count() })
+          .from(attendances)
+          .where(eq(attendances.lateCancelStatus, "PENDING")),
       ]);
       pendingTopupsCount = topupResult[0]?.count ?? 0;
       pendingWithdrawalsCount = withdrawalResult[0]?.count ?? 0;
+      pendingLateCancelsCount = lateCancelResult[0]?.count ?? 0;
     }
 
     return {
@@ -108,6 +114,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
       image: dbUser?.image ?? null,
       pendingTopupsCount,
       pendingWithdrawalsCount,
+      pendingLateCancelsCount,
       // Matches this player still has to accept or confirm, and a session to jump to
       pendingMatchesCount: pendingMatches.count,
       pendingMatchSessionId: pendingMatches.sessionId,

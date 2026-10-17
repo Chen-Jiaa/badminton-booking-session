@@ -11,7 +11,7 @@ import {
   expenses,
   matches,
 } from "@/db/schema";
-import { eq, lte, desc, and, inArray, notInArray } from "drizzle-orm";
+import { eq, lte, desc, and, inArray, notInArray, TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import {
   createSessionSchema,
@@ -19,8 +19,14 @@ import {
   lockSessionSchema,
   addPlayerSchema,
   rejectTopUpSchema,
+  resolveLateCancelSchema,
+  promoteWaitlistSchema,
 } from "@/lib/validations";
+import { promoteFromWaitlist, refundDeposit } from "@/features/sessions/roster";
+import { canManageSession } from "@/features/sessions/rules";
 import {
+  sendLateCancelResolvedNotification,
+  sendWaitlistPromotedNotification,
   sendLowBalanceNotification,
   sendTopUpConfirmedNotification,
   sendTopUpRejectedNotification,
@@ -394,6 +400,12 @@ export const lockSessionFn = createServerFn({ method: "POST" })
     }
 
     const confirmedAttendees = gameSession.attendances;
+    if (confirmedAttendees.some((a) => a.lateCancelStatus === "PENDING")) {
+      return {
+        type: "BUSINESS_ERROR",
+        code: "Approve or reject the pending late cancellations first",
+      };
+    }
     if (confirmedAttendees.length === 0) {
       return { type: "BUSINESS_ERROR", code: "No confirmed attendees" };
     }
@@ -549,10 +561,7 @@ export const removePlayerFn = createServerFn({ method: "POST" })
       db.query.sessions.findFirst({ where: eq(sessions.id, data.sessionId) }),
       db.query.users.findFirst({ where: eq(users.id, data.userId) }),
       db.query.attendances.findFirst({
-        where: and(
-          eq(attendances.sessionId, data.sessionId),
-          eq(attendances.userId, data.userId),
-        ),
+        where: and(eq(attendances.sessionId, data.sessionId), eq(attendances.userId, data.userId)),
       }),
       db.query.ledger.findMany({
         where: and(
@@ -605,6 +614,146 @@ export const removePlayerFn = createServerFn({ method: "POST" })
     return { type: "SUCCESS", value: undefined };
   });
 
+// ─── Late cancellations & waitlist ───────────────────────────────────────────
+
+export const resolveLateCancelFn = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      sessionId: string;
+      userId: string;
+      decision: "APPROVE" | "REJECT";
+      replacementUserId?: string | null;
+    }) => data,
+  )
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    const validated = resolveLateCancelSchema.parse(data);
+    const actorId = session.user.id;
+
+    const [actor, gameSession, request] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, actorId) }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
+      db.query.attendances.findFirst({
+        where: and(
+          eq(attendances.sessionId, validated.sessionId),
+          eq(attendances.userId, validated.userId),
+        ),
+        with: { user: true },
+      }),
+    ]);
+
+    if (!gameSession) return { type: "NOT_FOUND" };
+    if (!canManageSession(actor, gameSession)) return { type: "FORBIDDEN" };
+    if (gameSession.status === "LOCKED") {
+      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+    }
+    if (!request || request.status !== "YES" || request.lateCancelStatus !== "PENDING") {
+      return { type: "BUSINESS_ERROR", code: "This cancellation has already been handled" };
+    }
+
+    const now = new Date();
+    const resolved = { lateCancelResolvedAt: now, lateCancelResolvedById: actorId, updatedAt: now };
+
+    if (validated.decision === "REJECT") {
+      // They stay on the roster, deposit held, and pay their full share at finalize
+      await db
+        .update(attendances)
+        .set({ lateCancelStatus: "REJECTED", ...resolved })
+        .where(eq(attendances.id, request.id));
+    } else {
+      const outcome = await db
+        .transaction(async (tx) => {
+          await refundDeposit(tx, { sessionId: gameSession.id, userId: request.userId, actorId });
+          await tx
+            .update(attendances)
+            .set({ status: "NO", lateCancelStatus: "APPROVED", ...resolved })
+            .where(eq(attendances.id, request.id));
+
+          if (!validated.replacementUserId) return { promoted: null };
+          const promoted = await promoteFromWaitlist(tx, {
+            session: gameSession,
+            actorId,
+            userId: validated.replacementUserId,
+          });
+          // Roll the whole approval back rather than approve without the agreed swap
+          if (!promoted) tx.rollback();
+          return { promoted };
+        })
+        .catch((error) => {
+          if (error instanceof TransactionRollbackError) return null;
+          throw error;
+        });
+
+      if (!outcome) {
+        return {
+          type: "BUSINESS_ERROR",
+          code: "Couldn't move that player in — they may not have enough balance",
+        };
+      }
+      if (outcome.promoted?.fcmToken) {
+        await sendWaitlistPromotedNotification(
+          outcome.promoted.fcmToken,
+          gameSession.id,
+          gameSession.startTime,
+        );
+      }
+    }
+
+    if (request.user.fcmToken) {
+      await sendLateCancelResolvedNotification(
+        request.user.fcmToken,
+        validated.decision === "APPROVE",
+        gameSession.id,
+        gameSession.startTime,
+      );
+    }
+
+    return { type: "SUCCESS", value: undefined };
+  });
+
+/** Moves a waitlisted player into an open spot (takes their deposit). */
+export const promoteWaitlistFn = createServerFn({ method: "POST" })
+  .validator((data: { sessionId: string; userId: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    const validated = promoteWaitlistSchema.parse(data);
+    const actorId = session.user.id;
+
+    const [actor, gameSession] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, actorId) }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
+    ]);
+
+    if (!gameSession) return { type: "NOT_FOUND" };
+    if (!canManageSession(actor, gameSession)) return { type: "FORBIDDEN" };
+    if (gameSession.status === "LOCKED") {
+      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+    }
+
+    const promoted = await db.transaction((tx) =>
+      promoteFromWaitlist(tx, { session: gameSession, actorId, userId: validated.userId }),
+    );
+    if (!promoted) {
+      return {
+        type: "BUSINESS_ERROR",
+        code: "Can't move them in — the session is full or they're short on balance",
+      };
+    }
+
+    if (promoted.fcmToken) {
+      await sendWaitlistPromotedNotification(
+        promoted.fcmToken,
+        gameSession.id,
+        gameSession.startTime,
+      );
+    }
+    return { type: "SUCCESS", value: undefined };
+  });
+
 // ─── Top-Ups ──────────────────────────────────────────────────────────────────
 
 export const fetchAdminTopUpsFn = createServerFn({ method: "GET" })
@@ -646,7 +795,10 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
 
     const [admin, topUpRequest] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
-      db.query.topUpRequests.findFirst({ where: eq(topUpRequests.id, requestId), with: { user: true } }),
+      db.query.topUpRequests.findFirst({
+        where: eq(topUpRequests.id, requestId),
+        with: { user: true },
+      }),
     ]);
     if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!topUpRequest || topUpRequest.status !== "PENDING") {
@@ -725,7 +877,10 @@ export const rejectTopUpFn = createServerFn({ method: "POST" })
 
     const [admin, topUpRequest] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
-      db.query.topUpRequests.findFirst({ where: eq(topUpRequests.id, validated.requestId), with: { user: true } }),
+      db.query.topUpRequests.findFirst({
+        where: eq(topUpRequests.id, validated.requestId),
+        with: { user: true },
+      }),
     ]);
     if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!topUpRequest || topUpRequest.status !== "PENDING") {
