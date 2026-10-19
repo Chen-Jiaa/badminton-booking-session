@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { toWhatsAppNumber } from "@/lib/phone";
 
 export const topUpRequestSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
@@ -176,3 +177,11 @@ export type CreateMatchInput = z.infer<typeof createMatchSchema>;
 export type SubmitMatchResultInput = z.infer<typeof submitMatchResultSchema>;
 export type RespondToMatchInput = z.infer<typeof respondToMatchSchema>;
 export type DeleteMatchInput = z.infer<typeof deleteMatchSchema>;
+
+// Empty clears the number
+export const updatePhoneSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || toWhatsAppNumber(v) !== null, "Enter a valid phone number"),
+});

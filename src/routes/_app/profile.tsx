@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import { NotificationToggle } from "@/features/profile/notification-toggle";
+import { PhoneForm } from "@/features/profile/phone-form";
 import { useQuery } from "@tanstack/react-query";
 import { CreditCard, CalendarDays, Users, Wallet } from "lucide-react";
 
@@ -84,6 +85,8 @@ function ProfilePage() {
           </Card>
         </Link>
       )}
+
+      {(user.role === "HOST" || isAdmin) && <PhoneForm phone={user.phone} />}
 
       <NotificationToggle enabled={!!user.fcmToken} />
 

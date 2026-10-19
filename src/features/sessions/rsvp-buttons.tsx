@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Check, Clock, Loader2 } from "lucide-react";
+import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { LoginDialog } from "@/features/sessions/login-dialog";
 import {
   rsvpFn,
@@ -57,6 +58,7 @@ export function RsvpButtons({
   const [loading, setLoading] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showTopUp, setShowTopUp] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<"YES" | "NO" | null>(null);
   const { celebrating, celebrateJoin } = useJoinCelebration();
   const queryClient = useQueryClient();
@@ -75,6 +77,11 @@ export function RsvpButtons({
     currentUser &&
     parseFloat(currentUser.balance) < deposit
   );
+
+  // Whole ringgit, since the top-up form takes round amounts
+  const shortfall = hasInsufficientBalance
+    ? Math.ceil(deposit - parseFloat(currentUser!.balance))
+    : 0;
 
   async function refresh() {
     await Promise.all([
@@ -332,30 +339,34 @@ export function RsvpButtons({
         </div>
       ) : isFull ? (
         <Button
-          onClick={() => handleQueued(() => rsvpFn({ data: { sessionId, status: "WAITLIST" } }))}
+          onClick={() =>
+            hasInsufficientBalance
+              ? setShowTopUp(true)
+              : handleQueued(() => rsvpFn({ data: { sessionId, status: "WAITLIST" } }))
+          }
           variant="brand"
           size="cta"
-          disabled={loading || hasInsufficientBalance}
+          disabled={loading}
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : hasInsufficientBalance ? (
-            "Insufficient balance"
+            `Top up ${formatCurrency(shortfall.toFixed(2))} to join waitlist`
           ) : (
             "Session full · Join waitlist"
           )}
         </Button>
       ) : (
         <Button
-          onClick={() => handleRsvp("YES")}
+          onClick={() => (hasInsufficientBalance ? setShowTopUp(true) : handleRsvp("YES"))}
           variant="brand"
           size="cta"
-          disabled={loading || hasInsufficientBalance}
+          disabled={loading}
         >
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : hasInsufficientBalance ? (
-            "Insufficient balance"
+            `Top up ${formatCurrency(shortfall.toFixed(2))} to join`
           ) : (
             "Join Game"
           )}
@@ -363,6 +374,7 @@ export function RsvpButtons({
       )}
 
       <LoginDialog open={showLogin} onOpenChange={setShowLogin} />
+      <TopUpDialog open={showTopUp} onOpenChange={setShowTopUp} initialAmount={shortfall} />
 
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent>

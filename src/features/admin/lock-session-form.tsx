@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -13,7 +21,7 @@ import {
 import { toast } from "sonner";
 import { Lock, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { lockSessionFn, shuttleSuppliersQueryOptions } from "@/features/admin/server";
+import { lockSessionFn, memberNamesQueryOptions } from "@/features/admin/server";
 
 const CLUB_STOCK = "CLUB_STOCK";
 
@@ -34,8 +42,9 @@ export function LockSessionForm({
   const [shuttleCount, setShuttleCount] = useState("0");
   const [supplier, setSupplier] = useState<string>(CLUB_STOCK);
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const queryClient = useQueryClient();
-  const { data: members = [] } = useQuery(shuttleSuppliersQueryOptions());
+  const { data: members = [] } = useQuery(memberNamesQueryOptions());
 
   const parsedShuttleCost = parseFloat(shuttleCost) || 0;
   const parsedShuttleCount = parseInt(shuttleCount, 10) || 0;
@@ -60,6 +69,7 @@ export function LockSessionForm({
         );
       }
       toast.success("Session finalized and costs deducted");
+      setConfirming(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sessions", sessionId] }),
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
@@ -139,9 +149,7 @@ export function LockSessionForm({
           <span>{formatCurrency(courtCost)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span>
-            Shuttle cost{parsedShuttleCount > 0 ? ` (${parsedShuttleCount})` : ""}
-          </span>
+          <span>Shuttle cost{parsedShuttleCount > 0 ? ` (${parsedShuttleCount})` : ""}</span>
           <span>{formatCurrency(parsedShuttleCost)}</span>
         </div>
         <div className="flex justify-between font-medium border-t pt-2">
@@ -154,19 +162,61 @@ export function LockSessionForm({
         </div>
       </div>
 
-      <Button onClick={handleLock} className="w-full" disabled={loading || playerCount === 0}>
-        {loading ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Finalizing...
-          </>
-        ) : (
-          <>
-            <Lock className="h-4 w-4 mr-2" />
-            Finalize Session &amp; Deduct from Balances
-          </>
-        )}
+      <Button
+        onClick={() => setConfirming(true)}
+        className="w-full"
+        disabled={loading || playerCount === 0}
+      >
+        <Lock className="h-4 w-4 mr-2" />
+        Finalize Session &amp; Deduct from Balances
       </Button>
+
+      {/* Charging everyone can't be undone, so say exactly what will happen first */}
+      <Dialog open={confirming} onOpenChange={(open) => !loading && setConfirming(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Charge {playerCount} player{playerCount === 1 ? "" : "s"}{" "}
+              {formatCurrency(costPerPlayer)} each?
+            </DialogTitle>
+            <DialogDescription>
+              Deposits already paid count towards it and the rest comes out of their wallets. The
+              session locks and this can&rsquo;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 rounded-lg bg-muted p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Courts</span>
+              <span>{formatCurrency(courtCost)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                Shuttles{parsedShuttleCount > 0 ? ` (${parsedShuttleCount})` : ""}
+              </span>
+              <span>{formatCurrency(parsedShuttleCost)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1 font-medium">
+              <span>Total</span>
+              <span>{formatCurrency(totalCost)}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={loading} onClick={() => setConfirming(false)}>
+              Go back
+            </Button>
+            <Button variant="brand" disabled={loading} onClick={handleLock}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Finalizing...
+                </>
+              ) : (
+                `Charge ${formatCurrency(costPerPlayer)} each`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

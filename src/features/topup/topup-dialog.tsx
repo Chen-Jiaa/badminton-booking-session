@@ -15,15 +15,44 @@ import { Plus, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createTopUpFn } from "@/features/topup/server";
 
-export function TopUpDialog({ className }: { className?: string } = {}) {
-  const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState("");
+interface TopUpDialogProps {
+  className?: string;
+  /** Control the sheet from outside (e.g. the "Top up to join" button); omit to use the built-in trigger */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Amount filled in each time the sheet opens */
+  initialAmount?: number;
+}
+
+export function TopUpDialog({
+  className,
+  open: controlledOpen,
+  onOpenChange,
+  initialAmount,
+}: TopUpDialogProps = {}) {
+  const controlled = controlledOpen !== undefined;
+  const [innerOpen, setInnerOpen] = useState(false);
+  const open = controlled ? controlledOpen : innerOpen;
+  const [amount, setAmount] = useState(initialAmount ? String(initialAmount) : "");
   const [amountInvalid, setAmountInvalid] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
+  // Refill the amount whenever the sheet opens, however it was opened (the parent's
+  // "Top up to join" button flips `open` without going through setOpen)
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open && initialAmount) setAmount(String(initialAmount));
+  }
+
   const presetAmounts = [50, 100, 150, 200];
+
+  function setOpen(next: boolean) {
+    if (!controlled) setInnerOpen(next);
+    onOpenChange?.(next);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,13 +94,21 @@ export function TopUpDialog({ className }: { className?: string } = {}) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setAmountInvalid(false); }}>
-      <DialogTrigger asChild>
-        <Button size="sm" className={className}>
-          <Plus className="h-4 w-4 mr-1" />
-          Top Up
-        </Button>
-      </DialogTrigger>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setAmountInvalid(false);
+      }}
+    >
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button size="sm" className={className}>
+            <Plus className="h-4 w-4 mr-1" />
+            Top Up
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Request Top Up</DialogTitle>
@@ -95,7 +132,10 @@ export function TopUpDialog({ className }: { className?: string } = {}) {
               min="1"
               placeholder="Enter amount"
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setAmountInvalid(false); }}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setAmountInvalid(false);
+              }}
               className={cn("mt-1", amountInvalid && "border-danger focus-visible:ring-danger")}
             />
           </div>
@@ -107,7 +147,10 @@ export function TopUpDialog({ className }: { className?: string } = {}) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => { setAmount(preset.toString()); setAmountInvalid(false); }}
+                onClick={() => {
+                  setAmount(preset.toString());
+                  setAmountInvalid(false);
+                }}
               >
                 RM {preset}
               </Button>

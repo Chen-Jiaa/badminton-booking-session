@@ -13,9 +13,11 @@ const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         // Primary call to action: Join / Sign in
-        brand: "bg-brand text-brand-foreground hover:bg-brand/80 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
+        brand:
+          "bg-brand text-brand-foreground hover:bg-brand/80 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100",
         // Already joined
-        joined: "border border-brand-foreground/50 bg-brand/30 text-brand-foreground hover:bg-brand/40 disabled:opacity-100",
+        joined:
+          "border border-brand-foreground/50 bg-brand/30 text-brand-foreground hover:bg-brand/40 disabled:opacity-100",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },

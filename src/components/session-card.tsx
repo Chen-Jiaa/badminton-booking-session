@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { LoginDialog } from "@/features/sessions/login-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Loader2, Users, Check, Share } from "lucide-react";
+import { MapPin, Loader2, Users, Check } from "lucide-react";
+import { CopyIcon } from "@/components/copy-icon";
 import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
@@ -93,6 +95,8 @@ export function SessionCard({
   const [loading, setLoading] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const queryClient = useQueryClient();
   const { celebrating, celebrateJoin } = useJoinCelebration();
   const navigate = useNavigate();
@@ -105,6 +109,10 @@ export function SessionCard({
     currentUser &&
     parseFloat(currentUser.balance) < deposit
   );
+
+  const shortfall = hasInsufficientBalance
+    ? Math.ceil(deposit - parseFloat(currentUser!.balance))
+    : 0;
 
   async function handleRsvp(status: "YES" | "NO", e: React.MouseEvent) {
     e.preventDefault();
@@ -171,7 +179,13 @@ export function SessionCard({
     e.stopPropagation();
     // The waitlist and late cancellations have rules to explain, so they live on
     // the session page rather than in a quick tap here
-    if (isWaitlisted || (isJoined && isLateCancel(session.startTime)) || (!isJoined && isFull)) {
+    if (hasInsufficientBalance && !isWaitlisted) {
+      setShowTopUp(true);
+    } else if (
+      isWaitlisted ||
+      (isJoined && isLateCancel(session.startTime)) ||
+      (!isJoined && isFull)
+    ) {
       navigate({ to: "/sessions/$id", params: { id: session.id } });
     } else if (isJoined) {
       setShowLeaveDialog(true);
@@ -180,22 +194,16 @@ export function SessionCard({
     }
   }
 
-  async function handleShare(e: React.MouseEvent) {
+  async function handleCopyLink(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/sessions/${session.id}`;
-    const text = `Join our badminton session! ${url}`;
-    if (navigator.share) {
-      try {
-        // Text only: `text` already ends with the link, and targets like WhatsApp
-        // glue `url` + `text` together into one broken link if both are passed.
-        await navigator.share({ text });
-        return;
-      } catch {
-        // User cancelled or share failed — fall back to WhatsApp
-      }
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/sessions/${session.id}`);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
 
   function handleCardClick(e: React.MouseEvent) {
@@ -231,11 +239,11 @@ export function SessionCard({
             </div>
             <button
               type="button"
-              onClick={handleShare}
-              aria-label="Share session"
+              onClick={handleCopyLink}
+              aria-label="Copy link"
               className="relative -mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-foreground active:scale-90 after:absolute after:-inset-1 after:content-['']"
             >
-              <Share className="h-4 w-4" />
+              <CopyIcon copied={linkCopied} />
             </button>
           </div>
 
@@ -343,21 +351,14 @@ export function SessionCard({
                       "On the waitlist"
                     ) : pastDeadline ? (
                       "RSVP closed"
+                    ) : hasInsufficientBalance ? (
+                      `Top up ${formatCurrency(shortfall.toFixed(2))} to join`
                     ) : isFull ? (
                       "Session full · Join waitlist"
                     ) : (
                       "Join Game"
                     )}
                   </Button>
-                )}
-                {!isLocked && deposit > 0 && !isJoined && (
-                  <p
-                    className={`text-xs text-center ${hasInsufficientBalance ? "text-danger font-medium" : "text-muted-foreground"}`}
-                  >
-                    {hasInsufficientBalance
-                      ? `Wallet needs ${formatCurrency(session.minBalance)} to join — top up first`
-                      : `${formatCurrency(session.minBalance)} deposit required to join`}
-                  </p>
                 )}
               </>
             )}
@@ -366,6 +367,7 @@ export function SessionCard({
       </Card>
 
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+      <TopUpDialog open={showTopUp} onOpenChange={setShowTopUp} initialAmount={shortfall} />
 
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
         <DialogContent>

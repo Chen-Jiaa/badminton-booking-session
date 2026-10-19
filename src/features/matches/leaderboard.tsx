@@ -4,10 +4,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { AvatarStack } from "./controls";
 import {
-  MIN_RANKED_MATCHES,
   daysLeftInMonth,
   monthLabel,
-  played,
   streak,
   winRate,
   type Standing,
@@ -20,8 +18,8 @@ export interface LeaderboardData {
   month: string;
   currentMonth: string;
   firstMonth: string;
-  players: { ranked: Standing[]; unranked: Standing[] };
-  teams: { ranked: Standing[]; unranked: Standing[] };
+  players: Standing[];
+  teams: Standing[];
 }
 
 const stagger = (i: number) => ({ animationDelay: `${Math.min(i, 12) * 40}ms` }) as CSSProperties;
@@ -41,19 +39,16 @@ export function Leaderboard({
   onMonthChange: (delta: number) => void;
 }) {
   const [board, setBoard] = useState<Board>("players");
-  const { ranked, unranked } = data[board];
+  const ranked = data[board];
   const isMine = (s: Standing) => !!meId && s.people.some((p) => p.id === meId);
   const meFirst = (people: StandingPerson[]) =>
     [...people].sort((a, b) => Number(b.id === meId) - Number(a.id === meId));
   const nameOf = (p: StandingPerson) => (p.id === meId ? "You" : p.name);
   const names = (s: Standing) => meFirst(s.people).map(nameOf).join(" & ");
 
-  // The card follows the tab: my record, or my best-ranked team (else my busiest unranked one)
+  // The card follows the tab: my record, or my best-ranked team
   const myIndex = ranked.findIndex(isMine);
-  const mine =
-    myIndex >= 0
-      ? ranked[myIndex]
-      : unranked.filter(isMine).sort((a, b) => played(b) - played(a))[0];
+  const mine = ranked[myIndex];
   const partner = board === "teams" && mine ? mine.people.find((p) => p.id !== meId) : undefined;
 
   const inProgress = data.month === data.currentMonth;
@@ -95,38 +90,31 @@ export function Leaderboard({
       </div>
 
       {/* My month at a glance, for whichever board is showing */}
-      {meId &&
-        (mine ? (
-          <div
-            key={`card-${data.month}-${board}`}
-            className="rise-in flex items-center gap-3 rounded-xl bg-brand/40 px-4 py-3 text-brand-foreground"
-          >
-            <div className="min-w-16 text-center">
-              <p className="text-2xl font-bold leading-none tabular-nums">
-                {myIndex >= 0 ? `#${myIndex + 1}` : "–"}
-              </p>
-              <p className="mt-1 max-w-20 truncate text-[11px] font-medium">
-                {partner ? `with ${partner.name}` : "your rank"}
-              </p>
-            </div>
-            <div className="h-8 w-px bg-brand-foreground/20" />
-            <div className="flex flex-1 justify-around text-center text-sm">
-              {board === "players" && <Stat value={String(mine.points)} label="points" />}
-              <Stat value={`${mine.wins}–${mine.losses}`} label="W–L" />
-              {board === "teams" && <Stat value={`${winRate(mine)}%`} label="win rate" />}
-              <Stat
-                value={streak(mine) >= 3 ? `${streak(mine)}🔥` : String(streak(mine))}
-                label="streak"
-              />
-            </div>
+      {meId && mine && (
+        <div
+          key={`card-${data.month}-${board}`}
+          className="rise-in flex items-center gap-3 rounded-xl bg-brand/40 px-4 py-3 text-brand-foreground"
+        >
+          <div className="min-w-16 text-center">
+            <p className="text-2xl font-bold leading-none tabular-nums">
+              {myIndex >= 0 ? `#${myIndex + 1}` : "–"}
+            </p>
+            <p className="mt-1 max-w-20 truncate text-[11px] font-medium">
+              {partner ? `with ${partner.name}` : "your rank"}
+            </p>
           </div>
-        ) : (
-          <div className="rounded-xl bg-brand/20 px-4 py-3 text-center text-sm text-brand-foreground">
-            {board === "teams"
-              ? "Play doubles with the same partner to get your team on the board"
-              : "Play a confirmed match this month to get on the board"}
+          <div className="h-8 w-px bg-brand-foreground/20" />
+          <div className="flex flex-1 justify-around text-center text-sm">
+            {board === "players" && <Stat value={String(mine.points)} label="points" />}
+            <Stat value={`${mine.wins}–${mine.losses}`} label="W–L" />
+            {board === "teams" && <Stat value={`${winRate(mine)}%`} label="win rate" />}
+            <Stat
+              value={streak(mine) >= 3 ? `${streak(mine)}🔥` : String(streak(mine))}
+              label="streak"
+            />
           </div>
-        ))}
+        </div>
+      )}
 
       <Tabs value={board} onValueChange={(v) => setBoard(v as Board)}>
         <TabsList className="grid w-full grid-cols-2">
@@ -138,10 +126,6 @@ export function Leaderboard({
       {ranked.length === 0 ? (
         <div className="rounded-xl border bg-white px-4 py-10 text-center">
           <p className="font-semibold">No rankings yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {board === "teams" ? "Teams" : "Players"} appear after {MIN_RANKED_MATCHES} confirmed
-            matches this month.
-          </p>
         </div>
       ) : (
         // Keyed so switching month or board replays the entrance
@@ -172,14 +156,6 @@ export function Leaderboard({
           </p>
         </div>
       )}
-
-      <p className="text-center text-xs text-muted-foreground">
-        {board === "players"
-          ? "Ranked by points scored in every match"
-          : "Ranked by wins together"}{" "}
-        · confirmed matches only · {MIN_RANKED_MATCHES}+ to be ranked
-        {unranked.length > 0 && ` · ${unranked.length} not ranked yet`}
-      </p>
     </div>
   );
 }

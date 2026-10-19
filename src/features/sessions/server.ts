@@ -66,7 +66,8 @@ export const sessionsQueryOptions = () =>
 
 export const fetchSessionDetailFn = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
-  .handler(async ({ data: { id } }) => {
+  .middleware([sessionMiddleware])
+  .handler(async ({ data: { id }, context: { session } }) => {
     const [gameSession, appSettings] = await Promise.all([
       db.query.sessions.findFirst({
         where: eq(sessions.id, id),
@@ -76,13 +77,16 @@ export const fetchSessionDetailFn = createServerFn({ method: "GET" })
               user: { columns: { id: true, name: true, image: true } },
             },
           },
-          createdBy: { columns: { id: true, name: true, image: true } },
+          createdBy: { columns: { id: true, name: true, image: true, phone: true } },
         },
       }),
       db.query.settings.findFirst(),
     ]);
 
     if (!gameSession) return null;
+
+    // The host's WhatsApp number is for signed-in members only, not anyone with the link
+    if (!session?.user.id) gameSession.createdBy.phone = null;
 
     return {
       gameSession,

@@ -38,13 +38,45 @@ env vars only.
 const TABS = {
   TOPUP: {
     name: "Top-ups",
-    headers: ["Confirmed at (MYT)", "Member", "Email", "Amount (RM)", "Balance after (RM)", "Confirmed by", "Request ID"],
-    row: (d) => [d.memberName, d.memberEmail, Number(d.amount), Number(d.balanceAfter), d.confirmedBy, d.requestId],
+    headers: [
+      "Confirmed at (MYT)",
+      "Member",
+      "Email",
+      "Amount (RM)",
+      "Balance after (RM)",
+      "Confirmed by",
+      "Request ID",
+    ],
+    row: (d) => [
+      d.memberName,
+      d.memberEmail,
+      Number(d.amount),
+      Number(d.balanceAfter),
+      d.confirmedBy,
+      d.requestId,
+    ],
   },
   WITHDRAWAL: {
     name: "Withdrawals",
-    headers: ["Paid at (MYT)", "Member", "Email", "Amount (RM)", "Balance after (RM)", "Method", "Paid by", "Request ID"],
-    row: (d) => [d.memberName, d.memberEmail, Number(d.amount), Number(d.balanceAfter), d.paymentMethod, d.confirmedBy, d.requestId],
+    headers: [
+      "Paid at (MYT)",
+      "Member",
+      "Email",
+      "Amount (RM)",
+      "Balance after (RM)",
+      "Method",
+      "Paid by",
+      "Request ID",
+    ],
+    row: (d) => [
+      d.memberName,
+      d.memberEmail,
+      Number(d.amount),
+      Number(d.balanceAfter),
+      d.paymentMethod,
+      d.confirmedBy,
+      d.requestId,
+    ],
   },
 };
 
@@ -71,7 +103,11 @@ function doPost(e) {
       return ContentService.createTextOutput("duplicate");
     }
 
-    const when = Utilities.formatDate(new Date(data.confirmedAt), "Asia/Kuala_Lumpur", "yyyy-MM-dd HH:mm");
+    const when = Utilities.formatDate(
+      new Date(data.confirmedAt),
+      "Asia/Kuala_Lumpur",
+      "yyyy-MM-dd HH:mm",
+    );
     // Member names are user-controlled; stop "=..." being run as a formula.
     const safe = (v) => (typeof v === "string" && /^[=+\-@]/.test(v) ? "'" + v : v);
     sheet.appendRow([when, ...tab.row(data).map(safe)]);

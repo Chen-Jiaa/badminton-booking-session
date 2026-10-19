@@ -142,9 +142,7 @@ function TopUpCard({ req }: { req: TopUp }) {
               <p className="font-semibold">{req.user.name}</p>
               <Badge variant="outline">Top-up</Badge>
             </div>
-            <p className="text-2xl font-bold text-brand-foreground">
-              {formatCurrency(req.amount)}
-            </p>
+            <p className="text-2xl font-bold text-brand-foreground">{formatCurrency(req.amount)}</p>
             <p className="text-xs text-muted-foreground">{formatDateTime(req.createdAt)}</p>
           </div>
           {req.receiptUrl && (

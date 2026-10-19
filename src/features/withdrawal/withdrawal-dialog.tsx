@@ -68,7 +68,8 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
     }
     if (value === "BANK") {
       if (savedDetails?.bankName && !bankName) setBankName(savedDetails.bankName);
-      if (savedDetails?.accountNumber && !accountNumber) setAccountNumber(savedDetails.accountNumber);
+      if (savedDetails?.accountNumber && !accountNumber)
+        setAccountNumber(savedDetails.accountNumber);
     }
   }
 
@@ -172,8 +173,15 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
               min="0.01"
               placeholder="Enter amount"
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setAmountInvalid(false); }}
-              className={cn("mt-1", (amountInvalid || amountExceedsBalance) && "border-danger focus-visible:ring-danger")}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setAmountInvalid(false);
+              }}
+              className={cn(
+                "mt-1",
+                (amountInvalid || amountExceedsBalance) &&
+                  "border-danger focus-visible:ring-danger",
+              )}
             />
             {amountExceedsBalance ? (
               <p className="text-xs text-danger mt-1">
@@ -182,7 +190,8 @@ export function WithdrawalDialog({ balance, className }: WithdrawalDialogProps) 
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
                 Available to withdraw: RM {available.toFixed(2)}
-                {pending > 0 && ` (RM ${balance.toFixed(2)} balance − RM ${pending.toFixed(2)} pending)`}
+                {pending > 0 &&
+                  ` (RM ${balance.toFixed(2)} balance − RM ${pending.toFixed(2)} pending)`}
               </p>
             )}
           </div>

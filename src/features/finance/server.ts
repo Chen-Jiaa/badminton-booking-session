@@ -4,11 +4,7 @@ import { db } from "@/db";
 import { expenses, ledger, sessions, users, withdrawalRequests } from "@/db/schema";
 import { and, desc, eq, gte, inArray, isNull, isNotNull, lte, sum } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
-import {
-  createExpenseSchema,
-  updateExpenseSchema,
-  manualAdjustSchema,
-} from "@/lib/validations";
+import { createExpenseSchema, updateExpenseSchema, manualAdjustSchema } from "@/lib/validations";
 import { requireAdmin, type Result } from "@/lib/guards";
 import {
   computeFinanceSummary,
@@ -183,10 +179,7 @@ export const deleteExpenseFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "Un-reimburse this expense before deleting it" };
     }
 
-    await db
-      .update(expenses)
-      .set({ isDeleted: true })
-      .where(eq(expenses.id, data.expenseId));
+    await db.update(expenses).set({ isDeleted: true }).where(eq(expenses.id, data.expenseId));
 
     return { type: "SUCCESS", value: undefined };
   });
@@ -234,115 +227,120 @@ export const createManualAdjustFn = createServerFn({ method: "POST" })
 
 export const fetchFinanceSummaryFn = createServerFn({ method: "GET" })
   .middleware([sessionMiddleware])
-  .handler(async ({ context: { session } }): Promise<
-    (FinanceSummary & { owedBreakdown: OwedToPayer[] }) | null
-  > => {
-    if (!session?.user.id) return null;
-    if (!(await requireAdmin(session.user.id))) return null;
+  .handler(
+    async ({
+      context: { session },
+    }): Promise<(FinanceSummary & { owedBreakdown: OwedToPayer[] }) | null> => {
+      if (!session?.user.id) return null;
+      if (!(await requireAdmin(session.user.id))) return null;
 
-    const [
-      topupsResult,
-      withdrawalsResult,
-      reimbursedResult,
-      unreimbursedResult,
-      unpaidResult,
-      balancesResult,
-      depositsResult,
-      owedBreakdownResult,
-      openSessionExpensesResult,
-    ] = await Promise.all([
-      // Ledger TOPUP rows only exist for confirmed top-ups, so this is real cash in.
-      db.select({ total: sum(ledger.amount) }).from(ledger).where(eq(ledger.type, "TOPUP")),
-      db
-        .select({ total: sum(withdrawalRequests.amount) })
-        .from(withdrawalRequests)
-        .where(eq(withdrawalRequests.status, "CONFIRMED")),
-      db
-        .select({ total: sum(expenses.amount) })
-        .from(expenses)
-        .where(and(eq(expenses.isDeleted, false), eq(expenses.reimbursed, true))),
-      db
-        .select({ total: sum(expenses.amount) })
-        .from(expenses)
-        .where(
-          and(
-            eq(expenses.isDeleted, false),
-            eq(expenses.reimbursed, false),
-            isNotNull(expenses.paidAt),
+      const [
+        topupsResult,
+        withdrawalsResult,
+        reimbursedResult,
+        unreimbursedResult,
+        unpaidResult,
+        balancesResult,
+        depositsResult,
+        owedBreakdownResult,
+        openSessionExpensesResult,
+      ] = await Promise.all([
+        // Ledger TOPUP rows only exist for confirmed top-ups, so this is real cash in.
+        db
+          .select({ total: sum(ledger.amount) })
+          .from(ledger)
+          .where(eq(ledger.type, "TOPUP")),
+        db
+          .select({ total: sum(withdrawalRequests.amount) })
+          .from(withdrawalRequests)
+          .where(eq(withdrawalRequests.status, "CONFIRMED")),
+        db
+          .select({ total: sum(expenses.amount) })
+          .from(expenses)
+          .where(and(eq(expenses.isDeleted, false), eq(expenses.reimbursed, true))),
+        db
+          .select({ total: sum(expenses.amount) })
+          .from(expenses)
+          .where(
+            and(
+              eq(expenses.isDeleted, false),
+              eq(expenses.reimbursed, false),
+              isNotNull(expenses.paidAt),
+            ),
           ),
-        ),
-      db
-        .select({ total: sum(expenses.amount) })
-        .from(expenses)
-        .where(and(eq(expenses.isDeleted, false), isNull(expenses.paidAt))),
-      db.select({ total: sum(users.balance) }).from(users),
-      // Deposits held against sessions that haven't been settled yet. These are
-      // already out of users.balance, so they must be added back to get the
-      // club's true liability to its members.
-      db
-        .select({ total: sum(ledger.amount) })
-        .from(ledger)
-        .innerJoin(sessions, eq(ledger.sessionId, sessions.id))
-        .where(
-          and(
-            eq(sessions.status, "OPEN"),
-            inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
+        db
+          .select({ total: sum(expenses.amount) })
+          .from(expenses)
+          .where(and(eq(expenses.isDeleted, false), isNull(expenses.paidAt))),
+        db.select({ total: sum(users.balance) }).from(users),
+        // Deposits held against sessions that haven't been settled yet. These are
+        // already out of users.balance, so they must be added back to get the
+        // club's true liability to its members.
+        db
+          .select({ total: sum(ledger.amount) })
+          .from(ledger)
+          .innerJoin(sessions, eq(ledger.sessionId, sessions.id))
+          .where(
+            and(
+              eq(sessions.status, "OPEN"),
+              inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
+            ),
           ),
-        ),
-      // Sessions can be created by any HOST, so more than one person may be
-      // out of pocket at a time.
-      db
-        .select({ id: users.id, name: users.name, total: sum(expenses.amount) })
-        .from(expenses)
-        .innerJoin(users, eq(expenses.paidById, users.id))
-        .where(
-          and(
-            eq(expenses.isDeleted, false),
-            eq(expenses.reimbursed, false),
-            isNotNull(expenses.paidAt),
+        // Sessions can be created by any HOST, so more than one person may be
+        // out of pocket at a time.
+        db
+          .select({ id: users.id, name: users.name, total: sum(expenses.amount) })
+          .from(expenses)
+          .innerJoin(users, eq(expenses.paidById, users.id))
+          .where(
+            and(
+              eq(expenses.isDeleted, false),
+              eq(expenses.reimbursed, false),
+              isNotNull(expenses.paidAt),
+            ),
+          )
+          .groupBy(users.id, users.name),
+        // Spend on sessions that haven't been settled — players will be charged
+        // for this at lock, so it's owed-but-earmarked rather than a real hole.
+        db
+          .select({ total: sum(expenses.amount) })
+          .from(expenses)
+          .innerJoin(sessions, eq(expenses.sessionId, sessions.id))
+          .where(
+            and(
+              eq(expenses.isDeleted, false),
+              eq(expenses.reimbursed, false),
+              eq(sessions.status, "OPEN"),
+            ),
           ),
-        )
-        .groupBy(users.id, users.name),
-      // Spend on sessions that haven't been settled — players will be charged
-      // for this at lock, so it's owed-but-earmarked rather than a real hole.
-      db
-        .select({ total: sum(expenses.amount) })
-        .from(expenses)
-        .innerJoin(sessions, eq(expenses.sessionId, sessions.id))
-        .where(
-          and(
-            eq(expenses.isDeleted, false),
-            eq(expenses.reimbursed, false),
-            eq(sessions.status, "OPEN"),
-          ),
-        ),
-    ]);
+      ]);
 
-    const num = (v: string | null | undefined) => parseFloat(v ?? "0") || 0;
+      const num = (v: string | null | undefined) => parseFloat(v ?? "0") || 0;
 
-    const cashIn = num(topupsResult[0]?.total);
-    const withdrawalsPaid = num(withdrawalsResult[0]?.total);
-    const expensesReimbursed = num(reimbursedResult[0]?.total);
-    const owedToAccountant = num(unreimbursedResult[0]?.total);
-    const unpaidExpenses = num(unpaidResult[0]?.total);
+      const cashIn = num(topupsResult[0]?.total);
+      const withdrawalsPaid = num(withdrawalsResult[0]?.total);
+      const expensesReimbursed = num(reimbursedResult[0]?.total);
+      const owedToAccountant = num(unreimbursedResult[0]?.total);
+      const unpaidExpenses = num(unpaidResult[0]?.total);
 
-    return {
-      ...computeFinanceSummary({
-        cashIn,
-        withdrawalsPaid,
-        expensesReimbursed,
-        owedToAccountant,
-        unpaidExpenses,
-        memberBalances: num(balancesResult[0]?.total),
-        openSessionDepositLedger: num(depositsResult[0]?.total),
-        openSessionExpenses: num(openSessionExpensesResult[0]?.total),
-      }),
-      owedBreakdown: owedBreakdownResult
-        .map((r) => ({ id: r.id, name: r.name, amount: num(r.total) }))
-        .filter((r) => r.amount !== 0)
-        .sort((a, b) => b.amount - a.amount),
-    };
-  });
+      return {
+        ...computeFinanceSummary({
+          cashIn,
+          withdrawalsPaid,
+          expensesReimbursed,
+          owedToAccountant,
+          unpaidExpenses,
+          memberBalances: num(balancesResult[0]?.total),
+          openSessionDepositLedger: num(depositsResult[0]?.total),
+          openSessionExpenses: num(openSessionExpensesResult[0]?.total),
+        }),
+        owedBreakdown: owedBreakdownResult
+          .map((r) => ({ id: r.id, name: r.name, amount: num(r.total) }))
+          .filter((r) => r.amount !== 0)
+          .sort((a, b) => b.amount - a.amount),
+      };
+    },
+  );
 
 export const financeSummaryQueryOptions = () =>
   queryOptions({
@@ -437,4 +435,3 @@ export const cashFlowQueryOptions = (range: { from?: string; to?: string } = {})
     queryKey: ["admin", "cash-flow", range],
     queryFn: () => fetchCashFlowFn({ data: range }),
   });
-

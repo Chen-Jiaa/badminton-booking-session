@@ -1,9 +1,12 @@
 import { createFileRoute, notFound, redirect, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { useArrivals } from "@/hooks/use-arrivals";
 import { sessionDetailQueryOptions } from "@/features/sessions/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, ChevronLeft } from "lucide-react";
+import { Lock, ChevronLeft, Copy, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { whatsAppLink } from "@/lib/phone";
 import { RsvpButtons } from "@/features/sessions/rsvp-buttons";
 import { cn, formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { courtsQueryOptions } from "@/features/admin/server";
@@ -12,7 +15,13 @@ import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SessionMatches } from "@/features/matches/session-matches";
 import { sessionMatchesQueryOptions } from "@/features/matches/server";
-import { LateCancelRequests, WaitlistPanel } from "@/features/sessions/roster-manage";
+import { RECORDING_GRACE_MS } from "@/features/matches/logic";
+import {
+  AddWalkInButton,
+  LateCancelRequests,
+  RemovePlayerDialog,
+  WaitlistPanel,
+} from "@/features/sessions/roster-manage";
 import { isLateCancel, waitlistOrder } from "@/features/sessions/rules";
 
 function formatSessionDate(date: Date): string {
@@ -60,6 +69,7 @@ function SessionDetailPage() {
   const { user } = Route.useRouteContext();
   const { data } = useSuspenseQueryDeferred(sessionDetailQueryOptions(id));
   const { gameSession, groupName } = data;
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
 
   const userId = user?.id;
   const myAttendance = userId ? gameSession.attendances.find((a) => a.userId === userId) : null;
@@ -75,13 +85,25 @@ function SessionDetailPage() {
   const isFull = yesAttendees.length >= gameSession.maxPlayers;
   const canManage =
     user?.role === "ADMIN" || (user?.role === "HOST" && gameSession.createdById === user.id);
+  const isHostOrAdmin = user?.role === "HOST" || user?.role === "ADMIN";
+  const host = gameSession.createdBy;
+  const hostWhatsApp = host.phone && host.id !== userId ? whatsAppLink(host.phone) : null;
   const waitlist = waitlistOrder(gameSession.attendances);
   const myWaitlistPosition = waitlist.findIndex((a) => a.userId === userId) + 1;
   const rsvpOpen = !hasStarted && !pastDeadline;
+  // On court, recording a match is the job, so it takes over the bottom button
+  // (unless you've asked out and are waiting to hear back)
+  const onCourt =
+    hasStarted &&
+    !isLocked &&
+    now.getTime() <= gameSession.endTime.getTime() + RECORDING_GRACE_MS &&
+    myAttendance?.status === "YES" &&
+    myAttendance.lateCancelStatus !== "PENDING";
   // Once RSVPs close you can still ask out of the game or leave the waitlist
   const showRsvp =
     !isLocked &&
     !hasEnded &&
+    !onCourt &&
     (rsvpOpen || myAttendance?.status === "YES" || myAttendance?.status === "WAITLIST");
   const rosterProps = {
     sessionId: id,
@@ -126,28 +148,51 @@ function SessionDetailPage() {
         <div className="py-4 border-b">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-lg font-bold uppercase tracking-wide">Badminton</h1>
-            {canManage && !isLocked && (
-              <EditSessionToggle
-                sessionId={id}
-                canManageCourts={user?.role === "ADMIN"}
-                defaultValues={{
-                  startTime: gameSession.startTime.toISOString(),
-                  endTime: gameSession.endTime.toISOString(),
-                  courts: gameSession.courts,
-                  costPerCourt: parseFloat(gameSession.costPerCourt),
-                  location: gameSession.location,
-                  locationMapUrl: gameSession.locationMapUrl,
-                  courtNumbers: gameSession.courtNumbers,
-                  maxPlayers: gameSession.maxPlayers,
-                  minBalance: parseFloat(gameSession.minBalance),
-                  note: gameSession.note,
-                  rsvpDeadline: gameSession.rsvpDeadline?.toISOString() ?? null,
-                }}
-              />
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {isHostOrAdmin && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/sessions/new" search={{ from: id }}>
+                    <Copy className="h-4 w-4 mr-1" />
+                    Duplicate
+                  </Link>
+                </Button>
+              )}
+              {canManage && !isLocked && (
+                <EditSessionToggle
+                  sessionId={id}
+                  canManageCourts={user?.role === "ADMIN"}
+                  defaultValues={{
+                    startTime: gameSession.startTime.toISOString(),
+                    endTime: gameSession.endTime.toISOString(),
+                    courts: gameSession.courts,
+                    costPerCourt: parseFloat(gameSession.costPerCourt),
+                    location: gameSession.location,
+                    locationMapUrl: gameSession.locationMapUrl,
+                    courtNumbers: gameSession.courtNumbers,
+                    maxPlayers: gameSession.maxPlayers,
+                    minBalance: parseFloat(gameSession.minBalance),
+                    note: gameSession.note,
+                    rsvpDeadline: gameSession.rsvpDeadline?.toISOString() ?? null,
+                  }}
+                />
+              )}
+            </div>
           </div>
           <p className="font-semibold">{groupName}</p>
-          <p className="text-sm text-muted-foreground">Hosted by {gameSession.createdBy.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">Hosted by {gameSession.createdBy.name}</p>
+            {hostWhatsApp && (
+              <a
+                href={hostWhatsApp}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border border-brand px-2 py-0.5 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand/20"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                WhatsApp
+              </a>
+            )}
+          </div>
         </div>
 
         {canManage && !isLocked && (
@@ -239,42 +284,74 @@ function SessionDetailPage() {
         )}
 
         {/* Player Grid */}
-        {yesAttendees.length > 0 && (
+        {(yesAttendees.length > 0 || (canManage && !isLocked)) && (
           <div className="py-4 space-y-3">
-            <p className="text-sm font-semibold">
-              Attendees
-              <span className="font-normal text-muted-foreground ml-1">
-                · {yesAttendees.length}/{gameSession.maxPlayers}
-              </span>
-            </p>
-            <div className="grid grid-cols-5 gap-x-3 gap-y-4">
-              {yesAttendees.map((a) => (
-                <div key={a.id} className="flex flex-col items-center gap-1">
-                  <Avatar className={cn("h-12 w-12", arrivedIds.has(a.userId) && "slot-fill")}>
-                    <AvatarImage src={a.user.image || undefined} />
-                    <AvatarFallback className="text-xs bg-brand text-brand-foreground">
-                      {a.user.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">
-                    {a.user.name}
-                  </p>
-                  {a.userId === gameSession.createdById && (
-                    <p className="text-[11px] text-muted-foreground">Host</p>
-                  )}
-                  {canManage && a.lateCancelStatus === "PENDING" && (
-                    <p className="text-[11px] font-medium text-warning">Wants out</p>
-                  )}
-                </div>
-              ))}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">
+                Attendees
+                <span className="font-normal text-muted-foreground ml-1">
+                  · {yesAttendees.length}/{gameSession.maxPlayers}
+                </span>
+              </p>
+              {canManage && !isLocked && (
+                <AddWalkInButton sessionId={id} attendances={gameSession.attendances} />
+              )}
             </div>
+            <div className="grid grid-cols-5 gap-x-3 gap-y-4">
+              {yesAttendees.map((a) => {
+                const body = (
+                  <>
+                    <Avatar className={cn("h-12 w-12", arrivedIds.has(a.userId) && "slot-fill")}>
+                      <AvatarImage src={a.user.image || undefined} />
+                      <AvatarFallback className="text-xs bg-brand text-brand-foreground">
+                        {a.user.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">
+                      {a.user.name}
+                    </p>
+                    {a.userId === gameSession.createdById && (
+                      <p className="text-[11px] text-muted-foreground">Host</p>
+                    )}
+                    {canManage && a.lateCancelStatus === "PENDING" && (
+                      <p className="text-[11px] font-medium text-warning">Wants out</p>
+                    )}
+                  </>
+                );
+                return canManage && !isLocked ? (
+                  <button
+                    key={a.id}
+                    type="button"
+                    aria-label={`Remove ${a.user.name}`}
+                    onClick={() => setRemoving({ id: a.userId, name: a.user.name })}
+                    className="flex flex-col items-center gap-1 rounded-lg transition-[scale] duration-150 active:scale-[0.94]"
+                  >
+                    {body}
+                  </button>
+                ) : (
+                  <div key={a.id} className="flex flex-col items-center gap-1">
+                    {body}
+                  </div>
+                );
+              })}
+            </div>
+            {canManage && !isLocked && yesAttendees.length > 0 && (
+              <p className="text-xs text-muted-foreground">Tap a player to remove them.</p>
+            )}
+            {canManage && (
+              <RemovePlayerDialog
+                sessionId={id}
+                player={removing}
+                onClose={() => setRemoving(null)}
+              />
+            )}
           </div>
         )}
 
         {/* Waitlist */}
         {canManage && !isLocked ? (
-          <div className="py-4">
-            <WaitlistPanel {...rosterProps} />
+          <div className="py-4 border-t">
+            <WaitlistPanel {...rosterProps} plain />
           </div>
         ) : (
           waitlist.length > 0 &&
@@ -315,6 +392,7 @@ function SessionDetailPage() {
           endTime={gameSession.endTime}
           me={myAttendance?.status === "YES" ? myAttendance.user : null}
           attendees={yesAttendees.map((a) => a.user)}
+          stickyRecord={onCourt}
         />
 
         {canManage && !isLocked && hasEnded && (

@@ -5,10 +5,18 @@
 
 /* Join celebration: button settles with a confident spring pop */
 @keyframes join-pop {
-  0% { transform: scale(0.9); }
-  45% { transform: scale(1.05); }
-  70% { transform: scale(0.985); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.9);
+  }
+  45% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.985);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Join celebration: a shuttlecock arcs up from the button and flutters out */
@@ -17,49 +25,90 @@
     transform: translate(-50%, -50%) rotate(var(--r-start, 0deg)) scale(0.4);
     opacity: 0;
   }
-  18% { opacity: 1; }
+  18% {
+    opacity: 1;
+  }
   100% {
-    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty)))
-      rotate(var(--r-end, 0deg)) scale(1);
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) rotate(var(--r-end, 0deg))
+      scale(1);
     opacity: 0;
   }
 }
 
 /* Overshoot lives in the keyframe stops; easing stays a smooth decel. */
-.join-pop { animation: join-pop 440ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.join-pop {
+  animation: join-pop 440ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .birdie {
   animation: birdie-fly var(--dur, 900ms) cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
 /* Matches: a score digit rolls in from the direction it moved */
 @keyframes score-tick {
-  from { transform: translateY(var(--tick-from, 40%)); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(var(--tick-from, 40%));
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-.score-tick { animation: score-tick 180ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.score-tick {
+  animation: score-tick 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 
 /* Matches: a player lands in a court slot with a small overshoot */
 @keyframes slot-fill {
-  0% { transform: scale(0.6); opacity: 0; }
-  60% { transform: scale(1.06); opacity: 1; }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
 }
-.slot-fill { animation: slot-fill 260ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.slot-fill {
+  animation: slot-fill 260ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 
 /* Matches: the WON / LOST stamp thumps down when a result is confirmed */
 @keyframes stamp-land {
-  0% { transform: rotate(-12deg) scale(1.8); opacity: 0; }
-  55% { transform: rotate(-12deg) scale(0.94); opacity: 1; }
-  100% { transform: rotate(-12deg) scale(1); opacity: 1; }
+  0% {
+    transform: rotate(-12deg) scale(1.8);
+    opacity: 0;
+  }
+  55% {
+    transform: rotate(-12deg) scale(0.94);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-12deg) scale(1);
+    opacity: 1;
+  }
 }
-.stamp-land { animation: stamp-land 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stamp-land {
+  animation: stamp-land 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 
 /* Leaderboard: podium steps and table rows rise into place */
 @keyframes rise-in {
-  from { transform: translateY(12px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
-.rise-in { animation: rise-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.rise-in {
+  animation: rise-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
 
 /* Forms: fields revealed by a choice fade in instead of popping into place */
 .reveal {
@@ -68,30 +117,75 @@
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 @starting-style {
-  .reveal { opacity: 0; transform: translateY(var(--reveal-from, 4px)); }
+  .reveal {
+    opacity: 0;
+    transform: translateY(var(--reveal-from, 4px));
+  }
+}
+
+/* Copy link: a tick draws itself in while a thin ring pulses out behind it */
+@keyframes tick-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.tick-draw path {
+  stroke-dasharray: 1;
+  animation: tick-draw 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes copy-ring {
+  from {
+    transform: scale(0.6);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+.copy-ring {
+  animation: copy-ring 400ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .join-pop { animation: none; }
-  .birdie { display: none; }
+  .join-pop {
+    animation: none;
+  }
+  .birdie {
+    display: none;
+  }
 
   /* Replace slides, zooms and scale presses with near-instant changes */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  .animate-spin { animation-duration: 1.5s !important; animation-iteration-count: infinite !important; }
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  header.sticky, nav.fixed, [data-state] {
+  header.sticky,
+  nav.fixed,
+  [data-state] {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
-  header.sticky { background-color: #000 !important; }
-  nav.fixed { background-color: #fff !important; }
+  header.sticky {
+    background-color: #000 !important;
+  }
+  nav.fixed {
+    background-color: #fff !important;
+  }
 }
 
 /* Map shadcn CSS variables to Tailwind v4 color/radius utilities */
@@ -208,18 +302,43 @@
     -webkit-tap-highlight-color: transparent;
   }
   /* Remove the tap delay on everything interactive */
-  a, button, input, select, textarea, label, summary, [role="button"], [role="link"], [role="tab"] {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  summary,
+  [role="button"],
+  [role="link"],
+  [role="tab"] {
     touch-action: manipulation;
   }
   /* Controls aren't content: no long-press text selection or callout */
-  button, [role="button"], [role="tab"] {
+  button,
+  [role="button"],
+  [role="tab"] {
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
   }
   /* Size-specific tracking: tighter as text grows, looser when small */
-  h1, h2, .text-2xl, .text-3xl { letter-spacing: -0.02em; }
-  h3, .text-xl { letter-spacing: -0.02em; line-height: 1.2; }
-  .text-lg { letter-spacing: -0.01em; }
-  .text-xs, .text-\[11px\] { letter-spacing: 0.01em; }
+  h1,
+  h2,
+  .text-2xl,
+  .text-3xl {
+    letter-spacing: -0.02em;
+  }
+  h3,
+  .text-xl {
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .text-lg {
+    letter-spacing: -0.01em;
+  }
+  .text-xs,
+  .text-\[11px\] {
+    letter-spacing: 0.01em;
+  }
 }

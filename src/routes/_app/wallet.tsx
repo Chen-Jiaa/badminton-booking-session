@@ -100,7 +100,9 @@ function WalletPage() {
                       tone={isPending ? "pending" : "rejected"}
                       title={isPending ? "Top Up Pending" : "Top Up Rejected"}
                       subtitle={formatDateTime(req.createdAt)}
-                      note={!isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined}
+                      note={
+                        !isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined
+                      }
                       amount={formatCurrency(parseFloat(req.amount))}
                     />
                   );
@@ -117,7 +119,9 @@ function WalletPage() {
                       tone={isPending ? "pending" : "rejected"}
                       title={isPending ? "Withdrawal Pending" : "Withdrawal Rejected"}
                       subtitle={formatDateTime(req.createdAt)}
-                      note={!isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined}
+                      note={
+                        !isPending && req.rejectReason ? `Reason: ${req.rejectReason}` : undefined
+                      }
                       amount={`-${formatCurrency(parseFloat(req.amount))}`}
                     />
                   );
@@ -127,7 +131,11 @@ function WalletPage() {
                 const amount = parseFloat(entry.amount);
                 const isCredit = amount > 0;
                 const Icon =
-                  entry.type === "MANUAL_ADJUST" ? Edit : isCredit ? ArrowUpCircle : ArrowDownCircle;
+                  entry.type === "MANUAL_ADJUST"
+                    ? Edit
+                    : isCredit
+                      ? ArrowUpCircle
+                      : ArrowDownCircle;
 
                 return (
                   <TransactionRow
@@ -199,12 +207,7 @@ function TransactionRow({
   const t = TONE[tone];
   return (
     <div className={cn("flex items-center gap-3 px-4 py-3", className)}>
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-          t.chip,
-        )}
-      >
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full", t.chip)}>
         <Icon className={cn("h-4 w-4", t.icon)} />
       </div>
       <div className="min-w-0 flex-1">

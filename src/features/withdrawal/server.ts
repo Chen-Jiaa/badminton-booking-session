@@ -254,7 +254,9 @@ export const confirmWithdrawalFn = createServerFn({ method: "POST" })
         const [claimed] = await tx
           .update(withdrawalRequests)
           .set({ status: "CONFIRMED", resolvedAt: confirmedAt, resolvedBy: adminUserId })
-          .where(and(eq(withdrawalRequests.id, requestId), eq(withdrawalRequests.status, "PENDING")))
+          .where(
+            and(eq(withdrawalRequests.id, requestId), eq(withdrawalRequests.status, "PENDING")),
+          )
           .returning({ id: withdrawalRequests.id });
 
         if (!claimed) return false;
