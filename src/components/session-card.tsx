@@ -16,7 +16,7 @@ import {
 import { MapPin, Loader2, Users, Check, Share } from "lucide-react";
 import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
 import { isLateCancel } from "@/features/sessions/rules";
 
@@ -43,15 +43,19 @@ type SessionCardProps = {
 };
 
 function formatCardDate(date: Date): string {
-  const weekday = date.toLocaleDateString("en", { weekday: "short" });
-  const day = date.getDate();
-  const month = date.toLocaleDateString("en", { month: "short" });
-  return `${weekday}, ${day} ${month}`;
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString("en", { timeZone: CLUB_TIME_ZONE, ...options });
+  return `${part({ weekday: "short" })}, ${part({ day: "numeric" })} ${part({ month: "short" })}`;
 }
 
 function formatCardTime(date: Date): string {
   return date
-    .toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en", {
+      timeZone: CLUB_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
     .replace(/\s/g, "")
     .toUpperCase();
 }
@@ -183,7 +187,9 @@ export function SessionCard({
     const text = `Join our badminton session! ${url}`;
     if (navigator.share) {
       try {
-        await navigator.share({ text, url });
+        // Text only: `text` already ends with the link, and targets like WhatsApp
+        // glue `url` + `text` together into one broken link if both are passed.
+        await navigator.share({ text });
         return;
       } catch {
         // User cancelled or share failed — fall back to WhatsApp
