@@ -61,11 +61,7 @@ export function SessionList({ sessions }: SessionListProps) {
                   <Badge variant={s.status === "LOCKED" ? "default" : "secondary"}>
                     {s.status}
                   </Badge>
-                  <DeleteSessionButton
-                    sessionId={s.id}
-                    isLocked={s.status === "LOCKED"}
-                    variant="icon"
-                  />
+                  <DeleteSessionButton sessionId={s.id} isLocked={s.status === "LOCKED"} />
                 </div>
               </div>
             </CardContent>

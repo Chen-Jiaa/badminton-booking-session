@@ -81,3 +81,32 @@ test("finalizing a session charges each player their share", async ({ loginAs })
   await expectBalance(player, START_BALANCE - (23 - DEPOSIT));
   await expect(player.getByText("Session Fee", { exact: true })).toBeVisible();
 });
+
+test("admin session actions live behind the ⋯ menu", async ({ loginAs }) => {
+  const admin = await loginAs("admin");
+  await admin.goto(`/admin/sessions/${SEED_SESSIONS.upcoming}`);
+  const more = admin.getByRole("button", { name: "More actions" });
+
+  await expect(admin.getByRole("button", { name: "Edit" })).toBeVisible();
+
+  // Backing out of Delete leaves the page usable
+  await more.click();
+  await admin.getByRole("menuitem", { name: "Delete session" }).click();
+  const confirm = admin.getByRole("dialog", { name: "Delete Session" });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole("button", { name: "Cancel" }).click();
+  await expect(confirm).toBeHidden();
+  await admin.getByRole("button", { name: "Edit" }).click();
+  await expect(admin.getByRole("dialog", { name: "Edit Session" })).toBeVisible();
+  await admin.keyboard.press("Escape");
+
+  await more.click();
+  await admin.getByRole("menuitem", { name: "Duplicate" }).click();
+  await expect(admin).toHaveURL(new RegExp(`/admin/sessions/new\\?from=${SEED_SESSIONS.upcoming}`));
+
+  await admin.goto(`/admin/sessions/${SEED_SESSIONS.upcoming}`);
+  await more.click();
+  await admin.getByRole("menuitem", { name: "Delete session" }).click();
+  await admin.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(admin).toHaveURL(/\/admin\/sessions$/);
+});

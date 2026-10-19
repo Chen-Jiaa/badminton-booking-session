@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { adminSessionDetailQueryOptions, courtsQueryOptions } from "@/features/admin/server";
@@ -6,11 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Copy, UserMinus } from "lucide-react";
+import { UserMinus } from "lucide-react";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
-import { DeleteSessionButton } from "@/features/admin/delete-session-button";
-import { ShareButton } from "@/features/admin/share-button";
+import { SessionActionsMenu } from "@/features/admin/session-actions-menu";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 import {
@@ -42,17 +41,15 @@ function AdminSessionDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Session Details</h1>
-        <div className="flex items-center gap-2">
-          <Badge variant={isLocked ? "default" : "secondary"}>{gameSession.status}</Badge>
-          <ShareButton sessionId={id} />
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/sessions/new" search={{ from: id }}>
-              <Copy className="h-4 w-4" />
-              Duplicate
-            </Link>
-          </Button>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold">{formatDateTime(gameSession.startTime)}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {gameSession.location && <span>{gameSession.location}</span>}
+            <Badge variant={isLocked ? "default" : "secondary"}>{gameSession.status}</Badge>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           {!isLocked && (
             <EditSessionToggle
               sessionId={id}
@@ -71,7 +68,12 @@ function AdminSessionDetailPage() {
               }}
             />
           )}
-          <DeleteSessionButton sessionId={id} isLocked={isLocked} />
+          <SessionActionsMenu
+            sessionId={id}
+            isLocked={isLocked}
+            duplicateTo="/admin/sessions/new"
+            canDelete
+          />
         </div>
       </div>
 
@@ -87,16 +89,6 @@ function AdminSessionDetailPage() {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div className="col-span-2">
-              <p className="text-muted-foreground">Date &amp; Time</p>
-              <p className="font-medium">{formatDateTime(gameSession.startTime)}</p>
-            </div>
-            {gameSession.location && (
-              <div className="col-span-2">
-                <p className="text-muted-foreground">Venue</p>
-                <p className="font-medium">{gameSession.location}</p>
-              </div>
-            )}
             {gameSession.courtNumbers && (
               <div className="col-span-2">
                 <p className="text-muted-foreground">Courts</p>

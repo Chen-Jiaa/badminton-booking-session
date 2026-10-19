@@ -4,13 +4,13 @@ import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { useArrivals } from "@/hooks/use-arrivals";
 import { sessionDetailQueryOptions } from "@/features/sessions/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Lock, ChevronLeft, Copy, MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Lock, ChevronLeft, MessageCircle } from "lucide-react";
 import { whatsAppLink } from "@/lib/phone";
 import { RsvpButtons } from "@/features/sessions/rsvp-buttons";
 import { cn, formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { courtsQueryOptions } from "@/features/admin/server";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
+import { SessionActionsMenu } from "@/features/admin/session-actions-menu";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SessionMatches } from "@/features/matches/session-matches";
@@ -149,14 +149,6 @@ function SessionDetailPage() {
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-lg font-bold uppercase tracking-wide">Badminton</h1>
             <div className="flex shrink-0 items-center gap-2">
-              {isHostOrAdmin && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/sessions/new" search={{ from: id }}>
-                    <Copy className="h-4 w-4 mr-1" />
-                    Duplicate
-                  </Link>
-                </Button>
-              )}
               {canManage && !isLocked && (
                 <EditSessionToggle
                   sessionId={id}
@@ -174,6 +166,13 @@ function SessionDetailPage() {
                     note: gameSession.note,
                     rsvpDeadline: gameSession.rsvpDeadline?.toISOString() ?? null,
                   }}
+                />
+              )}
+              {isHostOrAdmin && (
+                <SessionActionsMenu
+                  sessionId={id}
+                  isLocked={isLocked}
+                  duplicateTo="/sessions/new"
                 />
               )}
             </div>
