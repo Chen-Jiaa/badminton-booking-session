@@ -1,4 +1,4 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, notFound, redirect, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { useArrivals } from "@/hooks/use-arrivals";
@@ -8,7 +8,7 @@ import { Lock, ChevronLeft, Copy, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { whatsAppLink } from "@/lib/phone";
 import { RsvpButtons } from "@/features/sessions/rsvp-buttons";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { courtsQueryOptions } from "@/features/admin/server";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
@@ -25,21 +25,33 @@ import {
 import { isLateCancel, waitlistOrder } from "@/features/sessions/rules";
 
 function formatSessionDate(date: Date): string {
-  const day = date.getDate();
-  const month = date.toLocaleDateString("en", { month: "short" });
-  const year = date.getFullYear();
-  const weekday = date.toLocaleDateString("en", { weekday: "long" });
-  return `${day} ${month} ${year}, ${weekday}`;
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString("en", { timeZone: CLUB_TIME_ZONE, ...options });
+  return `${part({ day: "numeric" })} ${part({ month: "short" })} ${part({ year: "numeric" })}, ${part({ weekday: "long" })}`;
 }
 
 function formatTime(date: Date): string {
   return date
-    .toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en", {
+      timeZone: CLUB_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
     .replace(/\s/g, "")
     .toUpperCase();
 }
 
 export const Route = createFileRoute("/_app/sessions_/$id")({
+  // Shared links often pick up junk from chat apps (a trailing "." or ")", an invisible
+  // zero-width space). Session ids are cuid2 (lowercase alphanumeric), so keep only the
+  // leading id and redirect to the clean URL instead of showing "Page not found".
+  beforeLoad: ({ params: { id } }) => {
+    const cleanId = id.match(/^[a-z0-9]+/i)?.[0]?.toLowerCase();
+    if (cleanId && cleanId !== id) {
+      throw redirect({ to: "/sessions/$id", params: { id: cleanId }, replace: true });
+    }
+  },
   loader: async ({ context: { queryClient, user }, params: { id } }) => {
     const detailPromise = queryClient.ensureQueryData(sessionDetailQueryOptions(id));
     queryClient.prefetchQuery(sessionMatchesQueryOptions(id));

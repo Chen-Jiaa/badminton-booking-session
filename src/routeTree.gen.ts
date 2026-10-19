@@ -28,6 +28,7 @@ import { Route as ConsoleAdminSessionsRouteImport } from './routes/_console/admi
 import { Route as ConsoleAdminTopupsRouteImport } from './routes/_console/admin/topups'
 import { Route as ApiAdminExportRouteImport } from './routes/api/admin/export'
 import { Route as ApiCronCleanupReceiptsRouteImport } from './routes/api/cron/cleanup-receipts'
+import { Route as AppSessionsIdSplatRouteImport } from './routes/_app/sessions_.$id.$'
 import { Route as ConsoleAdminMembersIdRouteImport } from './routes/_console/admin/members_.$id'
 import { Route as ConsoleAdminSessionsIdRouteImport } from './routes/_console/admin/sessions_.$id'
 import { Route as ConsoleAdminSessionsNewRouteImport } from './routes/_console/admin/sessions_.new'
@@ -125,6 +126,11 @@ const ApiCronCleanupReceiptsRoute = ApiCronCleanupReceiptsRouteImport.update({
   path: '/api/cron/cleanup-receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSessionsIdSplatRoute = AppSessionsIdSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AppSessionsIdRoute,
+} as any)
 const ConsoleAdminMembersIdRoute = ConsoleAdminMembersIdRouteImport.update({
   id: '/admin/members_/$id',
   path: '/admin/members/$id',
@@ -151,7 +157,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AppWalletRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/sessions/$id': typeof AppSessionsIdRoute
+  '/sessions/$id': typeof AppSessionsIdRouteWithChildren
   '/sessions/new': typeof AppSessionsNewRoute
   '/admin/finance': typeof ConsoleAdminFinanceRoute
   '/admin/members': typeof ConsoleAdminMembersRoute
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/sessions/$id/$': typeof AppSessionsIdSplatRoute
   '/admin/members/$id': typeof ConsoleAdminMembersIdRoute
   '/admin/sessions/$id': typeof ConsoleAdminSessionsIdRoute
   '/admin/sessions/new': typeof ConsoleAdminSessionsNewRoute
@@ -173,7 +180,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AppWalletRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/sessions/$id': typeof AppSessionsIdRoute
+  '/sessions/$id': typeof AppSessionsIdRouteWithChildren
   '/sessions/new': typeof AppSessionsNewRoute
   '/admin/finance': typeof ConsoleAdminFinanceRoute
   '/admin/members': typeof ConsoleAdminMembersRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/sessions/$id/$': typeof AppSessionsIdSplatRoute
   '/admin/members/$id': typeof ConsoleAdminMembersIdRoute
   '/admin/sessions/$id': typeof ConsoleAdminSessionsIdRoute
   '/admin/sessions/new': typeof ConsoleAdminSessionsNewRoute
@@ -198,7 +206,7 @@ export interface FileRoutesById {
   '/_app/wallet': typeof AppWalletRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/_app/sessions_/$id': typeof AppSessionsIdRoute
+  '/_app/sessions_/$id': typeof AppSessionsIdRouteWithChildren
   '/_app/sessions_/new': typeof AppSessionsNewRoute
   '/_console/admin/finance': typeof ConsoleAdminFinanceRoute
   '/_console/admin/members': typeof ConsoleAdminMembersRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_console/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/_app/sessions_/$id/$': typeof AppSessionsIdSplatRoute
   '/_console/admin/members_/$id': typeof ConsoleAdminMembersIdRoute
   '/_console/admin/sessions_/$id': typeof ConsoleAdminSessionsIdRoute
   '/_console/admin/sessions_/new': typeof ConsoleAdminSessionsNewRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/sessions/$id/$'
     | '/admin/members/$id'
     | '/admin/sessions/$id'
     | '/admin/sessions/new'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/sessions/$id/$'
     | '/admin/members/$id'
     | '/admin/sessions/$id'
     | '/admin/sessions/new'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/_console/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/_app/sessions_/$id/$'
     | '/_console/admin/members_/$id'
     | '/_console/admin/sessions_/$id'
     | '/_console/admin/sessions_/new'
@@ -427,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/sessions_/$id/$': {
+      id: '/_app/sessions_/$id/$'
+      path: '/$'
+      fullPath: '/sessions/$id/$'
+      preLoaderRoute: typeof AppSessionsIdSplatRouteImport
+      parentRoute: typeof AppSessionsIdRoute
+    }
     '/_console/admin/members_/$id': {
       id: '/_console/admin/members_/$id'
       path: '/admin/members/$id'
@@ -451,13 +470,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppSessionsIdRouteChildren {
+  AppSessionsIdSplatRoute: typeof AppSessionsIdSplatRoute
+}
+
+const AppSessionsIdRouteChildren: AppSessionsIdRouteChildren = {
+  AppSessionsIdSplatRoute: AppSessionsIdSplatRoute,
+}
+
+const AppSessionsIdRouteWithChildren = AppSessionsIdRoute._addFileChildren(
+  AppSessionsIdRouteChildren,
+)
+
 interface AppRouteChildren {
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppProfileRoute: typeof AppProfileRoute
   AppSessionsRoute: typeof AppSessionsRoute
   AppTopupRoute: typeof AppTopupRoute
   AppWalletRoute: typeof AppWalletRoute
-  AppSessionsIdRoute: typeof AppSessionsIdRoute
+  AppSessionsIdRoute: typeof AppSessionsIdRouteWithChildren
   AppSessionsNewRoute: typeof AppSessionsNewRoute
 }
 
@@ -467,7 +498,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSessionsRoute: AppSessionsRoute,
   AppTopupRoute: AppTopupRoute,
   AppWalletRoute: AppWalletRoute,
-  AppSessionsIdRoute: AppSessionsIdRoute,
+  AppSessionsIdRoute: AppSessionsIdRouteWithChildren,
   AppSessionsNewRoute: AppSessionsNewRoute,
 }
 

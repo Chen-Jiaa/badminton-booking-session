@@ -18,7 +18,7 @@ import { MapPin, Loader2, Users, Check } from "lucide-react";
 import { CopyIcon } from "@/components/copy-icon";
 import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
 import { isLateCancel } from "@/features/sessions/rules";
 
@@ -45,15 +45,19 @@ type SessionCardProps = {
 };
 
 function formatCardDate(date: Date): string {
-  const weekday = date.toLocaleDateString("en", { weekday: "short" });
-  const day = date.getDate();
-  const month = date.toLocaleDateString("en", { month: "short" });
-  return `${weekday}, ${day} ${month}`;
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    date.toLocaleDateString("en", { timeZone: CLUB_TIME_ZONE, ...options });
+  return `${part({ weekday: "short" })}, ${part({ day: "numeric" })} ${part({ month: "short" })}`;
 }
 
 function formatCardTime(date: Date): string {
   return date
-    .toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en", {
+      timeZone: CLUB_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
     .replace(/\s/g, "")
     .toUpperCase();
 }
