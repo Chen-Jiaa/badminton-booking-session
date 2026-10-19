@@ -11,7 +11,7 @@ import {
   expenses,
   matches,
 } from "@/db/schema";
-import { eq, lte, desc, and, inArray, notInArray, TransactionRollbackError } from "drizzle-orm";
+import { eq, desc, and, inArray, notInArray, TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import {
   createSessionSchema,
@@ -23,6 +23,7 @@ import {
   promoteWaitlistSchema,
 } from "@/lib/validations";
 import { promoteFromWaitlist, refundDeposit } from "@/features/sessions/roster";
+import { adjustBalance, lockSession } from "@/lib/wallet";
 import { canManageSession } from "@/features/sessions/rules";
 import { templateFromSession, type SessionTemplate } from "@/features/admin/session-template";
 import {
@@ -334,10 +335,7 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
 
     const [admin, gameSession] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
-      db.query.sessions.findFirst({
-        where: eq(sessions.id, sessionId),
-        with: { attendances: true, ledgerEntries: true },
-      }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, sessionId) }),
     ]);
     if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) return { type: "FORBIDDEN" };
     if (!gameSession) return { type: "NOT_FOUND" };
@@ -346,44 +344,44 @@ export const deleteSessionFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "Cannot cancel a finalized session" };
     }
 
-    if (gameSession.ledgerEntries.length > 0) {
+    // One transaction holding the session lock: a second delete (double click) waits,
+    // then finds the session gone instead of reversing every charge a second time.
+    const deleted = await db.transaction(async (tx) => {
+      if (!(await lockSession(tx, sessionId))) return false;
+
+      const entries = await tx.query.ledger.findMany({ where: eq(ledger.sessionId, sessionId) });
       // Group entries by user and sum — then reverse the net amount for each user
       const netByUser = new Map<string, number>();
-      for (const entry of gameSession.ledgerEntries) {
+      for (const entry of entries) {
         netByUser.set(entry.userId, (netByUser.get(entry.userId) ?? 0) + parseFloat(entry.amount));
       }
       for (const [uid, net] of Array.from(netByUser)) {
-        const user = await db.query.users.findFirst({ where: eq(users.id, uid) });
-        if (user && net !== 0) {
-          const newBalance = (parseFloat(user.balance) - net).toFixed(2);
-          await db
-            .update(users)
-            .set({ balance: newBalance, updatedAt: new Date() })
-            .where(eq(users.id, uid));
-        }
+        if (net !== 0) await adjustBalance(tx, uid, -net);
       }
-      await db.delete(ledger).where(eq(ledger.sessionId, sessionId));
-    }
+      await tx.delete(ledger).where(eq(ledger.sessionId, sessionId));
 
-    // Unlink every expense from the session before the row goes (the FK has no
-    // cascade). Unreimbursed spend is soft-deleted so it drops out of the finance
-    // figures — but a reimbursed expense is real cash that already left the club
-    // pot, so it must survive the cancellation and keep counting as cash-out.
-    // Deleting it would erase the outflow and inflate the surplus.
-    await db
-      .update(expenses)
-      .set({ isDeleted: true, sessionId: null })
-      .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, false)));
+      // Unlink every expense from the session before the row goes (the FK has no
+      // cascade). Unreimbursed spend is soft-deleted so it drops out of the finance
+      // figures — but a reimbursed expense is real cash that already left the club
+      // pot, so it must survive the cancellation and keep counting as cash-out.
+      // Deleting it would erase the outflow and inflate the surplus.
+      await tx
+        .update(expenses)
+        .set({ isDeleted: true, sessionId: null })
+        .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, false)));
 
-    await db
-      .update(expenses)
-      .set({ sessionId: null })
-      .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, true)));
+      await tx
+        .update(expenses)
+        .set({ sessionId: null })
+        .where(and(eq(expenses.sessionId, sessionId), eq(expenses.reimbursed, true)));
 
-    // match_players rows go with their match (ON DELETE CASCADE)
-    await db.delete(matches).where(eq(matches.sessionId, sessionId));
-    await db.delete(attendances).where(eq(attendances.sessionId, sessionId));
-    await db.delete(sessions).where(eq(sessions.id, sessionId));
+      // match_players rows go with their match (ON DELETE CASCADE)
+      await tx.delete(matches).where(eq(matches.sessionId, sessionId));
+      await tx.delete(attendances).where(eq(attendances.sessionId, sessionId));
+      await tx.delete(sessions).where(eq(sessions.id, sessionId));
+      return true;
+    });
+    if (!deleted) return { type: "NOT_FOUND" };
 
     return { type: "SUCCESS", value: undefined };
   });
@@ -403,62 +401,69 @@ export const lockSessionFn = createServerFn({ method: "POST" })
 
     const validated = lockSessionSchema.parse(data);
 
-    const [admin, gameSession] = await Promise.all([
+    const [admin, stale] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
-      db.query.sessions.findFirst({
-        where: eq(sessions.id, validated.sessionId),
-        with: {
-          attendances: {
-            where: eq(attendances.status, "YES"),
-            with: { user: true },
-          },
-          ledgerEntries: true,
-        },
-      }),
+      db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
     ]);
 
     if (!admin || (admin.role !== "ADMIN" && admin.role !== "HOST")) {
       return { type: "FORBIDDEN" };
     }
-    if (!gameSession) return { type: "NOT_FOUND" };
-    if (admin.role === "HOST" && gameSession.createdById !== admin.id) {
+    if (!stale) return { type: "NOT_FOUND" };
+    if (admin.role === "HOST" && stale.createdById !== admin.id) {
       return { type: "FORBIDDEN" };
     }
-    if (gameSession.status === "LOCKED") {
-      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
-    }
-    if (gameSession.endTime > new Date()) {
-      return { type: "BUSINESS_ERROR", code: "Session can only be finalized after it ends" };
-    }
 
-    const confirmedAttendees = gameSession.attendances;
-    if (confirmedAttendees.some((a) => a.lateCancelStatus === "PENDING")) {
-      return {
-        type: "BUSINESS_ERROR",
-        code: "Approve or reject the pending late cancellations first",
-      };
-    }
-    if (confirmedAttendees.length === 0) {
-      return { type: "BUSINESS_ERROR", code: "No confirmed attendees" };
-    }
-
-    const courtCost = gameSession.courts * parseFloat(gameSession.costPerCourt);
-    const totalCost = courtCost + validated.shuttleCost;
-    const costPerPlayer = totalCost / confirmedAttendees.length;
     const adminUserId = session.user.id;
+    const lowBalance: { token: string; balance: string }[] = [];
 
-    const heldDeposits = new Map<string, number>();
-    for (const entry of gameSession.ledgerEntries) {
-      if (entry.type === "SESSION_DEPOSIT" || entry.type === "SESSION_REFUND") {
+    // Decided and charged under the session lock, against the roster and deposits as
+    // they are now: a join, leave or second Finalize can't slip in between.
+    const result = await db.transaction(async (tx): Promise<Result> => {
+      const gameSession = await lockSession(tx, validated.sessionId);
+      if (!gameSession) return { type: "NOT_FOUND" };
+      if (gameSession.status === "LOCKED") {
+        return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+      }
+      if (gameSession.endTime > new Date()) {
+        return { type: "BUSINESS_ERROR", code: "Session can only be finalized after it ends" };
+      }
+
+      const [confirmedAttendees, ledgerEntries] = await Promise.all([
+        tx.query.attendances.findMany({
+          where: and(eq(attendances.sessionId, gameSession.id), eq(attendances.status, "YES")),
+          with: { user: { columns: { id: true, fcmToken: true } } },
+        }),
+        tx.query.ledger.findMany({
+          where: and(
+            eq(ledger.sessionId, gameSession.id),
+            inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
+          ),
+        }),
+      ]);
+      if (confirmedAttendees.some((a) => a.lateCancelStatus === "PENDING")) {
+        return {
+          type: "BUSINESS_ERROR",
+          code: "Approve or reject the pending late cancellations first",
+        };
+      }
+      if (confirmedAttendees.length === 0) {
+        return { type: "BUSINESS_ERROR", code: "No confirmed attendees" };
+      }
+
+      const courtCost = gameSession.courts * parseFloat(gameSession.costPerCourt);
+      const totalCost = courtCost + validated.shuttleCost;
+      const costPerPlayer = totalCost / confirmedAttendees.length;
+
+      const heldDeposits = new Map<string, number>();
+      for (const entry of ledgerEntries) {
         heldDeposits.set(
           entry.userId,
           (heldDeposits.get(entry.userId) ?? 0) - parseFloat(entry.amount),
         );
       }
-    }
 
-    const finalized = await db.transaction(async (tx) => {
-      const [claimedSession] = await tx
+      await tx
         .update(sessions)
         .set({
           shuttleCount: validated.shuttleCount,
@@ -468,16 +473,7 @@ export const lockSessionFn = createServerFn({ method: "POST" })
           status: "LOCKED",
           updatedAt: new Date(),
         })
-        .where(
-          and(
-            eq(sessions.id, validated.sessionId),
-            eq(sessions.status, "OPEN"),
-            lte(sessions.endTime, new Date()),
-          ),
-        )
-        .returning({ id: sessions.id });
-
-      if (!claimedSession) return false;
+        .where(eq(sessions.id, gameSession.id));
 
       // The court rental was already recorded as paid when the session was
       // created, so nothing to add for it here.
@@ -487,7 +483,7 @@ export const lockSessionFn = createServerFn({ method: "POST" })
       // is recovery, not new spend — recording it again would double-count.
       if (validated.shuttleCost > 0 && validated.shuttleSupplierId) {
         await tx.insert(expenses).values({
-          sessionId: validated.sessionId,
+          sessionId: gameSession.id,
           category: "SHUTTLES",
           amount: validated.shuttleCost.toFixed(2),
           note: `${validated.shuttleCount} shuttle${validated.shuttleCount === 1 ? "" : "s"} (own stock)`,
@@ -498,47 +494,39 @@ export const lockSessionFn = createServerFn({ method: "POST" })
       }
 
       for (const attendance of confirmedAttendees) {
-        const user = attendance.user;
-        const currentBalance = parseFloat(user.balance);
-        const heldDeposit = Math.max(0, heldDeposits.get(user.id) ?? 0);
+        const heldDeposit = Math.max(0, heldDeposits.get(attendance.userId) ?? 0);
         const netCharge = costPerPlayer - heldDeposit;
-        const newBalance = currentBalance - netCharge;
 
         if (netCharge !== 0) {
-          await tx
-            .update(users)
-            .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
-            .where(eq(users.id, user.id));
-
+          const newBalance = (await adjustBalance(tx, attendance.userId, -netCharge))!;
           await tx.insert(ledger).values({
-            userId: user.id,
+            userId: attendance.userId,
             type: netCharge > 0 ? "SESSION_DEBIT" : "SESSION_REFUND",
             amount: (-netCharge).toFixed(2),
-            balanceAfter: newBalance.toFixed(2),
+            balanceAfter: newBalance,
             note: netCharge > 0 ? "Session fee (balance due)" : "Session deposit refund",
             createdById: adminUserId,
-            sessionId: validated.sessionId,
+            sessionId: gameSession.id,
           });
+          if (parseFloat(newBalance) < 20 && attendance.user.fcmToken) {
+            lowBalance.push({ token: attendance.user.fcmToken, balance: newBalance });
+          }
         }
 
         await tx
           .update(attendances)
           .set({ finalCost: costPerPlayer.toFixed(2), updatedAt: new Date() })
           .where(eq(attendances.id, attendance.id));
-
-        if (newBalance < 20 && user.fcmToken) {
-          await sendLowBalanceNotification(user.fcmToken, newBalance.toFixed(2));
-        }
       }
 
-      return true;
+      return { type: "SUCCESS", value: undefined };
     });
 
-    if (!finalized) {
-      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
+    // After commit, so a slow push service never holds the lock
+    for (const { token, balance } of lowBalance) {
+      await sendLowBalanceNotification(token, balance);
     }
-
-    return { type: "SUCCESS", value: undefined };
+    return result;
   });
 
 export const addPlayerFn = createServerFn({ method: "POST" })
@@ -588,62 +576,35 @@ export const removePlayerFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
-    const [admin, gameSession, player, existing, depositLedger] = await Promise.all([
+    const [admin, gameSession] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, session.user.id) }),
       db.query.sessions.findFirst({ where: eq(sessions.id, data.sessionId) }),
-      db.query.users.findFirst({ where: eq(users.id, data.userId) }),
-      db.query.attendances.findFirst({
-        where: and(eq(attendances.sessionId, data.sessionId), eq(attendances.userId, data.userId)),
-      }),
-      db.query.ledger.findMany({
-        where: and(
-          eq(ledger.sessionId, data.sessionId),
-          eq(ledger.userId, data.userId),
-          inArray(ledger.type, ["SESSION_DEPOSIT", "SESSION_REFUND"]),
-        ),
-      }),
     ]);
 
     if (!gameSession) return { type: "NOT_FOUND" };
     if (!canManageSession(admin, gameSession)) return { type: "FORBIDDEN" };
-    if (gameSession.status === "LOCKED") {
-      return { type: "BUSINESS_ERROR", code: "Cannot remove players from a locked session" };
-    }
-    if (!existing) return { type: "SUCCESS", value: undefined };
 
-    // Refund whatever deposit the player is actually holding for this session — the
-    // net of their SESSION_DEPOSIT/SESSION_REFUND ledger rows, not the session's
-    // current minBalance. The deposit was taken at the amount in force when they
-    // joined, so a later edit to minBalance must not change what's returned. If it
-    // nets to zero (never joined, or already refunded) there's nothing to reverse
-    // and we just drop the attendance row.
-    const heldDeposit = -depositLedger.reduce((total, e) => total + parseFloat(e.amount), 0);
-    if (player && heldDeposit > 0) {
-      const adminUserId = session.user.id;
-      await db.transaction(async (tx) => {
-        const newBalance = (parseFloat(player.balance) + heldDeposit).toFixed(2);
-        await tx
-          .update(users)
-          .set({ balance: newBalance, updatedAt: new Date() })
-          .where(eq(users.id, player.id));
-
-        await tx.insert(ledger).values({
-          userId: player.id,
-          type: "SESSION_REFUND",
-          amount: heldDeposit.toFixed(2),
-          balanceAfter: newBalance,
-          note: "Deposit refund",
-          createdById: adminUserId,
-          sessionId: data.sessionId,
-        });
-
-        await tx.delete(attendances).where(eq(attendances.id, existing.id));
+    return db.transaction(async (tx): Promise<Result> => {
+      const locked = await lockSession(tx, data.sessionId);
+      if (!locked) return { type: "NOT_FOUND" };
+      if (locked.status === "LOCKED") {
+        return { type: "BUSINESS_ERROR", code: "Cannot remove players from a locked session" };
+      }
+      const existing = await tx.query.attendances.findFirst({
+        where: and(eq(attendances.sessionId, data.sessionId), eq(attendances.userId, data.userId)),
       });
-    } else {
-      await db.delete(attendances).where(eq(attendances.id, existing.id));
-    }
+      if (!existing) return { type: "SUCCESS", value: undefined };
 
-    return { type: "SUCCESS", value: undefined };
+      // Refunds whatever deposit they actually hold for this session (the ledger net,
+      // not the current minBalance); nothing if they never paid or were already refunded.
+      await refundDeposit(tx, {
+        sessionId: data.sessionId,
+        userId: data.userId,
+        actorId: session.user.id,
+      });
+      await tx.delete(attendances).where(eq(attendances.id, existing.id));
+      return { type: "SUCCESS", value: undefined };
+    });
   });
 
 // ─── Late cancellations & waitlist ───────────────────────────────────────────
@@ -664,78 +625,96 @@ export const resolveLateCancelFn = createServerFn({ method: "POST" })
     const validated = resolveLateCancelSchema.parse(data);
     const actorId = session.user.id;
 
-    const [actor, gameSession, request] = await Promise.all([
+    const [actor, gameSession] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, actorId) }),
       db.query.sessions.findFirst({ where: eq(sessions.id, validated.sessionId) }),
-      db.query.attendances.findFirst({
-        where: and(
-          eq(attendances.sessionId, validated.sessionId),
-          eq(attendances.userId, validated.userId),
-        ),
-        with: { user: true },
-      }),
     ]);
 
     if (!gameSession) return { type: "NOT_FOUND" };
     if (!canManageSession(actor, gameSession)) return { type: "FORBIDDEN" };
-    if (gameSession.status === "LOCKED") {
-      return { type: "BUSINESS_ERROR", code: "Session is already finalized" };
-    }
-    if (!request || request.status !== "YES" || request.lateCancelStatus !== "PENDING") {
-      return { type: "BUSINESS_ERROR", code: "This cancellation has already been handled" };
-    }
 
-    const now = new Date();
-    const resolved = { lateCancelResolvedAt: now, lateCancelResolvedById: actorId, updatedAt: now };
+    const handled = {
+      type: "BUSINESS_ERROR",
+      code: "This cancellation has already been handled",
+    } as const;
+    const noSwap = {
+      type: "BUSINESS_ERROR",
+      code: "Couldn't move that player in — they may not have enough balance",
+    } as const;
 
-    if (validated.decision === "REJECT") {
-      // They stay on the roster, deposit held, and pay their full share at finalize
-      await db
-        .update(attendances)
-        .set({ lateCancelStatus: "REJECTED", ...resolved })
-        .where(eq(attendances.id, request.id));
-    } else {
-      const outcome = await db
-        .transaction(async (tx) => {
-          await refundDeposit(tx, { sessionId: gameSession.id, userId: request.userId, actorId });
+    // Re-read and decided under the session lock, so two approvers (or a double tap)
+    // can't both act on the same request
+    const outcome = await db
+      .transaction(async (tx) => {
+        const locked = await lockSession(tx, validated.sessionId);
+        if (!locked) return { result: { type: "NOT_FOUND" } as Result };
+        if (locked.status === "LOCKED") {
+          return {
+            result: { type: "BUSINESS_ERROR", code: "Session is already finalized" } as Result,
+          };
+        }
+        const request = await tx.query.attendances.findFirst({
+          where: and(
+            eq(attendances.sessionId, validated.sessionId),
+            eq(attendances.userId, validated.userId),
+          ),
+          with: { user: { columns: { fcmToken: true } } },
+        });
+        if (!request || request.status !== "YES" || request.lateCancelStatus !== "PENDING") {
+          return { result: handled as Result };
+        }
+
+        const now = new Date();
+        const resolved = {
+          lateCancelResolvedAt: now,
+          lateCancelResolvedById: actorId,
+          updatedAt: now,
+        };
+
+        if (validated.decision === "REJECT") {
+          // They stay on the roster, deposit held, and pay their full share at finalize
           await tx
             .update(attendances)
-            .set({ status: "NO", lateCancelStatus: "APPROVED", ...resolved })
+            .set({ lateCancelStatus: "REJECTED", ...resolved })
             .where(eq(attendances.id, request.id));
+          return { result: { type: "SUCCESS", value: undefined } as Result, request };
+        }
 
-          if (!validated.replacementUserId) return { promoted: null };
-          const promoted = await promoteFromWaitlist(tx, {
-            session: gameSession,
-            actorId,
-            userId: validated.replacementUserId,
-          });
-          // Roll the whole approval back rather than approve without the agreed swap
-          if (!promoted) tx.rollback();
-          return { promoted };
-        })
-        .catch((error) => {
-          if (error instanceof TransactionRollbackError) return null;
-          throw error;
+        await refundDeposit(tx, { sessionId: locked.id, userId: request.userId, actorId });
+        await tx
+          .update(attendances)
+          .set({ status: "NO", lateCancelStatus: "APPROVED", ...resolved })
+          .where(eq(attendances.id, request.id));
+
+        if (!validated.replacementUserId) {
+          return { result: { type: "SUCCESS", value: undefined } as Result, request };
+        }
+        const promoted = await promoteFromWaitlist(tx, {
+          session: locked,
+          actorId,
+          userId: validated.replacementUserId,
         });
+        // Roll the whole approval back rather than approve without the agreed swap
+        if (!promoted) tx.rollback();
+        return { result: { type: "SUCCESS", value: undefined } as Result, request, promoted };
+      })
+      .catch((error) => {
+        if (error instanceof TransactionRollbackError) return { result: noSwap as Result };
+        throw error;
+      });
 
-      if (!outcome) {
-        return {
-          type: "BUSINESS_ERROR",
-          code: "Couldn't move that player in — they may not have enough balance",
-        };
-      }
-      if (outcome.promoted?.fcmToken) {
-        await sendWaitlistPromotedNotification(
-          outcome.promoted.fcmToken,
-          gameSession.id,
-          gameSession.startTime,
-        );
-      }
+    if (outcome.result.type !== "SUCCESS") return outcome.result;
+
+    if ("promoted" in outcome && outcome.promoted?.fcmToken) {
+      await sendWaitlistPromotedNotification(
+        outcome.promoted.fcmToken,
+        gameSession.id,
+        gameSession.startTime,
+      );
     }
-
-    if (request.user.fcmToken) {
+    if ("request" in outcome && outcome.request?.user.fcmToken) {
       await sendLateCancelResolvedNotification(
-        request.user.fcmToken,
+        outcome.request.user.fcmToken,
         validated.decision === "APPROVE",
         gameSession.id,
         gameSession.startTime,
@@ -838,8 +817,8 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
     }
 
     const amount = parseFloat(topUpRequest.amount);
-    const currentBalance = parseFloat(topUpRequest.user.balance);
-    const newBalance = currentBalance + amount;
+    // For the Sheet only; the real balance is computed by the database below
+    const expectedBalance = parseFloat(topUpRequest.user.balance) + amount;
     const adminUserId = session.user.id;
 
     const confirmedAt = new Date();
@@ -847,9 +826,9 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
     // Sync to the sheet first, *outside* the transaction, so we never hold a DB
     // connection open across the network round-trip. If it fails we return here
     // having touched nothing — no balances changed, so there's nothing to roll
-    // back. (The reverse gap — a sheet row followed by a failed local write — is
-    // negligible: a 3-statement transaction almost never fails, and a stray row
-    // is harmless next to a wrong balance.)
+    // back. (The reverse gap — a sheet row followed by a failed local write, or a
+    // double click that loses the claim below — is negligible: a stray row is
+    // harmless next to a wrong balance.)
     try {
       await appendTopUpToSheet({
         confirmedAt: confirmedAt.toISOString(),
@@ -857,7 +836,7 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
         memberName: topUpRequest.user.name ?? "",
         memberEmail: topUpRequest.user.email ?? "",
         amount: amount.toFixed(2),
-        balanceAfter: newBalance.toFixed(2),
+        balanceAfter: expectedBalance.toFixed(2),
         confirmedBy: admin.name ?? admin.email ?? adminUserId,
       });
     } catch (error) {
@@ -870,27 +849,28 @@ export const confirmTopUpFn = createServerFn({ method: "POST" })
       throw error;
     }
 
-    await db.transaction(async (tx) => {
-      await tx
+    const credited = await db.transaction(async (tx) => {
+      // Claim the request: of two confirms racing, only one gets the row back
+      const [claimed] = await tx
         .update(topUpRequests)
         .set({ status: "CONFIRMED", confirmedAt, confirmedBy: adminUserId })
-        .where(eq(topUpRequests.id, requestId));
+        .where(and(eq(topUpRequests.id, requestId), eq(topUpRequests.status, "PENDING")))
+        .returning({ id: topUpRequests.id });
+      if (!claimed) return false;
 
-      await tx
-        .update(users)
-        .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
-        .where(eq(users.id, topUpRequest.userId));
-
+      const newBalance = (await adjustBalance(tx, topUpRequest.userId, amount))!;
       await tx.insert(ledger).values({
         userId: topUpRequest.userId,
         type: "TOPUP",
         amount: amount.toFixed(2),
-        balanceAfter: newBalance.toFixed(2),
+        balanceAfter: newBalance,
         note: "Top-up confirmed",
         createdById: adminUserId,
         topUpRequestId: requestId,
       });
+      return true;
     });
+    if (!credited) return { type: "BUSINESS_ERROR", code: "Invalid request" };
 
     if (topUpRequest.user.fcmToken) {
       await sendTopUpConfirmedNotification(topUpRequest.user.fcmToken, amount.toFixed(2));
@@ -919,7 +899,8 @@ export const rejectTopUpFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "Invalid request" };
     }
 
-    await db
+    // Guarded on PENDING so a reject racing a confirm can't relabel a credited top-up
+    const [rejected] = await db
       .update(topUpRequests)
       .set({
         status: "REJECTED",
@@ -927,7 +908,9 @@ export const rejectTopUpFn = createServerFn({ method: "POST" })
         confirmedAt: new Date(),
         confirmedBy: session.user.id,
       })
-      .where(eq(topUpRequests.id, validated.requestId));
+      .where(and(eq(topUpRequests.id, validated.requestId), eq(topUpRequests.status, "PENDING")))
+      .returning({ id: topUpRequests.id });
+    if (!rejected) return { type: "BUSINESS_ERROR", code: "Invalid request" };
 
     if (topUpRequest.user.fcmToken) {
       await sendTopUpRejectedNotification(

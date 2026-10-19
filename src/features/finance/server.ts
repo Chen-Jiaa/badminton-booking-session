@@ -6,6 +6,7 @@ import { and, desc, eq, gte, inArray, isNull, isNotNull, lte, sum } from "drizzl
 import { sessionMiddleware } from "@/middleware/auth";
 import { createExpenseSchema, updateExpenseSchema, manualAdjustSchema } from "@/lib/validations";
 import { requireAdmin, type Result } from "@/lib/guards";
+import { adjustBalance } from "@/lib/wallet";
 import {
   computeFinanceSummary,
   expenseLabel,
@@ -201,20 +202,15 @@ export const createManualAdjustFn = createServerFn({ method: "POST" })
     const target = await db.query.users.findFirst({ where: eq(users.id, validated.userId) });
     if (!target) return { type: "NOT_FOUND" };
 
-    const newBalance = parseFloat(target.balance) + validated.amount;
     const adminUserId = session.user.id;
 
     await db.transaction(async (tx) => {
-      await tx
-        .update(users)
-        .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
-        .where(eq(users.id, validated.userId));
-
+      const newBalance = (await adjustBalance(tx, validated.userId, validated.amount))!;
       await tx.insert(ledger).values({
         userId: validated.userId,
         type: "MANUAL_ADJUST",
         amount: validated.amount.toFixed(2),
-        balanceAfter: newBalance.toFixed(2),
+        balanceAfter: newBalance,
         note: validated.note,
         createdById: adminUserId,
       });
