@@ -1,13 +1,24 @@
+import { CLUB_TIME_ZONE } from "@/lib/utils";
+
 export type ExpenseStatus = "UNPAID" | "PAID" | "REIMBURSED";
 
 /** Sortable, spreadsheet-friendly timestamp: YYYY-MM-DD HH:mm. */
 export function fmtDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: CLUB_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
   );
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 export function expenseStatus(expense: {
@@ -64,8 +75,7 @@ export function computeFinanceSummary(totals: FinanceTotals): FinanceSummary {
 
   const clubCash = totals.cashIn - totals.withdrawalsPaid - totals.expensesReimbursed;
   const memberLiability = totals.memberBalances + heldDeposits;
-  const surplus =
-    clubCash - memberLiability - totals.owedToAccountant - totals.unpaidExpenses;
+  const surplus = clubCash - memberLiability - totals.owedToAccountant - totals.unpaidExpenses;
 
   // The court is paid when a session is booked, but players aren't charged
   // until it's locked. That gap makes `surplus` dip negative every cycle even
@@ -103,7 +113,7 @@ export function expenseLabel(
   if (note) return `${base} — ${note}`;
   if (sessionStart) {
     const d = typeof sessionStart === "string" ? new Date(sessionStart) : sessionStart;
-    return `${base} — ${d.toLocaleDateString("en-MY", { day: "numeric", month: "short" })}`;
+    return `${base} — ${d.toLocaleDateString("en-MY", { timeZone: CLUB_TIME_ZONE, day: "numeric", month: "short" })}`;
   }
   return base;
 }

@@ -1,7 +1,7 @@
 import { Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { JoinBurst } from "@/features/sessions/join-celebration";
-import { cn } from "@/lib/utils";
+import { cn, CLUB_TIME_ZONE } from "@/lib/utils";
 import { AvatarStack } from "./controls";
 import {
   isExpired,
@@ -24,7 +24,12 @@ const STATUS: Record<MatchStatus | "EXPIRED", { label: string; className: string
 
 function formatTime(date: Date) {
   return date
-    .toLocaleTimeString("en", { hour: "numeric", minute: "2-digit", hour12: true })
+    .toLocaleTimeString("en", {
+      timeZone: CLUB_TIME_ZONE,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    })
     .replace(/\s/g, "")
     .toUpperCase();
 }
