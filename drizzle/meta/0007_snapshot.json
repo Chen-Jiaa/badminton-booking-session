@@ -123,12 +123,8 @@
           "name": "attendances_session_id_sessions_id_fk",
           "tableFrom": "attendances",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -136,12 +132,8 @@
           "name": "attendances_user_id_users_id_fk",
           "tableFrom": "attendances",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -149,12 +141,8 @@
           "name": "attendances_late_cancel_resolved_by_id_users_id_fk",
           "tableFrom": "attendances",
           "tableTo": "users",
-          "columnsFrom": [
-            "late_cancel_resolved_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["late_cancel_resolved_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -164,10 +152,7 @@
         "attendance_session_user_unique": {
           "name": "attendance_session_user_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "session_id",
-            "user_id"
-          ]
+          "columns": ["session_id", "user_id"]
         }
       },
       "policies": {},
@@ -351,12 +336,8 @@
           "name": "expenses_session_id_sessions_id_fk",
           "tableFrom": "expenses",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -364,12 +345,8 @@
           "name": "expenses_paid_by_id_users_id_fk",
           "tableFrom": "expenses",
           "tableTo": "users",
-          "columnsFrom": [
-            "paid_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["paid_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -377,12 +354,8 @@
           "name": "expenses_created_by_id_users_id_fk",
           "tableFrom": "expenses",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -518,12 +491,8 @@
           "name": "ledger_user_id_users_id_fk",
           "tableFrom": "ledger",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -531,12 +500,8 @@
           "name": "ledger_created_by_id_users_id_fk",
           "tableFrom": "ledger",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -544,12 +509,8 @@
           "name": "ledger_top_up_request_id_top_up_requests_id_fk",
           "tableFrom": "ledger",
           "tableTo": "top_up_requests",
-          "columnsFrom": [
-            "top_up_request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["top_up_request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -557,12 +518,8 @@
           "name": "ledger_withdrawal_request_id_withdrawal_requests_id_fk",
           "tableFrom": "ledger",
           "tableTo": "withdrawal_requests",
-          "columnsFrom": [
-            "withdrawal_request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["withdrawal_request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -570,12 +527,8 @@
           "name": "ledger_session_id_sessions_id_fk",
           "tableFrom": "ledger",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -585,16 +538,12 @@
         "ledger_top_up_request_id_unique": {
           "name": "ledger_top_up_request_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "top_up_request_id"
-          ]
+          "columns": ["top_up_request_id"]
         },
         "ledger_withdrawal_request_id_unique": {
           "name": "ledger_withdrawal_request_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "withdrawal_request_id"
-          ]
+          "columns": ["withdrawal_request_id"]
         }
       },
       "policies": {},
@@ -668,12 +617,8 @@
           "name": "match_players_match_id_matches_id_fk",
           "tableFrom": "match_players",
           "tableTo": "matches",
-          "columnsFrom": [
-            "match_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["match_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -681,12 +626,8 @@
           "name": "match_players_user_id_users_id_fk",
           "tableFrom": "match_players",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -696,10 +637,7 @@
         "match_players_match_user_unique": {
           "name": "match_players_match_user_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "match_id",
-            "user_id"
-          ]
+          "columns": ["match_id", "user_id"]
         }
       },
       "policies": {},
@@ -836,12 +774,8 @@
           "name": "matches_session_id_sessions_id_fk",
           "tableFrom": "matches",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -849,12 +783,8 @@
           "name": "matches_created_by_id_users_id_fk",
           "tableFrom": "matches",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -862,12 +792,8 @@
           "name": "matches_submitted_by_id_users_id_fk",
           "tableFrom": "matches",
           "tableTo": "users",
-          "columnsFrom": [
-            "submitted_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["submitted_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1055,12 +981,8 @@
           "name": "sessions_created_by_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1232,12 +1154,8 @@
           "name": "top_up_requests_user_id_users_id_fk",
           "tableFrom": "top_up_requests",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1374,16 +1292,12 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "users_phone_unique": {
           "name": "users_phone_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "phone"
-          ]
+          "columns": ["phone"]
         }
       },
       "policies": {},
@@ -1514,12 +1428,8 @@
           "name": "withdrawal_requests_user_id_users_id_fk",
           "tableFrom": "withdrawal_requests",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1535,20 +1445,12 @@
     "public.expense_category": {
       "name": "expense_category",
       "schema": "public",
-      "values": [
-        "COURT_RENTAL",
-        "SHUTTLES",
-        "OTHER"
-      ]
+      "values": ["COURT_RENTAL", "SHUTTLES", "OTHER"]
     },
     "public.late_cancel_status": {
       "name": "late_cancel_status",
       "schema": "public",
-      "values": [
-        "PENDING",
-        "APPROVED",
-        "REJECTED"
-      ]
+      "values": ["PENDING", "APPROVED", "REJECTED"]
     },
     "public.ledger_type": {
       "name": "ledger_type",
@@ -1565,81 +1467,47 @@
     "public.match_format": {
       "name": "match_format",
       "schema": "public",
-      "values": [
-        "SINGLES",
-        "DOUBLES"
-      ]
+      "values": ["SINGLES", "DOUBLES"]
     },
     "public.match_side": {
       "name": "match_side",
       "schema": "public",
-      "values": [
-        "A",
-        "B"
-      ]
+      "values": ["A", "B"]
     },
     "public.match_status": {
       "name": "match_status",
       "schema": "public",
-      "values": [
-        "INVITED",
-        "IN_PLAY",
-        "AWAITING_CONFIRM",
-        "CONFIRMED",
-        "DECLINED"
-      ]
+      "values": ["INVITED", "IN_PLAY", "AWAITING_CONFIRM", "CONFIRMED", "DECLINED"]
     },
     "public.role": {
       "name": "role",
       "schema": "public",
-      "values": [
-        "PLAYER",
-        "HOST",
-        "ADMIN"
-      ]
+      "values": ["PLAYER", "HOST", "ADMIN"]
     },
     "public.rsvp_status": {
       "name": "rsvp_status",
       "schema": "public",
-      "values": [
-        "YES",
-        "NO",
-        "WAITLIST"
-      ]
+      "values": ["YES", "NO", "WAITLIST"]
     },
     "public.session_status": {
       "name": "session_status",
       "schema": "public",
-      "values": [
-        "OPEN",
-        "LOCKED"
-      ]
+      "values": ["OPEN", "LOCKED"]
     },
     "public.top_up_status": {
       "name": "top_up_status",
       "schema": "public",
-      "values": [
-        "PENDING",
-        "CONFIRMED",
-        "REJECTED"
-      ]
+      "values": ["PENDING", "CONFIRMED", "REJECTED"]
     },
     "public.withdrawal_payment_method": {
       "name": "withdrawal_payment_method",
       "schema": "public",
-      "values": [
-        "BANK",
-        "DUITNOW"
-      ]
+      "values": ["BANK", "DUITNOW"]
     },
     "public.withdrawal_status": {
       "name": "withdrawal_status",
       "schema": "public",
-      "values": [
-        "PENDING",
-        "CONFIRMED",
-        "REJECTED"
-      ]
+      "values": ["PENDING", "CONFIRMED", "REJECTED"]
     }
   },
   "schemas": {},

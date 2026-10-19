@@ -45,9 +45,7 @@ function MembersPage() {
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = q
-      ? members.filter((m) =>
-          [m.name, m.email, m.phone].some((v) => v?.toLowerCase().includes(q)),
-        )
+      ? members.filter((m) => [m.name, m.email, m.phone].some((v) => v?.toLowerCase().includes(q)))
       : members;
 
     return [...filtered].sort((a, b) => {

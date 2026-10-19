@@ -1,7 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { attendances, ledger, sessions, topUpRequests, users, withdrawalRequests } from "@/db/schema";
+import {
+  attendances,
+  ledger,
+  sessions,
+  topUpRequests,
+  users,
+  withdrawalRequests,
+} from "@/db/schema";
 import { and, count, desc, eq, max, sum } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { requireAdmin } from "@/lib/guards";
@@ -104,7 +111,13 @@ export type MemberSession = {
 export type MemberActivity = {
   id: string;
   at: string;
-  type: "TOPUP" | "SESSION_DEBIT" | "MANUAL_ADJUST" | "SESSION_DEPOSIT" | "SESSION_REFUND" | "WITHDRAWAL";
+  type:
+    | "TOPUP"
+    | "SESSION_DEBIT"
+    | "MANUAL_ADJUST"
+    | "SESSION_DEPOSIT"
+    | "SESSION_REFUND"
+    | "WITHDRAWAL";
   amount: number;
   balanceAfter: number;
   note: string | null;
@@ -192,10 +205,7 @@ export const fetchMemberDetailFn = createServerFn({ method: "GET" })
           .select({ n: count() })
           .from(withdrawalRequests)
           .where(
-            and(
-              eq(withdrawalRequests.userId, member.id),
-              eq(withdrawalRequests.status, "PENDING"),
-            ),
+            and(eq(withdrawalRequests.userId, member.id), eq(withdrawalRequests.status, "PENDING")),
           ),
       ]);
 
@@ -259,4 +269,3 @@ export const memberDetailQueryOptions = (userId: string) =>
     queryKey: ["admin", "member-detail", userId],
     queryFn: () => fetchMemberDetailFn({ data: { userId } }),
   });
-

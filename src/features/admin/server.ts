@@ -24,6 +24,7 @@ import {
 } from "@/lib/validations";
 import { promoteFromWaitlist, refundDeposit } from "@/features/sessions/roster";
 import { canManageSession } from "@/features/sessions/rules";
+import { templateFromSession, type SessionTemplate } from "@/features/admin/session-template";
 import {
   sendLateCancelResolvedNotification,
   sendWaitlistPromotedNotification,
@@ -175,6 +176,37 @@ export const adminSessionDetailQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ["admin", "sessions", id],
     queryFn: () => fetchAdminSessionDetailFn({ data: { id } }),
+  });
+
+/**
+ * Prefill for the create form: the session in `from` (Duplicate), else the host's own
+ * latest session, else the club's latest. Null when there's nothing to copy.
+ */
+export const fetchSessionTemplateFn = createServerFn({ method: "GET" })
+  .validator((data: { from?: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<SessionTemplate | null> => {
+    if (!session?.user.id) return null;
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!user || (user.role !== "ADMIN" && user.role !== "HOST")) return null;
+
+    const source =
+      (data.from && (await db.query.sessions.findFirst({ where: eq(sessions.id, data.from) }))) ||
+      (await db.query.sessions.findFirst({
+        where: eq(sessions.createdById, user.id),
+        orderBy: [desc(sessions.startTime)],
+      })) ||
+      (await db.query.sessions.findFirst({ orderBy: [desc(sessions.startTime)] }));
+
+    return source ? templateFromSession(source) : null;
+  });
+
+export const sessionTemplateQueryOptions = (from?: string) =>
+  queryOptions({
+    queryKey: ["sessions", "template", from ?? "latest"],
+    queryFn: () => fetchSessionTemplateFn({ data: { from } }),
+    staleTime: 0,
   });
 
 export const createAdminSessionFn = createServerFn({ method: "POST" })
@@ -528,8 +560,8 @@ export const addPlayerFn = createServerFn({ method: "POST" })
       }),
     ]);
 
-    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (!canManageSession(admin, gameSession)) return { type: "FORBIDDEN" };
     if (gameSession.status === "LOCKED") {
       return { type: "BUSINESS_ERROR", code: "Cannot add players to a locked session" };
     }
@@ -572,8 +604,8 @@ export const removePlayerFn = createServerFn({ method: "POST" })
       }),
     ]);
 
-    if (!admin || admin.role !== "ADMIN") return { type: "FORBIDDEN" };
     if (!gameSession) return { type: "NOT_FOUND" };
+    if (!canManageSession(admin, gameSession)) return { type: "FORBIDDEN" };
     if (gameSession.status === "LOCKED") {
       return { type: "BUSINESS_ERROR", code: "Cannot remove players from a locked session" };
     }
@@ -929,11 +961,11 @@ export const membersQueryOptions = () =>
     queryFn: () => fetchMembersFn(),
   });
 
-// Shuttle-supplier candidates for the lock form. HOSTs finalize their own
-// sessions but aren't allowed the full member list (balances, roles) that
-// fetchMembersFn returns, so this exposes just id + name to ADMIN and HOST —
-// enough to record who brought their own shuttles, nothing more.
-export const fetchShuttleSuppliersFn = createServerFn({ method: "GET" })
+// Member picker for hosts: who brought their own shuttles, who walked in.
+// HOSTs run their own sessions but aren't allowed the full member list
+// (balances, roles) that fetchMembersFn returns, so this exposes just
+// id + name to ADMIN and HOST, nothing more.
+export const fetchMemberNamesFn = createServerFn({ method: "GET" })
   .middleware([sessionMiddleware])
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return [];
@@ -947,8 +979,8 @@ export const fetchShuttleSuppliersFn = createServerFn({ method: "GET" })
     });
   });
 
-export const shuttleSuppliersQueryOptions = () =>
+export const memberNamesQueryOptions = () =>
   queryOptions({
-    queryKey: ["shuttle-suppliers"],
-    queryFn: () => fetchShuttleSuppliersFn(),
+    queryKey: ["member-names"],
+    queryFn: () => fetchMemberNamesFn(),
   });

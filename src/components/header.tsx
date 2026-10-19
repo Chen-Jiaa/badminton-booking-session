@@ -18,7 +18,10 @@ export function Header({ user }: HeaderProps) {
           <span className="font-semibold">Badminton Club</span>
         </Link>
         {user ? (
-          <Link to="/profile" className="-my-1 -mr-1.5 flex h-11 w-11 items-center justify-center rounded-full">
+          <Link
+            to="/profile"
+            className="-my-1 -mr-1.5 flex h-11 w-11 items-center justify-center rounded-full"
+          >
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.image || undefined} alt={user.name || ""} />
               <AvatarFallback className="bg-brand text-brand-foreground text-sm">

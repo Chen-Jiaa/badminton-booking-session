@@ -172,7 +172,15 @@ function SummarySection({ summary }: { summary: Summary }) {
   );
 }
 
-function StatCard({ label, value, negative }: { label: string; value: number; negative?: boolean }) {
+function StatCard({
+  label,
+  value,
+  negative,
+}: {
+  label: string;
+  value: number;
+  negative?: boolean;
+}) {
   return (
     <Card>
       <CardContent className="py-4">
@@ -406,9 +414,7 @@ function TopUpsTab() {
                   <p className="font-medium">{r.user.name}</p>
                   <p className="text-sm font-semibold">{formatCurrency(r.amount)}</p>
                   <p className="text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</p>
-                  {r.rejectReason && (
-                    <p className="text-xs text-danger">{r.rejectReason}</p>
-                  )}
+                  {r.rejectReason && <p className="text-xs text-danger">{r.rejectReason}</p>}
                 </div>
                 <StatusBadge status={r.status} />
               </div>
@@ -506,9 +512,7 @@ function WithdrawalsTab() {
                     <div>
                       <p className="font-medium">{r.user.name}</p>
                       <p className="text-sm">{formatCurrency(r.amount)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDateTime(r.createdAt)}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</p>
                     </div>
                     <StatusBadge status={r.status} />
                   </div>

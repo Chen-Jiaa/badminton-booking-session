@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Clock, Loader2 } from "lucide-react";
+import { Check, Clock, Loader2, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { promoteWaitlistFn, resolveLateCancelFn } from "@/features/admin/server";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  addPlayerFn,
+  memberNamesQueryOptions,
+  promoteWaitlistFn,
+  removePlayerFn,
+  resolveLateCancelFn,
+} from "@/features/admin/server";
 import { waitlistOrder } from "@/features/sessions/rules";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -265,7 +278,13 @@ export function LateCancelRequests({ sessionId, deposit, attendances }: RosterPr
 }
 
 /** The waitlist in queue order, with "Move in" when a spot is open. */
-export function WaitlistPanel({ sessionId, maxPlayers, deposit, attendances }: RosterProps) {
+export function WaitlistPanel({
+  sessionId,
+  maxPlayers,
+  deposit,
+  attendances,
+  plain = false,
+}: RosterProps & { plain?: boolean }) {
   const waitlist = waitlistOrder(attendances);
   const confirmed = attendances.filter((a) => a.status === "YES").length;
   const openSpots = Math.max(0, maxPlayers - confirmed);
@@ -289,63 +308,213 @@ export function WaitlistPanel({ sessionId, maxPlayers, deposit, attendances }: R
     }
   }
 
+  const spotsOpen = openSpots > 0 && waitlist.length > 0 && (
+    <span className="ml-2 text-sm font-normal text-success">
+      {openSpots} spot{openSpots > 1 ? "s" : ""} open
+    </span>
+  );
+
+  const list =
+    waitlist.length === 0 ? (
+      <p className="py-4 text-center text-muted-foreground">No one is waiting</p>
+    ) : (
+      <ol className="space-y-2">
+        {waitlist.map((w, i) => {
+          const affordable = canAfford(w.user, deposit);
+          return (
+            <li key={w.id} className="flex items-center gap-3 border-b py-2 last:border-0">
+              <span className="w-6 text-center text-sm font-semibold text-muted-foreground">
+                #{i + 1}
+              </span>
+              <PersonAvatar user={w.user} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{w.user.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Joined {timeAgo(w.waitlistedAt ?? w.createdAt)}
+                  {w.user.balance !== undefined && (
+                    <span className={cn(!affordable && "font-medium text-danger")}>
+                      {" "}
+                      · Balance {formatCurrency(w.user.balance)}
+                    </span>
+                  )}
+                </p>
+              </div>
+              {openSpots > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!affordable || promotingId !== null}
+                  onClick={() => promote(w)}
+                >
+                  {promotingId === w.userId ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Move in"
+                  )}
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    );
+
+  if (plain) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-semibold">
+          Waitlist
+          <span className="font-normal text-muted-foreground ml-1">
+            · {waitlist.length} waiting
+          </span>
+          {spotsOpen}
+        </p>
+        {list}
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">
-          Waitlist ({waitlist.length})
-          {openSpots > 0 && waitlist.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-success">
-              {openSpots} spot{openSpots > 1 ? "s" : ""} open
-            </span>
-          )}
+          Waitlist ({waitlist.length}){spotsOpen}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        {waitlist.length === 0 ? (
-          <p className="py-4 text-center text-muted-foreground">No one is waiting</p>
-        ) : (
-          <ol className="space-y-2">
-            {waitlist.map((w, i) => {
-              const affordable = canAfford(w.user, deposit);
-              return (
-                <li key={w.id} className="flex items-center gap-3 border-b py-2 last:border-0">
-                  <span className="w-6 text-center text-sm font-semibold text-muted-foreground">
-                    #{i + 1}
-                  </span>
-                  <PersonAvatar user={w.user} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{w.user.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Joined {timeAgo(w.waitlistedAt ?? w.createdAt)}
-                      {w.user.balance !== undefined && (
-                        <span className={cn(!affordable && "font-medium text-danger")}>
-                          {" "}
-                          · Balance {formatCurrency(w.user.balance)}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  {openSpots > 0 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!affordable || promotingId !== null}
-                      onClick={() => promote(w)}
-                    >
-                      {promotingId === w.userId ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Move in"
-                      )}
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </CardContent>
+      <CardContent>{list}</CardContent>
     </Card>
+  );
+}
+
+/** Add someone who turned up without RSVPing. They're charged their share at finalize. */
+export function AddWalkInButton({
+  sessionId,
+  attendances,
+}: {
+  sessionId: string;
+  attendances: RosterRow[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [userId, setUserId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const refresh = useRosterRefresh();
+  const { data: members = [] } = useQuery({ ...memberNamesQueryOptions(), enabled: open });
+  const confirmedIds = new Set(attendances.filter((a) => a.status === "YES").map((a) => a.userId));
+  const candidates = members
+    .filter((m) => !confirmedIds.has(m.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  async function add() {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const result = await addPlayerFn({ data: { sessionId, userId } });
+      if (result.type !== "SUCCESS") {
+        toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Couldn't add player");
+        return;
+      }
+      toast.success(`${candidates.find((m) => m.id === userId)?.name ?? "Player"} added`);
+      setOpen(false);
+      setUserId("");
+      await refresh();
+    } catch {
+      toast.error("Couldn't add player");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <UserPlus className="h-4 w-4 mr-1.5" />
+        Add walk-in
+      </Button>
+      <Dialog open={open} onOpenChange={(o) => !loading && setOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a walk-in player</DialogTitle>
+            <DialogDescription>
+              No deposit is taken now. They&rsquo;re charged their share when you finalize.
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={userId} onValueChange={setUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Choose a member" />
+            </SelectTrigger>
+            <SelectContent>
+              {candidates.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" disabled={loading} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="brand" disabled={!userId || loading} onClick={add}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add to session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/** Confirm before taking someone off the roster; their held deposit is refunded. */
+export function RemovePlayerDialog({
+  sessionId,
+  player,
+  onClose,
+}: {
+  sessionId: string;
+  player: { id: string; name: string } | null;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const refresh = useRosterRefresh();
+
+  async function remove() {
+    if (!player) return;
+    setLoading(true);
+    try {
+      const result = await removePlayerFn({ data: { sessionId, userId: player.id } });
+      if (result.type !== "SUCCESS") {
+        toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Couldn't remove player");
+        return;
+      }
+      toast.success(`${player.name} removed`);
+      onClose();
+      await refresh();
+    } catch {
+      toast.error("Couldn't remove player");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!player} onOpenChange={(open) => !open && !loading && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Remove {player?.name}?</DialogTitle>
+          <DialogDescription>
+            Any deposit they paid goes back to their wallet, and they won&rsquo;t be charged for
+            this session.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" disabled={loading} onClick={onClose}>
+            Keep
+          </Button>
+          <Button variant="destructive" disabled={loading} onClick={remove}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

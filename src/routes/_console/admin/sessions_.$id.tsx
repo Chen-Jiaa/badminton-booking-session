@@ -1,25 +1,23 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
-import {
-  adminSessionDetailQueryOptions,
-  courtsQueryOptions,
-  removePlayerFn,
-} from "@/features/admin/server";
+import { adminSessionDetailQueryOptions, courtsQueryOptions } from "@/features/admin/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserMinus, Loader2 } from "lucide-react";
+import { Copy, UserMinus } from "lucide-react";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { DeleteSessionButton } from "@/features/admin/delete-session-button";
 import { ShareButton } from "@/features/admin/share-button";
 import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
-import { toast } from "sonner";
-import { LateCancelRequests, WaitlistPanel } from "@/features/sessions/roster-manage";
+import {
+  LateCancelRequests,
+  RemovePlayerDialog,
+  WaitlistPanel,
+} from "@/features/sessions/roster-manage";
 
 export const Route = createFileRoute("/_console/admin/sessions_/$id")({
   loader: async ({ context: { queryClient }, params: { id } }) => {
@@ -36,28 +34,11 @@ function AdminSessionDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQueryDeferred(adminSessionDetailQueryOptions(id));
   const { gameSession, availablePlayers } = data;
-  const queryClient = useQueryClient();
-  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const isLocked = gameSession.status === "LOCKED";
   const hasEnded = new Date() >= gameSession.endTime;
-
-  async function handleRemove(userId: string) {
-    setRemovingUserId(userId);
-    try {
-      const result = await removePlayerFn({ data: { sessionId: id, userId } });
-      if (result.type !== "SUCCESS") {
-        throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to remove player");
-      }
-      toast.success("Player removed from session");
-      await queryClient.invalidateQueries({ queryKey: ["admin", "sessions", id] });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove player");
-    } finally {
-      setRemovingUserId(null);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -66,6 +47,12 @@ function AdminSessionDetailPage() {
         <div className="flex items-center gap-2">
           <Badge variant={isLocked ? "default" : "secondary"}>{gameSession.status}</Badge>
           <ShareButton sessionId={id} />
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/admin/sessions/new" search={{ from: id }}>
+              <Copy className="h-4 w-4" />
+              Duplicate
+            </Link>
+          </Button>
           {!isLocked && (
             <EditSessionToggle
               sessionId={id}
@@ -247,15 +234,11 @@ function AdminSessionDetailPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Remove ${a.user.name}`}
                         className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                        disabled={removingUserId === a.user.id}
-                        onClick={() => handleRemove(a.user.id)}
+                        onClick={() => setRemoving({ id: a.user.id, name: a.user.name })}
                       >
-                        {removingUserId === a.user.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <UserMinus className="h-4 w-4" />
-                        )}
+                        <UserMinus className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
@@ -265,6 +248,8 @@ function AdminSessionDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <RemovePlayerDialog sessionId={id} player={removing} onClose={() => setRemoving(null)} />
 
       {!isLocked && (
         <WaitlistPanel

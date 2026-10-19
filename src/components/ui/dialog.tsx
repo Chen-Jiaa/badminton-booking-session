@@ -187,35 +187,38 @@ const DialogContent = React.forwardRef<
   useKeyboardInset(sheetRef);
 
   return (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={setRefs}
-      className={cn(
-        // Mobile: bottom sheet anchored to the bottom edge. sm+: centered dialog.
-        "fixed inset-x-0 bottom-[var(--kb-inset,0px)] mx-auto z-50 outline-none grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[var(--sheet-max-h,90svh)] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:max-h-[90svh] sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
-        className,
-      )}
-      onOpenAutoFocus={(e) => {
-        onOpenAutoFocus?.(e);
-        // On touch devices, focusing the first field would pop the keyboard the
-        // moment the sheet opens. Focus the sheet itself; the keyboard comes up
-        // only when the user taps a field.
-        if (!e.defaultPrevented && window.matchMedia("(pointer: coarse)").matches) {
-          e.preventDefault();
-          sheetRef.current?.focus({ preventScroll: true });
-        }
-      }}
-      {...props}
-    >
-      <SheetHandle sheetRef={sheetRef} />
-      {children}
-      <DialogPrimitive.Close data-sheet-close="" className="absolute right-4 top-4 z-20 rounded-sm p-2 -m-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        ref={setRefs}
+        className={cn(
+          // Mobile: bottom sheet anchored to the bottom edge. sm+: centered dialog.
+          "fixed inset-x-0 bottom-[var(--kb-inset,0px)] mx-auto z-50 outline-none grid w-full gap-4 border bg-background p-6 pt-8 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-lg duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-y-auto overflow-x-hidden max-h-[var(--sheet-max-h,90svh)] touch-pan-y overscroll-contain rounded-t-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:max-h-[90svh] sm:left-1/2 sm:top-1/2 sm:mx-0 sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:duration-200 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
+          className,
+        )}
+        onOpenAutoFocus={(e) => {
+          onOpenAutoFocus?.(e);
+          // Focusing the first field would pop the mobile keyboard the moment the
+          // sheet opens. Focus the sheet itself; the keyboard comes up only when
+          // the user taps a field.
+          if (!e.defaultPrevented) {
+            e.preventDefault();
+            sheetRef.current?.focus({ preventScroll: true });
+          }
+        }}
+        {...props}
+      >
+        <SheetHandle sheetRef={sheetRef} />
+        {children}
+        <DialogPrimitive.Close
+          data-sheet-close=""
+          className="absolute right-4 top-4 z-20 rounded-sm p-2 -m-2 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
   );
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;

@@ -11,8 +11,6 @@ export const MAX_SCORE = 30;
 export const RESPONSE_WINDOW_MS = 48 * 60 * 60 * 1000;
 /** Matches can be recorded until this long after the session ends. */
 export const RECORDING_GRACE_MS = 24 * 60 * 60 * 1000;
-/** Confirmed matches needed in a month to be ranked. */
-export const MIN_RANKED_MATCHES = 3;
 
 /** Malaysia has no DST, so month boundaries are a fixed UTC+8 offset. */
 const CLUB_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -149,6 +147,8 @@ export interface Standing {
   points: number;
   /** Results in play order, oldest first, e.g. "WWLWW". */
   form: string;
+  /** Play-order index of the match that last raised the ranking number (points or wins). */
+  reachedAt: number;
 }
 
 export const played = (s: Standing) => s.wins + s.losses;
@@ -166,8 +166,9 @@ export interface ConfirmedMatch {
 
 /**
  * Players are ranked by points scored across every match (doubles included, any
- * partner). Teams are doubles pairs ranked by wins together. Ties fall to more
- * wins, then the better win rate. Fewer than MIN_RANKED_MATCHES leaves you unranked.
+ * partner). Teams are doubles pairs ranked by wins together. One confirmed match is
+ * enough to be ranked. Ties fall to more wins, then the better win rate, then whoever
+ * got there first.
  */
 export function buildStandings(confirmed: ConfirmedMatch[]) {
   const players = new Map<string, Standing>();
@@ -179,43 +180,44 @@ export function buildStandings(confirmed: ConfirmedMatch[]) {
     people: StandingPerson[],
     won: boolean,
     points: number,
+    rankedByPoints: boolean,
+    index: number,
   ) => {
-    const s = map.get(key) ?? { people, wins: 0, losses: 0, points: 0, form: "" };
+    const s = map.get(key) ?? { people, wins: 0, losses: 0, points: 0, form: "", reachedAt: index };
     if (won) s.wins++;
     else s.losses++;
     s.points += points;
     s.form += won ? "W" : "L";
+    if (rankedByPoints ? points > 0 : won) s.reachedAt = index;
     map.set(key, s);
   };
 
-  for (const m of confirmed) {
+  confirmed.forEach((m, index) => {
     const winner = m.scoreA > m.scoreB ? "A" : "B";
     for (const side of ["A", "B"] as const) {
       const onSide = m.players.filter((p) => p.side === side);
       const won = side === winner;
       const points = side === "A" ? m.scoreA : m.scoreB;
       const people = onSide.map((p) => ({ id: p.userId, name: p.name, image: p.image }));
-      for (const person of people) tally(players, person.id, [person], won, points);
+      for (const person of people) tally(players, person.id, [person], won, points, true, index);
       if (m.format === "DOUBLES" && people.length === 2) {
         const pair = [...people].sort((x, y) => x.id.localeCompare(y.id));
-        tally(teams, pair.map((p) => p.id).join(":"), pair, won, points);
+        tally(teams, pair.map((p) => p.id).join(":"), pair, won, points, false, index);
       }
     }
-  }
+  });
 
-  const split = (list: Standing[], byPoints: boolean) => {
-    const ranked = list
-      .filter((s) => played(s) >= MIN_RANKED_MATCHES)
-      .sort(
-        (a, b) =>
-          (byPoints ? b.points - a.points : 0) || b.wins - a.wins || winRate(b) - winRate(a),
-      );
-    const unranked = list.filter((s) => played(s) < MIN_RANKED_MATCHES);
-    return { ranked, unranked };
-  };
+  const rank = (list: Standing[], byPoints: boolean) =>
+    list.sort(
+      (a, b) =>
+        (byPoints ? b.points - a.points : 0) ||
+        b.wins - a.wins ||
+        winRate(b) - winRate(a) ||
+        a.reachedAt - b.reachedAt,
+    );
 
   return {
-    players: split(Array.from(players.values()), true),
-    teams: split(Array.from(teams.values()), false),
+    players: rank(Array.from(players.values()), true),
+    teams: rank(Array.from(teams.values()), false),
   };
 }

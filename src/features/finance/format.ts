@@ -64,8 +64,7 @@ export function computeFinanceSummary(totals: FinanceTotals): FinanceSummary {
 
   const clubCash = totals.cashIn - totals.withdrawalsPaid - totals.expensesReimbursed;
   const memberLiability = totals.memberBalances + heldDeposits;
-  const surplus =
-    clubCash - memberLiability - totals.owedToAccountant - totals.unpaidExpenses;
+  const surplus = clubCash - memberLiability - totals.owedToAccountant - totals.unpaidExpenses;
 
   // The court is paid when a session is booked, but players aren't charged
   // until it's locked. That gap makes `surplus` dip negative every cycle even

@@ -34,10 +34,7 @@ export const fetchWalletFn = createServerFn({ method: "GET" })
       db.query.withdrawalRequests.findMany({
         where: and(
           eq(withdrawalRequests.userId, session.user.id),
-          or(
-            eq(withdrawalRequests.status, "PENDING"),
-            eq(withdrawalRequests.status, "REJECTED"),
-          ),
+          or(eq(withdrawalRequests.status, "PENDING"), eq(withdrawalRequests.status, "REJECTED")),
         ),
         orderBy: [desc(withdrawalRequests.createdAt)],
       }),

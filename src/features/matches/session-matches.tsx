@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { currentUserQueryOptions } from "@/features/auth/server";
@@ -36,6 +36,7 @@ export function SessionMatches({
   endTime,
   me,
   attendees,
+  stickyRecord = false,
 }: {
   sessionId: string;
   startTime: Date;
@@ -44,6 +45,8 @@ export function SessionMatches({
   me: Attendee | null;
   /** Everyone with a YES RSVP. */
   attendees: Attendee[];
+  /** Pin "Record match" to the bottom of the screen instead of placing it inline. */
+  stickyRecord?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { data: matches = [] } = useQuery(sessionMatchesQueryOptions(sessionId));
@@ -161,6 +164,18 @@ export function SessionMatches({
     }
   }
 
+  function startRecording() {
+    setRecordRun((n) => n + 1); // every recording starts from a blank court
+    setRecording(true);
+  }
+
+  function showWaiting() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document
+      .getElementById(`match-${waitingOnMe[0].id}`)
+      ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+  }
+
   // Nothing to show before play starts, or for people who can't record and see no matches
   if (now < startTime || (!canRecord && matches.length === 0)) return null;
 
@@ -181,43 +196,58 @@ export function SessionMatches({
       </div>
 
       {waitingOnMe.length > 0 && (
-        <div className="flex items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning">
+        <button
+          type="button"
+          onClick={showWaiting}
+          className="flex w-full items-center gap-2 rounded-lg bg-warning-soft px-3 py-2 text-left text-sm text-warning"
+        >
           <span className="h-2 w-2 shrink-0 rounded-full bg-warning" />
-          {waitingOnMe.length === 1 ? "1 match is" : `${waitingOnMe.length} matches are`} waiting
-          for you
-        </div>
+          <span className="flex-1">
+            {waitingOnMe.length === 1 ? "1 match is" : `${waitingOnMe.length} matches are`} waiting
+            for you
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0" />
+        </button>
       )}
 
-      {canRecord && (
-        <Button
-          variant="brand"
-          size="cta"
-          onClick={() => {
-            setRecordRun((n) => n + 1); // every recording starts from a blank court
-            setRecording(true);
-          }}
-        >
+      {canRecord && !stickyRecord && (
+        <Button variant="brand" size="cta" onClick={startRecording}>
           <Plus className="h-4 w-4" />
           Record match
         </Button>
       )}
 
+      {canRecord && stickyRecord && (
+        <div
+          className="fixed left-0 right-0 z-10 pointer-events-none"
+          style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="container mx-auto max-w-lg px-4 pointer-events-auto">
+            <Button variant="brand" size="cta" onClick={startRecording}>
+              <Plus className="h-4 w-4" />
+              Record match
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-3">
         {matches.map((m) => (
-          <MatchCard
-            key={m.id}
-            match={m}
-            meId={meId}
-            busy={busyId === m.id}
-            celebrating={celebrate === m.id}
-            recordingOpen={recordingOpen}
-            onAccept={() => respond(m, "accept")}
-            onDecline={() => respond(m, "decline")}
-            onConfirm={() => respond(m, "confirm")}
-            onDispute={() => setResultFor({ match: m, mode: "dispute" })}
-            onEnterResult={() => setResultFor({ match: m, mode: "enter" })}
-            onDelete={() => deleteMatch(m)}
-          />
+          <div key={m.id} id={`match-${m.id}`} className="scroll-mt-20">
+            <MatchCard
+              match={m}
+              meId={meId}
+              busy={busyId === m.id}
+              celebrating={celebrate === m.id}
+              recordingOpen={recordingOpen}
+              onAccept={() => respond(m, "accept")}
+              onDecline={() => respond(m, "decline")}
+              onConfirm={() => respond(m, "confirm")}
+              onDispute={() => setResultFor({ match: m, mode: "dispute" })}
+              onEnterResult={() => setResultFor({ match: m, mode: "enter" })}
+              onDelete={() => deleteMatch(m)}
+            />
+          </div>
         ))}
       </div>
 

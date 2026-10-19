@@ -11,8 +11,22 @@ function Shuttlecock() {
         strokeWidth="1.3"
         strokeLinejoin="round"
       />
-      <line x1="12" y1="20" x2="9.2" y2="4.7" stroke="hsl(var(--brand-foreground))" strokeWidth="0.8" />
-      <line x1="12" y1="20" x2="14.8" y2="4.7" stroke="hsl(var(--brand-foreground))" strokeWidth="0.8" />
+      <line
+        x1="12"
+        y1="20"
+        x2="9.2"
+        y2="4.7"
+        stroke="hsl(var(--brand-foreground))"
+        strokeWidth="0.8"
+      />
+      <line
+        x1="12"
+        y1="20"
+        x2="14.8"
+        y2="4.7"
+        stroke="hsl(var(--brand-foreground))"
+        strokeWidth="0.8"
+      />
       <circle cx="12" cy="21.2" r="3.2" fill="hsl(var(--brand-foreground))" />
     </svg>
   );

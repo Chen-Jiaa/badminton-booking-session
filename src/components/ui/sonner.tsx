@@ -12,6 +12,7 @@ export function Toaster(props: ToasterProps) {
     <Sonner
       theme="light"
       position="top-center"
+      duration={2000}
       richColors
       className="toaster group"
       icons={{

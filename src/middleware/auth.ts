@@ -24,12 +24,23 @@ function getJWKS() {
   return jwks;
 }
 
+// Playwright signs its own HS256 tokens with E2E_AUTH_SECRET (see e2e/fixtures.ts) so
+// tests can log in against the local test DB without a real Supabase. Never in production.
+function getE2ESecret() {
+  const secret = process.env.E2E_AUTH_SECRET;
+  if (!secret || process.env.NODE_ENV === "production") return undefined;
+  return new TextEncoder().encode(secret);
+}
+
 /** Verifies a Supabase access token. Returns null when missing, expired or invalid. */
 export async function verifyAccessToken(accessToken: string | undefined): Promise<Session> {
   if (!accessToken) return null;
 
   try {
-    const { payload } = await jwtVerify(accessToken, getJWKS());
+    const e2eSecret = getE2ESecret();
+    const { payload } = e2eSecret
+      ? await jwtVerify(accessToken, e2eSecret, { algorithms: ["HS256"] })
+      : await jwtVerify(accessToken, getJWKS());
     const meta = (payload.user_metadata ?? {}) as Record<string, string>;
     return {
       user: {

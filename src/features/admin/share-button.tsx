@@ -1,25 +1,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Check } from "lucide-react";
+import { CopyIcon } from "@/components/copy-icon";
+import { toast } from "sonner";
 
 export function ShareButton({ sessionId }: { sessionId: string }) {
   const [copied, setCopied] = useState(false);
 
-  async function handleShare() {
-    const url = `${window.location.origin}/sessions/${sessionId}`;
-    if (navigator.share) {
-      await navigator.share({ url });
-    } else {
-      await navigator.clipboard.writeText(url);
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/sessions/${sessionId}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
     }
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={handleShare}>
-      {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-      {copied ? "Copied!" : "Share"}
+    <Button variant="outline" size="sm" onClick={handleCopy}>
+      <CopyIcon copied={copied} />
+      {copied ? "Copied" : "Copy link"}
     </Button>
   );
 }

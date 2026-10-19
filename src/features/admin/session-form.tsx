@@ -28,6 +28,7 @@ import {
   deleteCourtFn,
   deleteSessionFn,
 } from "@/features/admin/server";
+import { localDate, type SessionTemplate } from "@/features/admin/session-template";
 
 interface SessionDefaultValues {
   startTime: string;
@@ -49,6 +50,8 @@ interface CreateProps {
   defaultValues?: never;
   onCancel?: never;
   canManageCourts?: boolean;
+  /** Prefill from an earlier session (the host's last one, or the one being duplicated) */
+  template?: SessionTemplate | null;
 }
 
 interface EditProps {
@@ -57,6 +60,7 @@ interface EditProps {
   defaultValues: SessionDefaultValues;
   onCancel: () => void;
   canManageCourts?: boolean;
+  template?: never;
 }
 
 type SessionFormProps = CreateProps | EditProps;
@@ -69,34 +73,49 @@ export function SessionForm({
   defaultValues,
   onCancel,
   canManageCourts = true,
+  template,
 }: SessionFormProps) {
   const isEdit = mode === "edit";
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const initialStart = defaultValues ? new Date(defaultValues.startTime) : undefined;
-  const initialEnd = defaultValues ? new Date(defaultValues.endTime) : undefined;
+  // Template dates are Malaysia wall-clock strings, built into local Dates so the
+  // server render and the phone agree on what the form shows
+  const seed = defaultValues ?? template;
+  const initialStart = defaultValues
+    ? new Date(defaultValues.startTime)
+    : template
+      ? localDate(template.date, template.startTime)
+      : undefined;
+  const initialEnd = defaultValues
+    ? new Date(defaultValues.endTime)
+    : template
+      ? localDate(template.date, template.endTime)
+      : undefined;
   const initialRsvp = defaultValues?.rsvpDeadline
     ? new Date(defaultValues.rsvpDeadline)
-    : undefined;
+    : template?.rsvpDeadline
+      ? localDate(template.rsvpDeadline.date, template.rsvpDeadline.time)
+      : undefined;
 
   function toTimeString(d: Date) {
     return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   }
 
+  const [copiedFrom, setCopiedFrom] = useState(template?.sourceDate ?? null);
   const [sessionDate, setSessionDate] = useState<Date | undefined>(initialStart);
   const [startTime, setStartTime] = useState<string>(
     initialStart ? toTimeString(initialStart) : "",
   );
   const [endTime, setEndTime] = useState<string>(initialEnd ? toTimeString(initialEnd) : "");
-  const [numCourts, setNumCourts] = useState<number | "">(defaultValues?.courts ?? 1);
-  const [costPerCourt, setCostPerCourt] = useState(defaultValues?.costPerCourt ?? 60);
-  const [location, setLocation] = useState(defaultValues?.location ?? "");
-  const [locationMapUrl, setLocationMapUrl] = useState(defaultValues?.locationMapUrl ?? "");
-  const [courtNumbers, setCourtNumbers] = useState(defaultValues?.courtNumbers ?? "");
-  const [maxPlayers, setMaxPlayers] = useState<number | "">(defaultValues?.maxPlayers ?? 20);
-  const [minBalance, setMinBalance] = useState(defaultValues?.minBalance ?? 20);
-  const [note, setNote] = useState(defaultValues?.note ?? "");
+  const [numCourts, setNumCourts] = useState<number | "">(seed?.courts ?? 1);
+  const [costPerCourt, setCostPerCourt] = useState(seed?.costPerCourt ?? 60);
+  const [location, setLocation] = useState(seed?.location ?? "");
+  const [locationMapUrl, setLocationMapUrl] = useState(seed?.locationMapUrl ?? "");
+  const [courtNumbers, setCourtNumbers] = useState(seed?.courtNumbers ?? "");
+  const [maxPlayers, setMaxPlayers] = useState<number | "">(seed?.maxPlayers ?? 20);
+  const [minBalance, setMinBalance] = useState(seed?.minBalance ?? 20);
+  const [note, setNote] = useState(seed?.note ?? "");
   const [rsvpDeadline, setRsvpDeadline] = useState<Date | undefined>(initialRsvp);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -107,16 +126,36 @@ export function SessionForm({
 
   const { data: courtsList, refetch: refetchCourts } = useSuspenseQuery(courtsQueryOptions());
   const [selectedCourtId, setSelectedCourtId] = useState<string>(() => {
-    if (defaultValues?.location) {
-      return courtsList.find((c) => c.name === defaultValues.location)?.id ?? "";
+    if (seed?.location) {
+      return courtsList.find((c) => c.name === seed.location)?.id ?? "";
     }
     return "";
   });
+  const [courtToDelete, setCourtToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletingCourt, setDeletingCourt] = useState(false);
   const [showAddCourt, setShowAddCourt] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [newCourtUrl, setNewCourtUrl] = useState("");
   const [resolvingCourt, setResolvingCourt] = useState(false);
+
+  function clearTemplate() {
+    setCopiedFrom(null);
+    setSessionDate(undefined);
+    setStartTime("");
+    setEndTime("");
+    setNumCourts(1);
+    setCostPerCourt(60);
+    setSelectedCourtId("");
+    setLocation("");
+    setLocationMapUrl("");
+    setCourtNumbers("");
+    setMaxPlayers(20);
+    setMinBalance(20);
+    setNote("");
+    setRsvpDeadline(undefined);
+    setSubmitted(false);
+  }
 
   function handleCourtSelect(value: string) {
     if (value === ADD_NEW_COURT_VALUE) {
@@ -136,6 +175,7 @@ export function SessionForm({
   }
 
   async function handleDeleteCourt(id: string) {
+    setDeletingCourt(true);
     try {
       await deleteCourtFn({ data: { courtId: id } });
       if (selectedCourtId === id) {
@@ -144,8 +184,11 @@ export function SessionForm({
         setLocationMapUrl("");
       }
       await refetchCourts();
+      setCourtToDelete(null);
     } catch {
       toast.error("Failed to delete court");
+    } finally {
+      setDeletingCourt(false);
     }
   }
 
@@ -183,7 +226,9 @@ export function SessionForm({
     try {
       const result = await deleteSessionFn({ data: { sessionId } });
       if (result.type !== "SUCCESS") {
-        throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to cancel session");
+        throw new Error(
+          result.type === "BUSINESS_ERROR" ? result.code : "Failed to cancel session",
+        );
       }
       toast.success("Session cancelled and deposits refunded");
       await Promise.all([
@@ -300,6 +345,23 @@ export function SessionForm({
 
   return (
     <div className="space-y-4">
+      {copiedFrom && (
+        <div className="flex items-center justify-between gap-3 rounded-md bg-brand/30 px-3 py-2 text-sm">
+          <span>
+            Copied from{" "}
+            <span className="font-medium">{format(localDate(copiedFrom), "EEE d MMM")}</span>
+            <span className="text-muted-foreground"> · check the date</span>
+          </span>
+          <button
+            type="button"
+            onClick={clearTemplate}
+            className="shrink-0 font-medium text-brand-foreground underline-offset-2 hover:underline"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div>
         <Label>Date</Label>
         <div className="mt-1">
@@ -414,8 +476,10 @@ export function SessionForm({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteCourt(court.id);
+                        setDropdownOpen(false);
+                        setCourtToDelete({ id: court.id, name: court.name });
                       }}
+                      aria-label={`Delete ${court.name}`}
                       className="ml-2 shrink-0 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -444,7 +508,10 @@ export function SessionForm({
 
         {showAddCourt && (
           // Drops down from the Location picker that revealed it
-          <div className="reveal mt-2 flex gap-2" style={{ "--reveal-from": "-4px" } as React.CSSProperties}>
+          <div
+            className="reveal mt-2 flex gap-2"
+            style={{ "--reveal-from": "-4px" } as React.CSSProperties}
+          >
             <Input
               placeholder="Add Google Maps link"
               value={newCourtUrl}
@@ -628,17 +695,55 @@ export function SessionForm({
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelling}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelDialog(false)}
+                  disabled={cancelling}
+                >
                   Keep Session
                 </Button>
                 <Button variant="destructive" onClick={handleCancelSession} disabled={cancelling}>
-                  {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : "Yes, Cancel Session"}
+                  {cancelling ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Yes, Cancel Session"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </>
       )}
+
+      <Dialog
+        open={courtToDelete !== null}
+        onOpenChange={(open) => !open && setCourtToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {courtToDelete?.name}?</DialogTitle>
+            <DialogDescription>
+              This removes the venue from the list. Existing sessions are not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCourtToDelete(null)}
+              disabled={deletingCourt}
+            >
+              Keep
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => courtToDelete && handleDeleteCourt(courtToDelete.id)}
+              disabled={deletingCourt}
+            >
+              {deletingCourt ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete court"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={shareUrl !== null} onOpenChange={(open) => !open && closeShareDialog()}>
         <DialogContent>
