@@ -57,6 +57,13 @@
       "when": 1792148982612,
       "tag": "0007_sloppy_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792448913105,
+      "tag": "0008_curious_network",
+      "breakpoints": true
     }
   ]
 }
