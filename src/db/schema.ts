@@ -58,6 +58,9 @@ export const matchStatusEnum = pgEnum("match_status", [
 export const matchSideEnum = pgEnum("match_side", ["A", "B"]);
 
 // TABLES
+// Every table has RLS on with no policies: the public anon key ships in the browser,
+// so Supabase's REST API must see nothing. The server connects as the owner and
+// bypasses RLS. A new table needs `.enableRLS()` too.
 export const users = pgTable(
   "users",
   {
@@ -81,7 +84,7 @@ export const users = pgTable(
     emailIdx: index("users_email_idx").on(table.email),
     phoneIdx: index("users_phone_idx").on(table.phone),
   }),
-);
+).enableRLS();
 
 export const topUpRequests = pgTable(
   "top_up_requests",
@@ -105,7 +108,7 @@ export const topUpRequests = pgTable(
     userIdIdx: index("top_up_requests_user_id_idx").on(table.userId),
     statusIdx: index("top_up_requests_status_idx").on(table.status),
   }),
-);
+).enableRLS();
 
 export const withdrawalRequests = pgTable(
   "withdrawal_requests",
@@ -132,7 +135,7 @@ export const withdrawalRequests = pgTable(
     userIdIdx: index("withdrawal_requests_user_id_idx").on(table.userId),
     statusIdx: index("withdrawal_requests_status_idx").on(table.status),
   }),
-);
+).enableRLS();
 
 export const sessions = pgTable(
   "sessions",
@@ -167,7 +170,7 @@ export const sessions = pgTable(
     startTimeIdx: index("sessions_start_time_idx").on(table.startTime),
     statusIdx: index("sessions_status_idx").on(table.status),
   }),
-);
+).enableRLS();
 
 export const ledger = pgTable(
   "ledger",
@@ -199,7 +202,7 @@ export const ledger = pgTable(
     sessionIdIdx: index("ledger_session_id_idx").on(table.sessionId),
     createdAtIdx: index("ledger_created_at_idx").on(table.createdAt),
   }),
-);
+).enableRLS();
 
 export const attendances = pgTable(
   "attendances",
@@ -229,7 +232,7 @@ export const attendances = pgTable(
     sessionIdIdx: index("attendances_session_id_idx").on(table.sessionId),
     userIdIdx: index("attendances_user_id_idx").on(table.userId),
   }),
-);
+).enableRLS();
 
 // Real cash paid out for a session (court rental, shuttles) or for the club in
 // general. Distinct from `ledger`, which only tracks members' wallet credit.
@@ -261,7 +264,7 @@ export const expenses = pgTable(
     paidAtIdx: index("expenses_paid_at_idx").on(table.paidAt),
     categoryIdx: index("expenses_category_idx").on(table.category),
   }),
-);
+).enableRLS();
 
 export const settings = pgTable("settings", {
   id: text("id").primaryKey().default("default"),
@@ -270,7 +273,7 @@ export const settings = pgTable("settings", {
   defaultSessionDay: text("default_session_day").default("Thursday"),
   defaultSessionTime: text("default_session_time").default("20:00"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 export const courts = pgTable("courts", {
   id: text("id")
@@ -279,7 +282,7 @@ export const courts = pgTable("courts", {
   name: text("name").notNull(),
   mapUrl: text("map_url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 // A game played during a session. Side A is always the recorder's side. Only
 // CONFIRMED matches count towards stats and the leaderboard.
@@ -315,7 +318,7 @@ export const matches = pgTable(
     sessionIdIdx: index("matches_session_id_idx").on(table.sessionId),
     statusIdx: index("matches_status_idx").on(table.status),
   }),
-);
+).enableRLS();
 
 export const matchPlayers = pgTable(
   "match_players",
@@ -336,7 +339,7 @@ export const matchPlayers = pgTable(
     matchIdIdx: index("match_players_match_id_idx").on(table.matchId),
     userIdIdx: index("match_players_user_id_idx").on(table.userId),
   }),
-);
+).enableRLS();
 
 // RELATIONS
 export const usersRelations = relations(users, ({ many }) => ({

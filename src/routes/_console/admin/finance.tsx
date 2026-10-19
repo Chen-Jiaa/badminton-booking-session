@@ -389,7 +389,7 @@ function TopUpsTab() {
                   <TableCell>
                     {r.receiptUrl ? (
                       <a
-                        href={r.receiptUrl}
+                        href={`/api/receipts/${r.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-brand-foreground underline"

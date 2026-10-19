@@ -7,6 +7,7 @@ import { sessionMiddleware } from "@/middleware/auth";
 import { topUpRequestSchema } from "@/lib/validations";
 import { getAdminFcmTokens } from "@/lib/guards";
 import { sendNewTopUpRequestNotification } from "@/lib/push";
+import { isOwnReceiptPath } from "./receipt";
 
 type Result<T = void> =
   | { type: "SUCCESS"; value: T }
@@ -34,17 +35,21 @@ export const topUpsQueryOptions = () =>
   });
 
 export const createTopUpFn = createServerFn({ method: "POST" })
-  .validator((data: { amount: number; receiptUrl?: string }) => data)
+  .validator((data: { amount: number; receiptPath?: string }) => data)
   .middleware([sessionMiddleware])
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
 
     const validated = topUpRequestSchema.parse(data);
+    if (validated.receiptPath && !isOwnReceiptPath(validated.receiptPath, session.user.id)) {
+      return { type: "BUSINESS_ERROR", code: "Upload the receipt again" };
+    }
 
     await db.insert(topUpRequests).values({
       userId: session.user.id,
       amount: validated.amount.toFixed(2),
-      receiptUrl: validated.receiptUrl,
+      // The column predates private storage: it holds the storage path, not a URL
+      receiptUrl: validated.receiptPath,
     });
 
     // Alert admins with push enabled. Best-effort — a notification failure must

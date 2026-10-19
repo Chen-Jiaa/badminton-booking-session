@@ -2,45 +2,39 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@/db";
 import { topUpRequests } from "@/db/schema";
 import { and, isNotNull, lt } from "drizzle-orm";
-import { deleteReceipts, receiptUrlToPath } from "@/lib/supabase";
+import { deleteReceipts } from "@/lib/supabase";
+import { RECEIPT_RETENTION_DAYS } from "@/features/topup/receipt";
 
-// Server route — called by Vercel cron (see vercel.json).
-// Deletes old receipt images from Supabase Storage and clears their URLs.
+// Server route — called daily by Vercel cron (see vercel.json). Deletes receipt
+// images older than RECEIPT_RETENTION_DAYS from Storage and clears their paths.
 export const Route = createFileRoute("/api/cron/cleanup-receipts")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const authHeader = request.headers.get("authorization");
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        // Without a secret configured, `Bearer undefined` would otherwise match
+        const secret = process.env.CRON_SECRET;
+        if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
           return new Response("Unauthorized", { status: 401 });
         }
 
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        const cutoff = new Date(Date.now() - RECEIPT_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+        const expired = and(
+          isNotNull(topUpRequests.receiptUrl),
+          lt(topUpRequests.createdAt, cutoff),
+        );
 
         const rows = await db
-          .select({ id: topUpRequests.id, receiptUrl: topUpRequests.receiptUrl })
+          .select({ receiptUrl: topUpRequests.receiptUrl })
           .from(topUpRequests)
-          .where(
-            and(isNotNull(topUpRequests.receiptUrl), lt(topUpRequests.createdAt, threeMonthsAgo)),
-          );
+          .where(expired);
+        if (rows.length === 0) return Response.json({ deleted: 0 });
 
-        if (rows.length === 0) {
-          return Response.json({ deleted: 0 });
+        const paths = rows.map((r) => r.receiptUrl!);
+        // Storage's bulk delete takes up to 1000 paths per call
+        for (let i = 0; i < paths.length; i += 1000) {
+          await deleteReceipts(paths.slice(i, i + 1000));
         }
-
-        const paths = rows
-          .map((r) => receiptUrlToPath(r.receiptUrl!))
-          .filter((p): p is string => p !== null);
-
-        await deleteReceipts(paths);
-
-        await db
-          .update(topUpRequests)
-          .set({ receiptUrl: null })
-          .where(
-            and(isNotNull(topUpRequests.receiptUrl), lt(topUpRequests.createdAt, threeMonthsAgo)),
-          );
+        await db.update(topUpRequests).set({ receiptUrl: null }).where(expired);
 
         return Response.json({ deleted: paths.length });
       },

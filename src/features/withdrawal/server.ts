@@ -2,10 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { withdrawalRequests, users, ledger } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { withdrawalRequestSchema, rejectWithdrawalSchema } from "@/lib/validations";
 import { getAdminFcmTokens, requireAdmin, type Result } from "@/lib/guards";
+import { adjustBalance } from "@/lib/wallet";
 import {
   sendNewWithdrawalRequestNotification,
   sendWithdrawalConfirmedNotification,
@@ -236,21 +237,13 @@ export const confirmWithdrawalFn = createServerFn({ method: "POST" })
     const adminUserId = session.user.id;
 
     // The balance was never reserved when the request was created, so the
-    // player may have spent it on a session in the meantime. Re-check inside
-    // the transaction rather than letting the balance go negative.
+    // player may have spent it on a session in the meantime. The debit below is
+    // guarded on the live balance rather than letting it go negative.
     const confirmedAt = new Date();
 
     let confirmed: boolean;
     try {
       confirmed = await db.transaction(async (tx) => {
-        const current = await tx.query.users.findFirst({ where: eq(users.id, request.userId) });
-        if (!current) return false;
-
-        const currentBalance = parseFloat(current.balance);
-        if (currentBalance < amount) return false;
-
-        const newBalance = currentBalance - amount;
-
         const [claimed] = await tx
           .update(withdrawalRequests)
           .set({ status: "CONFIRMED", resolvedAt: confirmedAt, resolvedBy: adminUserId })
@@ -261,16 +254,15 @@ export const confirmWithdrawalFn = createServerFn({ method: "POST" })
 
         if (!claimed) return false;
 
-        await tx
-          .update(users)
-          .set({ balance: newBalance.toFixed(2), updatedAt: new Date() })
-          .where(eq(users.id, request.userId));
+        const newBalance = await adjustBalance(tx, request.userId, -amount, { floor: 0 });
+        // Not enough left: roll the claim back too, leaving the request pending
+        if (newBalance === null) tx.rollback();
 
         await tx.insert(ledger).values({
           userId: request.userId,
           type: "WITHDRAWAL",
           amount: (-amount).toFixed(2),
-          balanceAfter: newBalance.toFixed(2),
+          balanceAfter: newBalance!,
           note: "Withdrawal paid out",
           createdById: adminUserId,
           withdrawalRequestId: requestId,
@@ -285,7 +277,7 @@ export const confirmWithdrawalFn = createServerFn({ method: "POST" })
           memberName: request.user.name ?? "",
           memberEmail: request.user.email ?? "",
           amount: amount.toFixed(2),
-          balanceAfter: newBalance.toFixed(2),
+          balanceAfter: newBalance!,
           paymentMethod: request.paymentMethod ?? "",
           confirmedBy: admin.name ?? admin.email ?? adminUserId,
         });
@@ -293,6 +285,9 @@ export const confirmWithdrawalFn = createServerFn({ method: "POST" })
         return true;
       });
     } catch (error) {
+      if (error instanceof TransactionRollbackError) {
+        return { type: "BUSINESS_ERROR", code: "INSUFFICIENT_BALANCE" };
+      }
       if (error instanceof SheetSyncError) {
         return {
           type: "BUSINESS_ERROR",
@@ -335,7 +330,8 @@ export const rejectWithdrawalFn = createServerFn({ method: "POST" })
     }
 
     // No balance change — nothing was ever deducted when the request was made.
-    await db
+    // Guarded on PENDING so a reject racing a payout can't relabel a paid request.
+    const [rejected] = await db
       .update(withdrawalRequests)
       .set({
         status: "REJECTED",
@@ -343,7 +339,14 @@ export const rejectWithdrawalFn = createServerFn({ method: "POST" })
         resolvedAt: new Date(),
         resolvedBy: session.user.id,
       })
-      .where(eq(withdrawalRequests.id, validated.requestId));
+      .where(
+        and(
+          eq(withdrawalRequests.id, validated.requestId),
+          eq(withdrawalRequests.status, "PENDING"),
+        ),
+      )
+      .returning({ id: withdrawalRequests.id });
+    if (!rejected) return { type: "BUSINESS_ERROR", code: "Invalid request" };
 
     if (request.user.fcmToken) {
       await sendWithdrawalRejectedNotification(

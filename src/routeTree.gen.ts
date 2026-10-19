@@ -28,6 +28,7 @@ import { Route as ConsoleAdminSessionsRouteImport } from './routes/_console/admi
 import { Route as ConsoleAdminTopupsRouteImport } from './routes/_console/admin/topups'
 import { Route as ApiAdminExportRouteImport } from './routes/api/admin/export'
 import { Route as ApiCronCleanupReceiptsRouteImport } from './routes/api/cron/cleanup-receipts'
+import { Route as ApiReceiptsIdRouteImport } from './routes/api/receipts.$id'
 import { Route as AppSessionsIdSplatRouteImport } from './routes/_app/sessions_.$id.$'
 import { Route as ConsoleAdminMembersIdRouteImport } from './routes/_console/admin/members_.$id'
 import { Route as ConsoleAdminSessionsIdRouteImport } from './routes/_console/admin/sessions_.$id'
@@ -126,6 +127,11 @@ const ApiCronCleanupReceiptsRoute = ApiCronCleanupReceiptsRouteImport.update({
   path: '/api/cron/cleanup-receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiReceiptsIdRoute = ApiReceiptsIdRouteImport.update({
+  id: '/api/receipts/$id',
+  path: '/api/receipts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSessionsIdSplatRoute = AppSessionsIdSplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/api/receipts/$id': typeof ApiReceiptsIdRoute
   '/sessions/$id/$': typeof AppSessionsIdSplatRoute
   '/admin/members/$id': typeof ConsoleAdminMembersIdRoute
   '/admin/sessions/$id': typeof ConsoleAdminSessionsIdRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/api/receipts/$id': typeof ApiReceiptsIdRoute
   '/sessions/$id/$': typeof AppSessionsIdSplatRoute
   '/admin/members/$id': typeof ConsoleAdminMembersIdRoute
   '/admin/sessions/$id': typeof ConsoleAdminSessionsIdRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/_console/admin/topups': typeof ConsoleAdminTopupsRoute
   '/api/admin/export': typeof ApiAdminExportRoute
   '/api/cron/cleanup-receipts': typeof ApiCronCleanupReceiptsRoute
+  '/api/receipts/$id': typeof ApiReceiptsIdRoute
   '/_app/sessions_/$id/$': typeof AppSessionsIdSplatRoute
   '/_console/admin/members_/$id': typeof ConsoleAdminMembersIdRoute
   '/_console/admin/sessions_/$id': typeof ConsoleAdminSessionsIdRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/api/receipts/$id'
     | '/sessions/$id/$'
     | '/admin/members/$id'
     | '/admin/sessions/$id'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/api/receipts/$id'
     | '/sessions/$id/$'
     | '/admin/members/$id'
     | '/admin/sessions/$id'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/_console/admin/topups'
     | '/api/admin/export'
     | '/api/cron/cleanup-receipts'
+    | '/api/receipts/$id'
     | '/_app/sessions_/$id/$'
     | '/_console/admin/members_/$id'
     | '/_console/admin/sessions_/$id'
@@ -302,6 +314,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   ApiAdminExportRoute: typeof ApiAdminExportRoute
   ApiCronCleanupReceiptsRoute: typeof ApiCronCleanupReceiptsRoute
+  ApiReceiptsIdRoute: typeof ApiReceiptsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -439,6 +452,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronCleanupReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/receipts/$id': {
+      id: '/api/receipts/$id'
+      path: '/api/receipts/$id'
+      fullPath: '/api/receipts/$id'
+      preLoaderRoute: typeof ApiReceiptsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sessions_/$id/$': {
       id: '/_app/sessions_/$id/$'
       path: '/$'
@@ -536,6 +556,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   ApiAdminExportRoute: ApiAdminExportRoute,
   ApiCronCleanupReceiptsRoute: ApiCronCleanupReceiptsRoute,
+  ApiReceiptsIdRoute: ApiReceiptsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
