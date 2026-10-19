@@ -28,3 +28,20 @@ PGOPTIONS='-c default_transaction_read_only=on' psql "$(grep -E '^DATABASE_URL='
 
 `psql` here is Homebrew's `/opt/homebrew/opt/postgresql@14/bin/psql`. It isn't always on
 PATH, and there is no `postgresql@16`.
+
+## Outside Drizzle
+
+Supabase Storage lives in the `storage` schema, which Drizzle doesn't manage. Set up by hand:
+
+| What              | Live             | Check                                                                          |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------ |
+| `receipts` bucket | yes (2026-10-20) | `select public, file_size_limit from storage.buckets where id='receipts'` → `f | 2097152` |
+
+To recreate it (private, 2 MB, photos only; `lib/supabase.ts` and `features/topup/receipt.ts` rely on these):
+
+```bash
+curl -X POST "$VITE_SUPABASE_URL/storage/v1/bucket" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"receipts","name":"receipts","public":false,"file_size_limit":2097152,"allowed_mime_types":["image/jpeg","image/png","image/webp","image/heic","image/heif"]}'
+```
