@@ -23,18 +23,19 @@ export const SEED_USERS = {
 
 export type SeedUser = keyof typeof SEED_USERS;
 
-/** Fixed ids so tests can go straight to `/sessions/<id>`. */
+/** Fixed ids so tests can go straight to `/sessions/<id>`. Alphanumeric only, like real
+ * cuid2 ids: the session page treats anything after a `-` as junk from a pasted link. */
 export const SEED_SESSIONS = {
   /** In 3 days, 8 spots, only the admin going. For joining and leaving. */
-  upcoming: "e2e-upcoming",
+  upcoming: "e2eupcoming",
   /** In 3 days, 2 spots, both taken (admin + Dee). For the waitlist. */
-  full: "e2e-full",
+  full: "e2efull",
   /** Starts in 12 hours (inside the 24h late-cancel window). Ben is in, Cai is waitlisted. */
-  late: "e2e-late",
+  late: "e2elate",
   /** Ended 2 days ago, not finalized. Pat, Ben, Cai and Dee each hold a RM 20 deposit. */
-  finished: "e2e-finished",
+  finished: "e2efinished",
   /** Started 30 minutes ago, no deposit. Pat, Ben, Cai and Dee are in, with 2 confirmed matches. */
-  live: "e2e-live",
+  live: "e2elive",
 } as const;
 
 /** Every seeded wallet shows this once the seeded deposits are taken (Lou excepted). */

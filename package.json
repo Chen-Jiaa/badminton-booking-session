@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "dev:test": "tsx scripts/dev-test.ts",
+    "shot": "tsx scripts/shot.ts",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "lint": "oxlint . --ignore-path=.oxlintignore",

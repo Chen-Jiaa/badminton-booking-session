@@ -1,20 +1,9 @@
 import { test as base, expect, type BrowserContext, type Page } from "@playwright/test";
-import { SignJWT } from "jose";
-import { BASE_URL, E2E_AUTH_SECRET } from "./env";
+import { accessTokenFor, waitForHydration } from "./browser";
+import { BASE_URL } from "./env";
 import { CONTEXT_OPTIONS } from "./device";
 import { truncateTestDb } from "./db";
-import { SEED_USERS, seed, type SeedUser } from "./seed";
-
-/** Mints the HS256 token `verifyAccessToken` accepts when E2E_AUTH_SECRET is set. */
-async function accessTokenFor(user: SeedUser) {
-  const { id, email, name } = SEED_USERS[user];
-  return new SignJWT({ email, user_metadata: { full_name: name } })
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(id)
-    .setIssuedAt()
-    .setExpirationTime("1h")
-    .sign(new TextEncoder().encode(E2E_AUTH_SECRET));
-}
+import { seed, type SeedUser } from "./seed";
 
 /** Keeps tests off the network: the session page embeds a Google Map. */
 async function blockExternal(context: BrowserContext) {
@@ -22,20 +11,6 @@ async function blockExternal(context: BrowserContext) {
     (url) => url.origin !== BASE_URL,
     (route) => route.abort(),
   );
-}
-
-/**
- * Resolves once React has hydrated the page: clicks before that are lost, and the
- * dev server takes a while to load the app's modules.
- */
-async function waitForHydration(page: Page) {
-  await page.waitForFunction(() => {
-    const hydrated = (el: Element) => Object.keys(el).some((k) => k.startsWith("__reactProps$"));
-    return (
-      hydrated(document.body) &&
-      Array.from(document.querySelectorAll("button, a, input")).every(hydrated)
-    );
-  });
 }
 
 /** Makes `goto` and `reload` wait for hydration, so tests can click straight away. */
