@@ -4,15 +4,15 @@ import { ArrowLeft, BarChart3, CalendarDays, Users, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/admin/finance", icon: BarChart3, label: "Finance" },
-  { href: "/admin/members", icon: Users, label: "Members" },
+  { href: "/admin/topups", icon: Wallet, label: "Transactions", badgeKey: "pending" as const },
   {
     href: "/admin/sessions",
     icon: CalendarDays,
     label: "Sessions",
     badgeKey: "lateCancels" as const,
   },
-  { href: "/admin/topups", icon: Wallet, label: "Transactions", badgeKey: "pending" as const },
+  { href: "/admin/finance", icon: BarChart3, label: "Finance" },
+  { href: "/admin/members", icon: Users, label: "Members" },
 ] satisfies {
   href: string;
   icon: typeof Users;
@@ -116,11 +116,11 @@ export function ConsoleNav({ pendingCount = 0, lateCancelCount = 0 }: ConsoleNav
           the wrapper so the hover fill matches the other items */}
       <div className="hidden shrink-0 lg:mt-4 lg:block lg:border-t lg:border-gray-200 lg:pt-3">
         <Link
-          to="/sessions"
+          to="/profile"
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-[color,background-color,scale] duration-150 hover:bg-gray-100 hover:text-gray-900 active:scale-[0.97]"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" />
-          <span>Back to app</span>
+          <span>Back to profile</span>
         </Link>
       </div>
     </nav>

@@ -26,7 +26,7 @@ There is no `/admin` index page.
 | URL                                    | Route file                                | Main pieces                                                                                                            |
 | -------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `/admin/sessions`                      | `routes/_console/admin/sessions.tsx`      | `features/admin/session-list.tsx`                                                                                      |
-| `/admin/sessions/:id`                  | `routes/_console/admin/sessions_.$id.tsx` | `add-player-form`, `delete-session-button`, `share-button`, `lock-session-form`, `features/sessions/roster-manage.tsx` |
+| `/admin/sessions/:id`                  | `routes/_console/admin/sessions_.$id.tsx` | `add-player-form`, `session-actions-menu` (⋯: copy link, duplicate, delete), `lock-session-form`, `features/sessions/roster-manage.tsx` |
 | `/admin/sessions/new`                  | `routes/_console/admin/sessions_.new.tsx` | `features/admin/session-form.tsx` (same form as hosts)                                                                 |
 | `/admin/topups`                        | `routes/_console/admin/topups.tsx`        | `features/admin/topup-actions.tsx`, `features/finance/withdrawal-actions.tsx` (top-ups **and** withdrawals)            |
 | `/admin/finance`                       | `routes/_console/admin/finance.tsx`       | `features/finance/*` (expenses, cash flow, summary)                                                                    |

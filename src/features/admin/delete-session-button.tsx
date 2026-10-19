@@ -9,27 +9,27 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteSessionFn } from "@/features/admin/server";
 
-interface DeleteSessionButtonProps {
+interface DeleteSessionDialogProps {
   sessionId: string;
   isLocked?: boolean;
-  variant?: "icon" | "full";
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function DeleteSessionButton({
+export function DeleteSessionDialog({
   sessionId,
   isLocked,
-  variant = "full",
-}: DeleteSessionButtonProps) {
+  open,
+  onOpenChange,
+}: DeleteSessionDialogProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [open, setOpen] = useState(false);
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -39,7 +39,7 @@ export function DeleteSessionButton({
         throw new Error(result.type === "BUSINESS_ERROR" ? result.code : "Failed to delete");
       }
       toast.success("Session deleted");
-      setOpen(false);
+      onOpenChange(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
         queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] }),
@@ -53,24 +53,7 @@ export function DeleteSessionButton({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {variant === "icon" ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-destructive hover:text-destructive"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button variant="destructive" size="sm">
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete Session
-          </Button>
-        )}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Session</DialogTitle>
@@ -81,7 +64,7 @@ export function DeleteSessionButton({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
@@ -90,5 +73,39 @@ export function DeleteSessionButton({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Trash icon for session list rows */
+export function DeleteSessionButton({
+  sessionId,
+  isLocked,
+}: {
+  sessionId: string;
+  isLocked?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Delete session"
+        className="h-10 w-10 text-destructive hover:text-destructive"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+      <DeleteSessionDialog
+        sessionId={sessionId}
+        isLocked={isLocked}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   );
 }

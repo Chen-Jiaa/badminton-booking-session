@@ -150,23 +150,21 @@ function SummarySection({ summary }: { summary: Summary }) {
           </Card>
         )}
 
-        <Card>
-          <CardContent className="py-4 text-xs text-muted-foreground space-y-1">
-            <SplitRow label="Total top-ups received" value={`+${formatCurrency(summary.cashIn)}`} />
-            <SplitRow
-              label="Withdrawals paid out"
-              value={`−${formatCurrency(summary.withdrawalsPaid)}`}
-            />
-            <SplitRow
-              label="Expenses reimbursed"
-              value={`−${formatCurrency(summary.expensesReimbursed)}`}
-            />
-            <SplitRow
-              label="Deposits held on open sessions"
-              value={formatCurrency(summary.heldDeposits)}
-            />
-          </CardContent>
-        </Card>
+        <div className="px-1 py-2 text-xs text-muted-foreground space-y-1">
+          <SplitRow label="Total top-ups received" value={`+${formatCurrency(summary.cashIn)}`} />
+          <SplitRow
+            label="Withdrawals paid out"
+            value={`−${formatCurrency(summary.withdrawalsPaid)}`}
+          />
+          <SplitRow
+            label="Expenses reimbursed"
+            value={`−${formatCurrency(summary.expensesReimbursed)}`}
+          />
+          <SplitRow
+            label="Deposits held on open sessions"
+            value={formatCurrency(summary.heldDeposits)}
+          />
+        </div>
       </div>
     </div>
   );
