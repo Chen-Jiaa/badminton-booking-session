@@ -25,6 +25,8 @@ export default defineConfig({
       DATABASE_URL: TEST_DATABASE_URL,
       E2E_AUTH_SECRET,
       GOOGLE_SHEET_WEBHOOK_URL: "",
+      // No live Storage either: receipt uploads would land in the real bucket
+      SUPABASE_SERVICE_ROLE_KEY: "",
       // Same clock as the browser and the club, so server-rendered dates match
       TZ: "Asia/Kuala_Lumpur",
     },

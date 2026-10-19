@@ -147,7 +147,7 @@ function TopUpCard({ req }: { req: TopUp }) {
           </div>
           {req.receiptUrl && (
             <a
-              href={req.receiptUrl}
+              href={`/api/receipts/${req.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-brand-foreground underline"

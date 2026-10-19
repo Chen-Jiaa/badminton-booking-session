@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Plus, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createTopUpFn } from "@/features/topup/server";
+import { MAX_RECEIPT_BYTES, shrinkReceipt } from "@/features/topup/receipt";
 
 interface TopUpDialogProps {
   className?: string;
@@ -64,19 +65,26 @@ export function TopUpDialog({
 
     setLoading(true);
     try {
-      let receiptUrl: string | undefined;
+      let receiptPath: string | undefined;
 
       if (file) {
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", await shrinkReceipt(file));
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-        if (uploadRes.ok) {
-          const data = await uploadRes.json();
-          receiptUrl = data.url;
+        if (!uploadRes.ok) {
+          // Keep the sheet open with the file chosen so they can retry or pick another
+          const reason = uploadRes.status < 500 ? await uploadRes.text() : "Please try again.";
+          toast.error("Couldn't upload the receipt", { description: reason });
+          return;
         }
+        receiptPath = ((await uploadRes.json()) as { path: string }).path;
       }
 
-      const result = await createTopUpFn({ data: { amount: parseFloat(amount), receiptUrl } });
+      const result = await createTopUpFn({ data: { amount: parseFloat(amount), receiptPath } });
+      if (result.type === "BUSINESS_ERROR") {
+        toast.error(result.code);
+        return;
+      }
       if (result.type !== "SUCCESS") {
         throw new Error("Failed to submit");
       }
@@ -176,8 +184,9 @@ export function TopUpDialog({
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f && f.size > 5 * 1024 * 1024) {
-                    toast.error("File too large (max 5 MB)");
+                  // Big photos are shrunk on submit; only refuse what can't plausibly fit
+                  if (f && f.size > 10 * MAX_RECEIPT_BYTES) {
+                    toast.error("That file is too large", { description: "Receipts are max 2 MB" });
                     e.target.value = "";
                     return;
                   }

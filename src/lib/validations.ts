@@ -3,7 +3,8 @@ import { toWhatsAppNumber } from "@/lib/phone";
 
 export const topUpRequestSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
-  receiptUrl: z.string().url().optional(),
+  // Storage path returned by /api/upload; checked against the caller in createTopUpFn
+  receiptPath: z.string().max(200).optional(),
 });
 
 export const withdrawalRequestSchema = z.discriminatedUnion("paymentMethod", [
