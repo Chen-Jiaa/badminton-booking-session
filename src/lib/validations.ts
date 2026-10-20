@@ -105,6 +105,11 @@ export const manualAdjustSchema = z.object({
   note: z.string().min(1, "Note is required for manual adjustments"),
 });
 
+export const setMemberRoleSchema = z.object({
+  userId: z.string().min(1),
+  role: z.enum(["PLAYER", "HOST"]),
+});
+
 export const lockSessionSchema = z.object({
   sessionId: z.string().min(1),
   shuttleCount: z.number().int().min(0),
