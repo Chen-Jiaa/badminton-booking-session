@@ -11,7 +11,8 @@ import {
 } from "@/db/schema";
 import { and, count, desc, eq, max, sum } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
-import { requireAdmin } from "@/lib/guards";
+import { requireAdmin, type Result } from "@/lib/guards";
+import { setMemberRoleSchema } from "@/lib/validations";
 
 const num = (v: string | null | undefined) => parseFloat(v ?? "0") || 0;
 
@@ -268,4 +269,23 @@ export const memberDetailQueryOptions = (userId: string) =>
   queryOptions({
     queryKey: ["admin", "member-detail", userId],
     queryFn: () => fetchMemberDetailFn({ data: { userId } }),
+  });
+
+/** Promotes a player to HOST or demotes a host back to PLAYER. Admins are never changed here. */
+export const setMemberRoleFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+    if (!(await requireAdmin(session.user.id))) return { type: "FORBIDDEN" };
+
+    const { userId, role } = setMemberRoleSchema.parse(data);
+    const target = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!target) return { type: "NOT_FOUND" };
+    if (target.role === "ADMIN") {
+      return { type: "BUSINESS_ERROR", code: "Admin roles can't be changed here" };
+    }
+
+    await db.update(users).set({ role }).where(eq(users.id, userId));
+    return { type: "SUCCESS", value: undefined };
   });

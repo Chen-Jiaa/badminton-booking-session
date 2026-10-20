@@ -3,6 +3,7 @@ import { ChevronLeft, Mail, Phone } from "lucide-react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { memberDetailQueryOptions, type MemberDetail } from "@/features/members/server";
 import { AdjustBalanceDialog } from "@/features/members/adjust-balance-dialog";
+import { ToggleHostButton } from "@/features/members/toggle-host-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -118,11 +119,20 @@ function MemberDetailPage() {
                 {formatCurrency(member.balance)}
               </p>
             </div>
-            <AdjustBalanceDialog
-              userId={member.id}
-              memberName={member.name}
-              balance={member.balance}
-            />
+            <div className="flex flex-col gap-2">
+              <AdjustBalanceDialog
+                userId={member.id}
+                memberName={member.name}
+                balance={member.balance}
+              />
+              {member.role !== "ADMIN" && (
+                <ToggleHostButton
+                  userId={member.id}
+                  memberName={member.name}
+                  isHost={member.role === "HOST"}
+                />
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
