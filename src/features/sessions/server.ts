@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { sessions, users, attendances, type Session, type User } from "@/db/schema";
-import { eq, ne, gte, lte, desc, and, or, count, asc } from "drizzle-orm";
+import { eq, ne, gte, lte, desc, and, or, count, asc, inArray } from "drizzle-orm";
 import { TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { rsvpSchema, updateGuestsSchema, type UpdateGuestsInput } from "@/lib/validations";
@@ -145,8 +145,22 @@ export const fetchSessionDetailFn = createServerFn({ method: "GET" })
       for (const a of gameSession.attendances) a.user.phone = null;
     }
 
+    // Who brought each guest, for the "Low guest" label
+    const sponsorIds = Array.from(
+      new Set(gameSession.attendances.flatMap((a) => (a.user.sponsorId ? [a.user.sponsorId] : []))),
+    );
+    const sponsorRows = sponsorIds.length
+      ? await db.query.users.findMany({
+          where: inArray(users.id, sponsorIds),
+          columns: { id: true, name: true },
+        })
+      : [];
+    const sponsorNames: Record<string, string> = {};
+    for (const u of sponsorRows) sponsorNames[u.id] = u.name ?? "";
+
     return {
       gameSession,
+      sponsorNames,
       groupName: appSettings?.groupName ?? "Badminton Group",
     };
   });
