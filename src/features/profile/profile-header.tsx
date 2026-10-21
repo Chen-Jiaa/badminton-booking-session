@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { removeAvatarFn, updateNameFn } from "@/features/profile/server";
-import { isCustomAvatar, prepareAvatar } from "@/features/profile/avatar";
+import {
+  checkAvatarSource,
+  cropAvatar,
+  isCustomAvatar,
+  type CropArea,
+} from "@/features/profile/avatar";
+import { AvatarCropper } from "@/features/profile/avatar-cropper";
 
 type Props = { name: string; email: string | null; role: string; image: string | null };
 
@@ -16,6 +22,7 @@ type Props = { name: string; email: string | null; role: string; image: string |
 export function ProfileHeader({ name, email, role, image }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [picked, setPicked] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
@@ -24,17 +31,28 @@ export function ProfileHeader({ name, email, role, image }: Props) {
   // The name and photo show on the leaderboard, matches and rosters, so refresh everything
   const refresh = () => queryClient.invalidateQueries();
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // so picking the same photo again still fires
     if (!file) return;
+    try {
+      checkAvatarSource(file);
+      setPicked(file);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't read that photo");
+    }
+  }
+
+  async function uploadCropped(area: CropArea) {
+    if (!picked) return;
     setUploading(true);
     try {
       const body = new FormData();
-      body.append("file", await prepareAvatar(file));
+      body.append("file", await cropAvatar(picked, area));
       const res = await fetch("/api/avatar", { method: "POST", body });
       if (!res.ok) throw new Error((await res.text()) || "Couldn't upload photo");
       await refresh();
+      setPicked(null);
       toast.success("Photo updated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't upload photo");
@@ -164,6 +182,12 @@ export function ProfileHeader({ name, email, role, image }: Props) {
           </div>
         </div>
       </CardContent>
+      <AvatarCropper
+        file={picked}
+        saving={uploading}
+        onCancel={() => setPicked(null)}
+        onSave={uploadCropped}
+      />
     </Card>
   );
 }

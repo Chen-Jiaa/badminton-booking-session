@@ -20,26 +20,22 @@ export function isCustomAvatar(image: string | null | undefined): boolean {
   return !!image && image.includes(`/${AVATAR_BUCKET}/`);
 }
 
-/** Centre-crops to a square and re-encodes as a small JPEG. Throws if the browser can't decode it. */
-export async function prepareAvatar(file: File): Promise<File> {
+/** The square the member framed, in pixels of the original photo (from react-easy-crop). */
+export type CropArea = { x: number; y: number; width: number; height: number };
+
+/** Checks the picked file's size; throws a message fit for a toast. */
+export function checkAvatarSource(file: File): void {
   if (file.size > MAX_AVATAR_SOURCE_BYTES) throw new Error("Photo must be 10 MB or smaller");
+}
+
+/** Cuts the framed square out of the photo and re-encodes it as a small JPEG. */
+export async function cropAvatar(file: File, area: CropArea): Promise<File> {
   const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = Math.min(AVATAR_SIZE, side);
+  canvas.width = canvas.height = Math.min(AVATAR_SIZE, Math.round(area.width));
   canvas
     .getContext("2d")!
-    .drawImage(
-      bitmap,
-      (bitmap.width - side) / 2,
-      (bitmap.height - side) / 2,
-      side,
-      side,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+    .drawImage(bitmap, area.x, area.y, area.width, area.height, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", 0.85),

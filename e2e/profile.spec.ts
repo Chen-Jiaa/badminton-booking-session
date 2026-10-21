@@ -29,3 +29,21 @@ test("a Google sign-in sync keeps a photo the member uploaded", async () => {
   expect(isCustomAvatar("https://lh3.googleusercontent.com/a/abc")).toBe(false);
   expect(isCustomAvatar(null)).toBe(false);
 });
+
+test("picking a photo opens the crop screen, and Cancel closes it", async ({ loginAs }) => {
+  const player = await loginAs("player");
+  await player.goto("/profile");
+  // 1×1 transparent PNG: enough for the browser to decode
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+    "base64",
+  );
+  await player
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "me.png", mimeType: "image/png", buffer: png });
+
+  await expect(player.getByRole("heading", { name: "Adjust photo" })).toBeVisible();
+  await expect(player.getByRole("button", { name: "Save photo" })).toBeEnabled();
+  await player.getByRole("button", { name: "Cancel" }).click();
+  await expect(player.getByRole("heading", { name: "Adjust photo" })).toBeHidden();
+});
