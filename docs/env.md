@@ -59,8 +59,8 @@ every start, and `pnpm shot` signs in for you. Another workspace may already hol
 
 ## Profile photos: the `avatars` bucket
 
-Public (photos are shown to other members), 512 KB, JPEG only, one folder per user. Not yet
-created on live until the owner says yes. The Google sign-in sync skips anyone whose
+Public (photos are shown to other members), 512 KB, JPEG only, one folder per user. Created on
+live on 2026-10-21. The Google sign-in sync skips anyone whose
 `users.image` points into this bucket (`isCustomAvatar`), so no migration is needed. "Use
 Google photo" sets `image` back to the token's `avatar_url` right away.
 
