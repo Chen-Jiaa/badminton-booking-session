@@ -225,11 +225,14 @@ export async function sendWaitlistPromotedNotification(
   token: string,
   sessionId: string,
   startTime: Date,
+  guestName?: string,
 ) {
   await sendPushNotification(
     token,
-    "You're in!",
-    `A spot opened up for ${sessionLabel(startTime)}. Your deposit has been taken.`,
+    guestName ? `${guestName} got a spot` : "You're in!",
+    guestName
+      ? `A spot opened up for ${guestName} on ${sessionLabel(startTime)}. Your deposit has been taken.`
+      : `A spot opened up for ${sessionLabel(startTime)}. Your deposit has been taken.`,
     { type: "WAITLIST_PROMOTED", link: `/sessions/${sessionId}` },
   );
 }

@@ -76,6 +76,11 @@ Use the `preview` skill: `pnpm dev:test` (test DB on :3200, background) then
 on other ports or write throwaway Playwright scripts to look at a page. Plain `pnpm dev`
 talks to the **live** DB, and you can't sign in to it from a script.
 
+To click around by hand: `pnpm dev:local` (own DB `badminton_dev`, kept between runs, :3201+;
+`--reset` reseeds, `--host` for a phone). Open `/api/dev-login`: it lists
+the DB's people, and picking one sets the test token cookie (7 days). It 404s unless
+`E2E_AUTH_SECRET` is set and `NODE_ENV` isn't production, so only `dev:test` / `dev:local` have it.
+
 ## Working across sessions
 
 Several Claude sessions often run in this workspace at once, and they share `.context/`.
@@ -102,6 +107,8 @@ Keep this file under ~120 lines; move detail into `docs/`. Commit doc edits with
   they fail with "no matches found".
 - Run local tools via pnpm (`pnpm exec tsx`, `pnpm exec playwright`); none are global.
   Missing browser → `pnpm exec playwright install chromium`.
+- `pnpm test:e2e` rebuilds `badminton_test`, which another workspace's `dev:test` server (:3200) may be using. Run it with `TEST_DATABASE_URL=postgres://localhost:5432/badminton_test_<name>` to use your own throwaway DB. The first run can hit the 120s web-server timeout while Vite warms up; rerun.
+- Guests (`users.isGuest`) must be excluded from member lists, and ledger totals per player key on `guestId ?? userId`. See `docs/sessions.md`.
 - `psql` is `/opt/homebrew/opt/postgresql@14/bin/psql`, which may not be on PATH.
 - `package.json` overrides `nitro>srvx` to 0.11: srvx 0.8 (Nitro 3.0.0) aborts requests
   once the body is read, so server-function POSTs 500'd in `vite dev`. Drop it when Nitro bumps.

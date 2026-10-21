@@ -20,6 +20,8 @@ export interface MatchPlayerView {
   name: string;
   image: string | null;
   side: Side;
+  /** Set for a guest: their sponsor can answer for them (guests have no login). */
+  sponsorId?: string | null;
 }
 
 export interface MatchView {
@@ -49,7 +51,11 @@ export function scoreProblem(a: number, b: number): string | null {
 }
 
 export function sideOf(m: Pick<MatchView, "players">, userId: string): Side | null {
-  return m.players.find((p) => p.userId === userId)?.side ?? null;
+  // Playing yourself beats acting for a guest of yours
+  return (
+    (m.players.find((p) => p.userId === userId) ?? m.players.find((p) => p.sponsorId === userId))
+      ?.side ?? null
+  );
 }
 
 export const otherSide = (s: Side): Side => (s === "A" ? "B" : "A");
@@ -74,9 +80,37 @@ export function isExpired(m: Pick<MatchView, "status" | "expiresAt">, now = new 
   return (m.status === "INVITED" || m.status === "AWAITING_CONFIRM") && m.expiresAt < now;
 }
 
-export function isWaitingOn(m: MatchView, userId: string, now = new Date()) {
+/** Nobody on the waiting side can answer (singles against your own guest). */
+export function isStuck(m: MatchView, now = new Date()) {
   const side = waitingSide(m);
-  return !!side && !isExpired(m, now) && sideOf(m, userId) === side;
+  return !!side && !isExpired(m, now) && !sideHasResponder(m.players, side);
+}
+
+/**
+ * `canReferee`: the viewer runs this session (its host, or an admin). They step in
+ * only when the match is stuck, and never on a match they play in.
+ */
+export function isWaitingOn(m: MatchView, userId: string, now = new Date(), canReferee = false) {
+  const side = waitingSide(m);
+  if (!side || isExpired(m, now)) return false;
+  // A player answers for themselves only: a member playing against their own guest
+  // can't also confirm for that guest
+  const self = m.players.find((p) => p.userId === userId);
+  if (self) return self.side === side;
+  if (m.players.some((p) => p.side === side && p.sponsorId === userId)) return true;
+  return canReferee && isStuck(m, now);
+}
+
+/**
+ * Whether anyone can answer for `side`: a real player, or a guest whose sponsor isn't
+ * playing on the other side.
+ */
+export function sideHasResponder(
+  players: Pick<MatchPlayerView, "userId" | "side" | "sponsorId">[],
+  side: Side,
+) {
+  const opposing = new Set(players.filter((p) => p.side !== side).map((p) => p.userId));
+  return players.some((p) => p.side === side && (!p.sponsorId || !opposing.has(p.sponsorId)));
 }
 
 export function winnerSide(m: Pick<MatchView, "scoreA" | "scoreB">): Side | null {

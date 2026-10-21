@@ -37,6 +37,7 @@ function formatTime(date: Date) {
 export function MatchCard({
   match: m,
   meId,
+  canReferee = false,
   busy,
   celebrating,
   recordingOpen,
@@ -49,6 +50,8 @@ export function MatchCard({
 }: {
   match: MatchView;
   meId: string | undefined;
+  /** Host of this session or an admin: may answer a match nobody on the waiting side can. */
+  canReferee?: boolean;
   /** A response for this match is in flight. */
   busy: boolean;
   /** Just confirmed: play the stamp / trophy moment. */
@@ -65,7 +68,7 @@ export function MatchCard({
   const expired = isExpired(m);
   const settled = m.status === "CONFIRMED";
   const waiting = expired ? null : waitingSide(m);
-  const mine = !!meId && isWaitingOn(m, meId);
+  const mine = !!meId && isWaitingOn(m, meId, new Date(), canReferee);
   const mySide = meId ? sideOf(m, meId) : null;
   const winner = winnerSide(m);
   // My result, shown as the stamp; null when I didn't play or there's no score yet

@@ -41,7 +41,7 @@ export const fetchMemberDirectoryFn = createServerFn({ method: "GET" })
     if (!(await requireAdmin(session.user.id))) return [];
 
     const [allUsers, ledgerSums, attendanceStats] = await Promise.all([
-      db.query.users.findMany(),
+      db.query.users.findMany({ where: eq(users.isGuest, false) }),
       db
         .select({ userId: ledger.userId, type: ledger.type, total: sum(ledger.amount) })
         .from(ledger)

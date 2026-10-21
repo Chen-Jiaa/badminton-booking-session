@@ -8,6 +8,7 @@ import {
   pgEnum,
   index,
   unique,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createId } from "@paralleldrive/cuid2";
@@ -77,10 +78,15 @@ export const users = pgTable(
     savedBankName: text("saved_bank_name"),
     savedAccountNumber: text("saved_account_number"),
     fcmToken: text("fcm_token"),
+    // A guest is a friend a member brought along: no login, no wallet. The sponsor pays
+    // (ledger rows go on the sponsor, tagged with `ledger.guestId`).
+    isGuest: boolean("is_guest").default(false).notNull(),
+    sponsorId: text("sponsor_id").references((): AnyPgColumn => users.id),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
+    sponsorIdx: index("users_sponsor_id_idx").on(table.sponsorId),
     emailIdx: index("users_email_idx").on(table.email),
     phoneIdx: index("users_phone_idx").on(table.phone),
   }),
@@ -196,6 +202,9 @@ export const ledger = pgTable(
       .unique()
       .references(() => withdrawalRequests.id),
     sessionId: text("session_id").references(() => sessions.id),
+    // Set when the row is a guest's deposit/refund/share: `userId` is the sponsor whose
+    // wallet moved, `guestId` says which guest it was for.
+    guestId: text("guest_id").references(() => users.id),
   },
   (table) => ({
     userIdIdx: index("ledger_user_id_idx").on(table.userId),
