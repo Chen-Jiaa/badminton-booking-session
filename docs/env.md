@@ -61,8 +61,8 @@ every start, and `pnpm shot` signs in for you. Another workspace may already hol
 
 Public (photos are shown to other members), 512 KB, JPEG only, one folder per user. Not yet
 created on live until the owner says yes. The Google sign-in sync skips anyone whose
-`users.image` points into this bucket (`isCustomAvatar`), so no migration is needed. "Remove
-photo" clears `image`; the Google picture returns at the next sign-in.
+`users.image` points into this bucket (`isCustomAvatar`), so no migration is needed. "Use
+Google photo" sets `image` back to the token's `avatar_url` right away.
 
 ```bash
 curl -X POST "$VITE_SUPABASE_URL/storage/v1/bucket" \

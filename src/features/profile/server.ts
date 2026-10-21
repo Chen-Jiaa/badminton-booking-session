@@ -106,7 +106,7 @@ export const updateNameFn = createServerFn({ method: "POST" })
     return { type: "SUCCESS", value: { name: parsed.data.name } };
   });
 
-/** Drops the uploaded photo; the Google picture comes back at the next sign-in. */
+/** Drops the uploaded photo and goes back to the Google picture (from the sign-in token). */
 export const removeAvatarFn = createServerFn({ method: "POST" })
   .middleware([sessionMiddleware])
   .handler(async ({ context: { session } }): Promise<Result<null>> => {
@@ -114,7 +114,7 @@ export const removeAvatarFn = createServerFn({ method: "POST" })
 
     await db
       .update(users)
-      .set({ image: null, updatedAt: new Date() })
+      .set({ image: session.user.image ?? null, updatedAt: new Date() })
       .where(eq(users.id, session.user.id));
 
     const { deleteOldAvatars } = await import("@/lib/supabase");

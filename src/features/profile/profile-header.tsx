@@ -65,11 +65,11 @@ export function ProfileHeader({ name, email, role, image }: Props) {
     setUploading(true);
     try {
       const result = await removeAvatarFn();
-      if (result.type !== "SUCCESS") throw new Error("Couldn't remove photo");
+      if (result.type !== "SUCCESS") throw new Error("Couldn't switch photo");
       await refresh();
-      toast.success("Photo removed");
+      toast.success("Back to your Google photo");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't remove photo");
+      toast.error(err instanceof Error ? err.message : "Couldn't switch photo");
     } finally {
       setUploading(false);
     }
@@ -175,7 +175,7 @@ export function ProfileHeader({ name, email, role, image }: Props) {
                   onClick={removePhoto}
                   className="text-xs text-muted-foreground underline underline-offset-2"
                 >
-                  Remove photo
+                  Use Google photo
                 </button>
               )}
             </div>
