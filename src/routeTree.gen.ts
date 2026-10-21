@@ -18,6 +18,7 @@ import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppSessionsRouteImport } from './routes/_app/sessions'
 import { Route as AppTopupRouteImport } from './routes/_app/topup'
 import { Route as AppWalletRouteImport } from './routes/_app/wallet'
+import { Route as ApiAvatarRouteImport } from './routes/api/avatar'
 import { Route as ApiDevLoginRouteImport } from './routes/api/dev-login'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -77,6 +78,11 @@ const AppWalletRoute = AppWalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
   getParentRoute: () => AppRoute,
+} as any)
+const ApiAvatarRoute = ApiAvatarRouteImport.update({
+  id: '/api/avatar',
+  path: '/api/avatar',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDevLoginRoute = ApiDevLoginRouteImport.update({
   id: '/api/dev-login',
@@ -167,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/sessions': typeof AppSessionsRoute
   '/topup': typeof AppTopupRoute
   '/wallet': typeof AppWalletRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/dev-login': typeof ApiDevLoginRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/sessions': typeof AppSessionsRoute
   '/topup': typeof AppTopupRoute
   '/wallet': typeof AppWalletRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/dev-login': typeof ApiDevLoginRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/_app/sessions': typeof AppSessionsRoute
   '/_app/topup': typeof AppTopupRoute
   '/_app/wallet': typeof AppWalletRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/dev-login': typeof ApiDevLoginRoute
   '/api/upload': typeof ApiUploadRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/topup'
     | '/wallet'
+    | '/api/avatar'
     | '/api/dev-login'
     | '/api/upload'
     | '/auth/callback'
@@ -272,6 +282,7 @@ export interface FileRouteTypes {
     | '/sessions'
     | '/topup'
     | '/wallet'
+    | '/api/avatar'
     | '/api/dev-login'
     | '/api/upload'
     | '/auth/callback'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_app/sessions'
     | '/_app/topup'
     | '/_app/wallet'
+    | '/api/avatar'
     | '/api/dev-login'
     | '/api/upload'
     | '/auth/callback'
@@ -322,6 +334,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   ConsoleRoute: typeof ConsoleRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiAvatarRoute: typeof ApiAvatarRoute
   ApiDevLoginRoute: typeof ApiDevLoginRoute
   ApiUploadRoute: typeof ApiUploadRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/wallet'
       preLoaderRoute: typeof AppWalletRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/api/avatar': {
+      id: '/api/avatar'
+      path: '/api/avatar'
+      fullPath: '/api/avatar'
+      preLoaderRoute: typeof ApiAvatarRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/dev-login': {
       id: '/api/dev-login'
@@ -572,6 +592,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   ConsoleRoute: ConsoleRouteWithChildren,
   LoginRoute: LoginRoute,
+  ApiAvatarRoute: ApiAvatarRoute,
   ApiDevLoginRoute: ApiDevLoginRoute,
   ApiUploadRoute: ApiUploadRoute,
   AuthCallbackRoute: AuthCallbackRoute,

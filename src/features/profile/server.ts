@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { and, eq, ne } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
-import { updatePhoneSchema } from "@/lib/validations";
+import { updateNameSchema, updatePhoneSchema } from "@/lib/validations";
 import { toWhatsAppNumber } from "@/lib/phone";
 import type { Result } from "@/lib/guards";
 
@@ -85,4 +85,40 @@ export const updatePhoneFn = createServerFn({ method: "POST" })
       .where(eq(users.id, session.user.id));
 
     return { type: "SUCCESS", value: { phone } };
+  });
+
+export const updateNameFn = createServerFn({ method: "POST" })
+  .validator((data: { name: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result<{ name: string }>> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    const parsed = updateNameSchema.safeParse(data);
+    if (!parsed.success) {
+      return { type: "BUSINESS_ERROR", code: parsed.error.issues[0]?.message ?? "Invalid name" };
+    }
+
+    await db
+      .update(users)
+      .set({ name: parsed.data.name, updatedAt: new Date() })
+      .where(eq(users.id, session.user.id));
+
+    return { type: "SUCCESS", value: { name: parsed.data.name } };
+  });
+
+/** Drops the uploaded photo and goes back to the Google picture (from the sign-in token). */
+export const removeAvatarFn = createServerFn({ method: "POST" })
+  .middleware([sessionMiddleware])
+  .handler(async ({ context: { session } }): Promise<Result<null>> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    await db
+      .update(users)
+      .set({ image: session.user.image ?? null, updatedAt: new Date() })
+      .where(eq(users.id, session.user.id));
+
+    const { deleteOldAvatars } = await import("@/lib/supabase");
+    await deleteOldAvatars(session.user.id).catch(() => {}); // the row is already clean
+
+    return { type: "SUCCESS", value: null };
   });

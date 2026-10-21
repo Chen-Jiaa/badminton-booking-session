@@ -42,7 +42,7 @@ points at the **live** DB). No `.env` changes are needed: the script passes ever
 The script blanks `GOOGLE_SHEET_WEBHOOK_URL` and `SUPABASE_SERVICE_ROLE_KEY` on purpose.
 Left set (from `.env`), approving a top-up would write a row to the real finance Sheet and
 a receipt upload would land in the real Storage bucket. So the Sheet log and receipt
-upload are off locally.
+upload are off locally (profile-photo upload too: names can be edited, photos can't).
 
 `pnpm dev:test` (:3200) is the same idea for screenshots: it resets `badminton_test` on
 every start, and `pnpm shot` signs in for you. Another workspace may already hold :3200.
@@ -56,3 +56,17 @@ every start, and `pnpm shot` signs in for you. Another workspace may already hol
 - **Google's sign-in screen shows `<project>.supabase.co`, not the app name.** Google
   shows the OAuth redirect domain. Changing it needs a Supabase custom domain (paid
   add-on) or a verified app name on the Google Cloud OAuth consent screen.
+
+## Profile photos: the `avatars` bucket
+
+Public (photos are shown to other members), 512 KB, JPEG only, one folder per user. Created on
+live on 2026-10-21. The Google sign-in sync skips anyone whose
+`users.image` points into this bucket (`isCustomAvatar`), so no migration is needed. "Use
+Google photo" sets `image` back to the token's `avatar_url` right away.
+
+```bash
+curl -X POST "$VITE_SUPABASE_URL/storage/v1/bucket" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"id":"avatars","name":"avatars","public":true,"file_size_limit":524288,"allowed_mime_types":["image/jpeg"]}'
+```
