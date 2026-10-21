@@ -78,7 +78,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
     const [dbUser, pendingMatches] = await Promise.all([
       db.query.users.findFirst({
         where: eq(users.id, session.user.id),
-        columns: { role: true, balance: true, name: true, image: true },
+        columns: { role: true, balance: true, name: true, image: true, phone: true },
       }),
       countMatchesWaitingOn(session.user.id),
     ]);
@@ -112,6 +112,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
       balance: dbUser?.balance ?? "0",
       name: dbUser?.name ?? null,
       image: dbUser?.image ?? null,
+      hasPhone: !!dbUser?.phone,
       pendingTopupsCount,
       pendingWithdrawalsCount,
       pendingLateCancelsCount,

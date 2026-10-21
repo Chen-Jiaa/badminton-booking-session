@@ -4,12 +4,12 @@
 // into the client bundle. Import these only from inside server-function handlers.
 import { db } from "@/db";
 import { matches, matchPlayers, users } from "@/db/schema";
-import { and, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import { isWaitingOn, type MatchView } from "./logic";
 
 export const matchWith = {
   players: {
-    with: { user: { columns: { id: true, name: true, image: true } } },
+    with: { user: { columns: { id: true, name: true, image: true, sponsorId: true } } },
   },
 } as const;
 
@@ -39,18 +39,30 @@ export function toView(m: NonNullable<MatchRow>): MatchView {
       name: p.user.name,
       image: p.user.image,
       side: p.side,
+      sponsorId: p.user.sponsorId,
     })),
   };
 }
 
-/** Push subscriptions for the given users, skipping anyone without notifications on. */
+/**
+ * Push subscriptions for the given users, skipping anyone without notifications on.
+ * A guest has no phone, so their sponsor is notified in their place.
+ */
 export async function pushTokensFor(userIds: string[]): Promise<string[]> {
   if (userIds.length === 0) return [];
-  const rows = await db.query.users.findMany({
-    where: and(inArray(users.id, userIds), isNotNull(users.fcmToken)),
-    columns: { fcmToken: true },
+  const people = await db.query.users.findMany({
+    where: inArray(users.id, userIds),
+    columns: { fcmToken: true, sponsorId: true },
   });
-  return rows.map((r) => r.fcmToken).filter((t): t is string => t !== null);
+  const sponsorIds = people.flatMap((p) => (p.sponsorId ? [p.sponsorId] : []));
+  const sponsors = sponsorIds.length
+    ? await db.query.users.findMany({
+        where: and(inArray(users.id, sponsorIds), isNotNull(users.fcmToken)),
+        columns: { fcmToken: true },
+      })
+    : [];
+  const tokens = [...people.filter((p) => !p.sponsorId), ...sponsors].map((r) => r.fcmToken);
+  return Array.from(new Set(tokens.filter((t): t is string => t !== null)));
 }
 
 /** Matches waiting on this user to accept, confirm or dispute. Feeds the nav badge. */
@@ -59,9 +71,11 @@ export async function countMatchesWaitingOn(userId: string) {
     .select({ matchId: matchPlayers.matchId })
     .from(matchPlayers)
     .innerJoin(matches, eq(matchPlayers.matchId, matches.id))
+    .innerJoin(users, eq(matchPlayers.userId, users.id))
     .where(
       and(
-        eq(matchPlayers.userId, userId),
+        // Your guests' matches wait on you too
+        or(eq(matchPlayers.userId, userId), eq(users.sponsorId, userId)),
         inArray(matches.status, ["INVITED", "AWAITING_CONFIRM"]),
         gte(matches.expiresAt, new Date()),
       ),

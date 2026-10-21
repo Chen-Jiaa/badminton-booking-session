@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getCookie } from "@tanstack/react-start/server";
 import { db } from "@/db";
 import { expenses, ledger, users, withdrawalRequests } from "@/db/schema";
-import { and, asc, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { verifyAccessToken } from "@/middleware/auth";
 import { requireAdmin } from "@/lib/guards";
 import { toCsv, csvResponse } from "@/lib/csv";
@@ -142,7 +142,10 @@ export const Route = createFileRoute("/api/admin/export")({
 
           case "members": {
             // Point-in-time balances — the date range doesn't apply.
-            const rows = await db.query.users.findMany({ orderBy: [asc(users.name)] });
+            const rows = await db.query.users.findMany({
+              where: eq(users.isGuest, false),
+              orderBy: [asc(users.name)],
+            });
             body = toCsv(
               ["Name", "Email", "Phone", "Role", "Balance", "Joined"],
               rows.map((r) => [

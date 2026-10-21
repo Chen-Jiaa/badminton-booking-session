@@ -22,6 +22,12 @@ How a session works from creation to charging, and the product rules behind it. 
    `COURT_RENTAL` expense by the creator: they booked and paid upfront.
 2. **RSVP** until `rsvpDeadline` (if set) and never after `startTime` (`rsvpFn`).
 3. **Live** (start → end): the bottom button becomes "Record match" (`docs/matches.md`).
+   On the Sessions page, people with a `YES` RSVP see it under **Happening now** (top of the
+   Upcoming tab) from start until 24h after end (`RECORDING_GRACE_MS`) or until it's
+   finalized: "Record match" only, no Join/Leave. Tapping it opens the recorder sheet right
+   there (`RecordMatchDialog`, shared with the session page), no page load. `fetchSessionsFn` returns it as `live`
+   and drops it from `past`. Without this, players saw a running session in neither tab
+   (Past shows them only finalized sessions).
 4. **Finalize** after `endTime` (`lockSessionFn`, "Finalize & Deduct", behind a confirm).
    It's blocked while any late cancellation is still PENDING.
    - `total = courts × costPerCourt + shuttleCost`; `costPerPlayer = total / confirmed players`.
@@ -68,6 +74,35 @@ How a session works from creation to charging, and the product rules behind it. 
   finalize. They can't ask again for that session.
 - Leaving the **waitlist** never needs approval.
 
+## Guests (bringing a friend)
+
+A member can bring friends who don't have an account. Code: `sessions/guests.ts`
+(`applyGuestChanges`), `updateGuestsFn` in `sessions/server.ts`, UI in
+`sessions/guests-panel.tsx` ("Your guests" on the session page).
+
+- A guest is a `users` row with `isGuest = true` and `sponsorId` (no login, no wallet,
+  no email). They take a normal seat, can be waitlisted, and play and rank like anyone.
+- **The sponsor pays.** Deposits, refunds and the finalize share go through the sponsor's
+  wallet; ledger rows have `userId` = sponsor and `guestId` = the guest, so a guest's
+  money is told apart from the sponsor's own (`payerOf`/`heldDeposit` in `roster.ts`).
+  Anything that totals the ledger "per player" must key on `guestId ?? userId`.
+- Limit `GUEST_LIMIT` = 5 per member per session. Each new friend needs a deposit on
+  hand (like the waitlist rule). Names are free text; a friend brought before is a
+  one-tap "Brought before" chip, which keeps their match history and leaderboard rank.
+- **Late arrivals:** after the start (until the end) a member can still add a friend if a seat is
+  free: no RSVP deadline, no waitlist (a full game refuses). Deposit is still taken.
+- **Save is all or nothing** (`updateGuestsFn`: adds and removals in one transaction).
+- If the sponsor leaves, the guests stay and the sponsor still pays. "Your guests" shows
+  on the page whenever the member has guests, whether or not they're going themselves.
+- Removing a guest follows the member rules: refund if early, a late-cancel request
+  (approved by a host/admin, push says "<guest> (guest of <sponsor>)") inside 24h.
+- Guests are hidden from every member list (admin members, member picker, CSV export).
+  Pushes meant for a guest (promotion, late-cancel result, match invites) go to the sponsor.
+- In matches the sponsor can answer for their guests (`sideOf`/`isWaitingOn` in
+  `matches/logic.ts` also match `sponsorId`), since a guest can't sign in.
+- Not built: hosts/admins adding a guest on a member's behalf (they use walk-ins), a
+  "guest" badge on the leaderboard, turning a guest into a member.
+
 ## Host contact
 
 The session page shows a WhatsApp button for the host (`lib/phone.ts` `whatsAppLink`)
@@ -85,3 +120,16 @@ prefilled message.
 - 2026-10: the "Wallet needs RM x to join" helper text was removed; the top-up button
   says it already.
 - 2026-10: WhatsApp-the-host button, deliberately without prefilled text.
+- 2026-10: guests are lightweight `users` rows paid for by the sponsor, chosen over a
+  separate guest table so attendance, matches and the leaderboard work unchanged. UI
+  chosen from three prototypes: name-first sheet (tap past friends or type a name) over
+  a count stepper and an inline panel. The sponsor's balance may go negative at finalize
+  (same as members); only the deposit is checked up front.
+
+## Players' phone numbers
+
+- Players save a WhatsApp number on `/profile` (stored `+60…`). Only admins, and the host who
+  created a session, receive attendees' numbers: `fetchSessionDetailFn` blanks them for everyone
+  else on the server. Don't move that check into the UI. `e2e/phones.spec.ts` covers it.
+- Tapping a player on the session page (host/admin) opens `PlayerActionsDialog`: Contact player
+  (wa.me link) or Remove player (then the usual "Remove X?" confirmation).

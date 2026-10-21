@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { adminSessionsQueryOptions } from "@/features/admin/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SessionList } from "@/features/admin/session-list";
 
 export const Route = createFileRoute("/_console/admin/sessions")({
@@ -14,6 +16,16 @@ export const Route = createFileRoute("/_console/admin/sessions")({
 
 function AdminSessionsPage() {
   const { data: allSessions } = useSuspenseQueryDeferred(adminSessionsQueryOptions());
+  const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+
+  // Past = finalized, or already over (even if not finalized yet)
+  const now = Date.now();
+  const isPast = (s: (typeof allSessions)[number]) =>
+    s.status === "LOCKED" || new Date(s.endTime).getTime() < now;
+  // Query returns newest first: upcoming reads soonest-first, past stays newest-first
+  const upcoming = allSessions.filter((s) => !isPast(s)).reverse();
+  const past = allSessions.filter(isPast);
+  const shown = tab === "upcoming" ? upcoming : past;
 
   return (
     <div className="space-y-6">
@@ -30,14 +42,21 @@ function AdminSessionsPage() {
         </Link>
       </div>
 
-      {allSessions.length === 0 ? (
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <TabsList className="grid w-full grid-cols-2 sm:w-72">
+          <TabsTrigger value="upcoming">Upcoming ({upcoming.length})</TabsTrigger>
+          <TabsTrigger value="past">Past ({past.length})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {shown.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No sessions yet
+            No {tab} sessions
           </CardContent>
         </Card>
       ) : (
-        <SessionList sessions={allSessions} />
+        <SessionList sessions={shown} />
       )}
     </div>
   );

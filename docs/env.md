@@ -21,6 +21,32 @@ Unused leftovers (safe to delete from `.env` / Vercel): `AUTH_SECRET`, `BYPASS_A
 (NextAuth era, which is why "BYPASS_AUTH=true" does nothing), `NEXT_PUBLIC_SUPABASE_*`,
 `RESEND_API_KEY`, `RESEND_FROM_EMAIL`.
 
+## Local dev server (click around by hand)
+
+`pnpm dev:local` runs the app against its own local database, `badminton_dev`, and never
+touches live Supabase.
+
+| Command                                                            | What it does                                                                                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev:local`                                                   | Starts at **http://localhost:3201** (next free port if taken). Builds and seeds the DB only if it doesn't exist; keeps your data between runs    |
+| `pnpm dev:local --reset`                                           | Wipes `badminton_dev` and reseeds it (local fake data only)                                                                                      |
+| `pnpm dev:local --host`                                            | Also serves it on your Wi-Fi to open on a phone: `http://<Mac IP>:3201/api/dev-login`. Opt-in because anyone on the Wi-Fi could then pick a user |
+| `DEV_DATABASE_URL=postgres://localhost:5432/<name> pnpm dev:local` | Use a different local database                                                                                                                   |
+
+**Sign in:** open **http://localhost:3201/api/dev-login**, pick a seeded person
+(`e2e/seed.ts`: Ada Admin is ADMIN, the rest PLAYER). It sets a test token cookie for
+7 days. The route 404s unless `E2E_AUTH_SECRET` is set and `NODE_ENV` isn't production,
+so it does nothing on Vercel and on plain `pnpm dev` (whose `.env` has no test secret and
+points at the **live** DB). No `.env` changes are needed: the script passes everything.
+
+The script blanks `GOOGLE_SHEET_WEBHOOK_URL` and `SUPABASE_SERVICE_ROLE_KEY` on purpose.
+Left set (from `.env`), approving a top-up would write a row to the real finance Sheet and
+a receipt upload would land in the real Storage bucket. So the Sheet log and receipt
+upload are off locally.
+
+`pnpm dev:test` (:3200) is the same idea for screenshots: it resets `badminton_test` on
+every start, and `pnpm shot` signs in for you. Another workspace may already hold :3200.
+
 ## FAQ
 
 - **Can't sign in on local `pnpm dev`.** Google sign-in goes through Supabase, whose

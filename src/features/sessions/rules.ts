@@ -26,3 +26,6 @@ export function canManageSession(
 ): boolean {
   return user?.role === "ADMIN" || (user?.role === "HOST" && session.createdById === user.id);
 }
+
+/** Friends one member can have on a single session. */
+export const GUEST_LIMIT = 5;

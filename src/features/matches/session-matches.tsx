@@ -4,30 +4,17 @@ import { ChevronDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { currentUserQueryOptions } from "@/features/auth/server";
-import { CourtRecorder, type Attendee, type MatchDraft } from "./court-recorder";
+import type { Attendee } from "./court-recorder";
+import { RecordMatchDialog, errorMessage } from "./record-match-dialog";
 import { MatchCard } from "./match-card";
 import { ResultDialog, type ResultMode } from "./result-dialog";
 import { RECORDING_GRACE_MS, isWaitingOn, sideOf, winnerSide, type MatchView } from "./logic";
 import {
-  createMatchFn,
   deleteMatchFn,
   respondToMatchFn,
   sessionMatchesQueryOptions,
   submitMatchResultFn,
 } from "./server";
-
-type Outcome =
-  | { type: "SUCCESS" }
-  | { type: "AUTH_ERROR" | "FORBIDDEN" | "NOT_FOUND" }
-  | { type: "BUSINESS_ERROR"; code: string };
-
-function errorMessage(result: Outcome, fallback: string) {
-  if (result.type === "BUSINESS_ERROR") return result.code;
-  if (result.type === "AUTH_ERROR") return "Please sign in first";
-  if (result.type === "FORBIDDEN") return "You can't do that for this match";
-  if (result.type === "NOT_FOUND") return "That match no longer exists";
-  return fallback;
-}
 
 /** The Matches section on a session page: record games, answer invites, confirm results. */
 export function SessionMatches({
@@ -35,26 +22,30 @@ export function SessionMatches({
   startTime,
   endTime,
   me,
+  viewerId,
   attendees,
   stickyRecord = false,
+  canReferee = false,
 }: {
   sessionId: string;
   startTime: Date;
   endTime: Date;
   /** The signed-in player, if they're going to this session. */
   me: Attendee | null;
+  /** The signed-in user even when not going: a host or admin can still referee. */
+  viewerId?: string;
   /** Everyone with a YES RSVP. */
   attendees: Attendee[];
   /** Pin "Record match" to the bottom of the screen instead of placing it inline. */
   stickyRecord?: boolean;
+  /** Host of this session or an admin: can answer matches nobody else can. */
+  canReferee?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { data: matches = [] } = useQuery(sessionMatchesQueryOptions(sessionId));
   const [recording, setRecording] = useState(false);
-  const [recordRun, setRecordRun] = useState(0);
   const [resultFor, setResultFor] = useState<{ match: MatchView; mode: ResultMode } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const [celebrate, setCelebrate] = useState<string | null>(null);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,11 +56,13 @@ export function SessionMatches({
     [],
   );
 
-  const meId = me?.id;
+  const meId = me?.id ?? viewerId;
   const now = new Date();
   const recordingOpen = now >= startTime && now.getTime() <= endTime.getTime() + RECORDING_GRACE_MS;
   const canRecord = !!me && recordingOpen;
-  const waitingOnMe = meId ? matches.filter((m) => isWaitingOn(m, meId)) : [];
+  const waitingOnMe = meId
+    ? matches.filter((m) => isWaitingOn(m, meId, new Date(), canReferee))
+    : [];
 
   // Tonight's record from my side, confirmed matches only
   const tally = { WIN: 0, LOSS: 0 };
@@ -82,24 +75,6 @@ export function SessionMatches({
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ["matches"] });
     queryClient.invalidateQueries({ queryKey: currentUserQueryOptions().queryKey });
-  }
-
-  async function recordMatch(draft: MatchDraft) {
-    setCreating(true);
-    try {
-      const result = await createMatchFn({ data: { sessionId, ...draft } });
-      if (result.type !== "SUCCESS") {
-        toast.error(errorMessage(result, "Couldn't record the match"));
-        return;
-      }
-      setRecording(false);
-      toast.success(draft.score ? "Sent for confirmation" : "Invite sent");
-      refresh();
-    } catch {
-      toast.error("Couldn't record the match");
-    } finally {
-      setCreating(false);
-    }
   }
 
   async function respond(m: MatchView, action: "accept" | "decline" | "confirm") {
@@ -165,7 +140,6 @@ export function SessionMatches({
   }
 
   function startRecording() {
-    setRecordRun((n) => n + 1); // every recording starts from a blank court
     setRecording(true);
   }
 
@@ -237,6 +211,7 @@ export function SessionMatches({
             <MatchCard
               match={m}
               meId={meId}
+              canReferee={canReferee}
               busy={busyId === m.id}
               celebrating={celebrate === m.id}
               recordingOpen={recordingOpen}
@@ -252,14 +227,12 @@ export function SessionMatches({
       </div>
 
       {me && (
-        <CourtRecorder
-          key={recordRun}
+        <RecordMatchDialog
+          sessionId={sessionId}
+          me={me}
+          attendees={attendees}
           open={recording}
           onOpenChange={setRecording}
-          me={me}
-          attendees={attendees.filter((a) => a.id !== me.id)}
-          submitting={creating}
-          onSubmit={recordMatch}
         />
       )}
 

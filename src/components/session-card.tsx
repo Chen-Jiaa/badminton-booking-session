@@ -14,13 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MapPin, Loader2, Users, Check } from "lucide-react";
+import { MapPin, Loader2, Users, Check, Plus } from "lucide-react";
 import { CopyIcon } from "@/components/copy-icon";
 import { toast } from "sonner";
 import { rsvpFn } from "@/features/sessions/server";
 import { formatCurrency, CLUB_TIME_ZONE } from "@/lib/utils";
 import { JoinBurst, useJoinCelebration } from "@/features/sessions/join-celebration";
 import { isLateCancel } from "@/features/sessions/rules";
+import { RecordMatchDialog } from "@/features/matches/record-match-dialog";
 
 type SessionCardProps = {
   session: {
@@ -35,12 +36,19 @@ type SessionCardProps = {
     costPerPlayer?: string | null;
     rsvpDeadline: Date | null;
     status: string;
-    attendances: { status: string; userId: string; finalCost?: string | null }[];
+    attendances: {
+      status: string;
+      userId: string;
+      finalCost?: string | null;
+      user?: { id: string; name: string; image: string | null };
+    }[];
     createdBy: { name: string; image: string | null };
   };
   userRsvp?: { status: string; finalCost?: string | null; lateCancelStatus?: string | null } | null;
   userId?: string | null;
   isPast?: boolean;
+  /** Started and not finalized, and the viewer is in it: shows "Record match" instead of RSVP. */
+  isLive?: boolean;
   canManage?: boolean;
 };
 
@@ -67,6 +75,7 @@ export function SessionCard({
   userRsvp,
   userId,
   isPast = false,
+  isLive = false,
   canManage = false,
 }: SessionCardProps) {
   const now = new Date();
@@ -77,9 +86,15 @@ export function SessionCard({
   const isJoined = userRsvp?.status === "YES";
   const isWaitlisted = userRsvp?.status === "WAITLIST";
   const isLocked = session.status === "LOCKED";
+  const hasEnded = now >= session.endTime;
   const pastDeadline = session.rsvpDeadline ? now >= session.rsvpDeadline : false;
   const buttonDisabled = pastDeadline && !isWaitlisted;
   const deposit = parseFloat(session.minBalance);
+  // Everyone going, for the match recorder on a live card
+  const players = session.attendances.flatMap((a) =>
+    a.status === "YES" && a.user ? [a.user] : [],
+  );
+  const me = players.find((p) => p.id === userId);
 
   const courtLabel = session.courtNumbers
     ? `Court ${session.courtNumbers}`
@@ -96,6 +111,7 @@ export function SessionCard({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
+  const [showRecord, setShowRecord] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const queryClient = useQueryClient();
   const { celebrating, celebrateJoin } = useJoinCelebration();
@@ -224,7 +240,7 @@ export function SessionCard({
         onKeyDown={handleCardKeyDown}
         role="link"
         tabIndex={0}
-        className={`hover:shadow-md transition-[box-shadow,scale] active:scale-[0.99] bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${isPast && canManage && !isLocked ? "border-2 border-warning" : "border border-gray-100"}`}
+        className={`hover:shadow-md transition-[box-shadow,scale] active:scale-[0.99] bg-white shadow-sm rounded-2xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${(isPast || isLive) && canManage && !isLocked && hasEnded ? "border-2 border-warning" : "border border-gray-100"}`}
       >
         <CardContent className="p-5">
           {/* Primary: date & time */}
@@ -268,7 +284,34 @@ export function SessionCard({
 
           {/* Action zone */}
           <div className="mt-4 pt-3 border-t border-gray-100 space-y-2.5">
-            {isPast ? (
+            {isLive ? (
+              <>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>{yesCount} playing</span>
+                  <span className="ml-auto flex items-center gap-1.5 font-semibold text-brand-foreground">
+                    <span className="h-2 w-2 rounded-full bg-brand-foreground" />
+                    {hasEnded ? "Ended" : "Live now"}
+                  </span>
+                </div>
+                <Button
+                  variant="brand"
+                  size="cta"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowRecord(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Record match
+                </Button>
+                {canManage && !isLocked && hasEnded && (
+                  <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-danger text-white">
+                    Needs finalization
+                  </div>
+                )}
+              </>
+            ) : isPast ? (
               <>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4 shrink-0" />
@@ -283,7 +326,7 @@ export function SessionCard({
                     {formatCurrency(session.costPerPlayer)}/person
                   </p>
                 ) : null}
-                {canManage && !isLocked && (
+                {canManage && !isLocked && hasEnded && (
                   <div className="w-full py-2.5 rounded-full text-sm font-semibold text-center bg-danger text-white">
                     Needs finalization
                   </div>
@@ -366,6 +409,15 @@ export function SessionCard({
         </CardContent>
       </Card>
 
+      {isLive && me && (
+        <RecordMatchDialog
+          sessionId={session.id}
+          me={me}
+          attendees={players}
+          open={showRecord}
+          onOpenChange={setShowRecord}
+        />
+      )}
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
       <TopUpDialog open={showTopUp} onOpenChange={setShowTopUp} initialAmount={shortfall} />
 

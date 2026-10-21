@@ -19,6 +19,9 @@ Then wait until it answers: `until curl -s -o /dev/null http://localhost:3200; d
 after code changes. Restart only after a `schema.ts` change, since the DB is rebuilt on
 start (`--no-reset` keeps the data).
 
+To click around by hand (the user, on laptop or phone), use `pnpm dev:local` instead and
+`/api/dev-login`: see `docs/env.md` → Local dev server.
+
 ## 2. Screenshots
 
 ```bash

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Clock, Loader2, UserPlus } from "lucide-react";
+import { Check, Clock, Loader2, MessageCircle, UserMinus, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +29,7 @@ import {
 } from "@/features/admin/server";
 import { waitlistOrder } from "@/features/sessions/rules";
 import { cn, formatCurrency } from "@/lib/utils";
+import { whatsAppLink } from "@/lib/phone";
 
 type RosterRow = {
   id: string;
@@ -516,5 +517,65 @@ export function RemovePlayerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Tap a player: choose to WhatsApp them or remove them. Removing goes on to the
+ * "Remove X?" confirmation. `phone` is `undefined` when there's nothing to offer
+ * (yourself, a guest), `null` when they haven't saved a number.
+ */
+export function PlayerActionsDialog({
+  sessionId,
+  player,
+  onClose,
+}: {
+  sessionId: string;
+  player: { id: string; name: string; phone?: string | null } | null;
+  onClose: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const close = () => {
+    setConfirming(false);
+    onClose();
+  };
+  const link = player?.phone ? whatsAppLink(player.phone) : null;
+
+  return (
+    <>
+      <Dialog open={!!player && !confirming} onOpenChange={(open) => !open && close()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{player?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            {link && (
+              <Button asChild variant="outline" className="justify-start">
+                <a href={link} target="_blank" rel="noreferrer" onClick={close}>
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Contact player
+                </a>
+              </Button>
+            )}
+            {player?.phone === null && (
+              <p className="text-sm text-muted-foreground">They haven&rsquo;t saved a number.</p>
+            )}
+            <Button
+              variant="outline"
+              className="justify-start text-destructive"
+              onClick={() => setConfirming(true)}
+            >
+              <UserMinus className="mr-2 h-4 w-4" />
+              Remove player
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <RemovePlayerDialog
+        sessionId={sessionId}
+        player={confirming ? player : null}
+        onClose={close}
+      />
+    </>
   );
 }

@@ -176,6 +176,8 @@ export function RsvpButtons({
                     id: currentUser.id,
                     name: currentUser.name ?? "",
                     image: currentUser.image ?? null,
+                    isGuest: false,
+                    sponsorId: null,
                   },
                 },
               ];

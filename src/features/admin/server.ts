@@ -167,8 +167,10 @@ export const fetchAdminSessionDetailFn = createServerFn({ method: "GET" })
     const attendeeUserIds = gameSession.attendances.map((a) => a.userId);
     const availablePlayers =
       attendeeUserIds.length > 0
-        ? await db.query.users.findMany({ where: notInArray(users.id, attendeeUserIds) })
-        : await db.query.users.findMany();
+        ? await db.query.users.findMany({
+            where: and(notInArray(users.id, attendeeUserIds), eq(users.isGuest, false)),
+          })
+        : await db.query.users.findMany({ where: eq(users.isGuest, false) });
 
     return { gameSession, availablePlayers };
   });
@@ -432,7 +434,11 @@ export const lockSessionFn = createServerFn({ method: "POST" })
       const [confirmedAttendees, ledgerEntries] = await Promise.all([
         tx.query.attendances.findMany({
           where: and(eq(attendances.sessionId, gameSession.id), eq(attendances.status, "YES")),
-          with: { user: { columns: { id: true, fcmToken: true } } },
+          with: {
+            user: {
+              columns: { id: true, name: true, fcmToken: true, isGuest: true, sponsorId: true },
+            },
+          },
         }),
         tx.query.ledger.findMany({
           where: and(
@@ -455,13 +461,30 @@ export const lockSessionFn = createServerFn({ method: "POST" })
       const totalCost = courtCost + validated.shuttleCost;
       const costPerPlayer = totalCost / confirmedAttendees.length;
 
+      // Keyed by who the deposit was for: a guest's deposit sits on their sponsor's
+      // wallet (userId) but is tagged with the guest's id
       const heldDeposits = new Map<string, number>();
       for (const entry of ledgerEntries) {
-        heldDeposits.set(
-          entry.userId,
-          (heldDeposits.get(entry.userId) ?? 0) - parseFloat(entry.amount),
-        );
+        const key = entry.guestId ?? entry.userId;
+        heldDeposits.set(key, (heldDeposits.get(key) ?? 0) - parseFloat(entry.amount));
       }
+      // Sponsors pay for their guests, so their push tokens are the ones to use
+      const sponsorIds = Array.from(
+        new Set(
+          confirmedAttendees.flatMap((a) =>
+            a.user.isGuest && a.user.sponsorId ? [a.user.sponsorId] : [],
+          ),
+        ),
+      );
+      const sponsorTokens = new Map(
+        (sponsorIds.length
+          ? await tx.query.users.findMany({
+              where: inArray(users.id, sponsorIds),
+              columns: { id: true, fcmToken: true },
+            })
+          : []
+        ).map((u) => [u.id, u.fcmToken]),
+      );
 
       await tx
         .update(sessions)
@@ -498,18 +521,28 @@ export const lockSessionFn = createServerFn({ method: "POST" })
         const netCharge = costPerPlayer - heldDeposit;
 
         if (netCharge !== 0) {
-          const newBalance = (await adjustBalance(tx, attendance.userId, -netCharge))!;
+          const guest =
+            attendance.user.isGuest && attendance.user.sponsorId ? attendance.user : null;
+          const payerId = guest ? guest.sponsorId! : attendance.userId;
+          const payerToken = guest ? sponsorTokens.get(payerId) : attendance.user.fcmToken;
+          const newBalance = (await adjustBalance(tx, payerId, -netCharge))!;
+          const forGuest = guest ? ` (guest ${guest.name})` : "";
           await tx.insert(ledger).values({
-            userId: attendance.userId,
+            userId: payerId,
+            guestId: guest?.id ?? null,
             type: netCharge > 0 ? "SESSION_DEBIT" : "SESSION_REFUND",
             amount: (-netCharge).toFixed(2),
             balanceAfter: newBalance,
-            note: netCharge > 0 ? "Session fee (balance due)" : "Session deposit refund",
+            note:
+              (netCharge > 0 ? "Session fee (balance due)" : "Session deposit refund") + forGuest,
             createdById: adminUserId,
             sessionId: gameSession.id,
           });
-          if (parseFloat(newBalance) < 20 && attendance.user.fcmToken) {
-            lowBalance.push({ token: attendance.user.fcmToken, balance: newBalance });
+          if (parseFloat(newBalance) < 20 && payerToken) {
+            // One push per payer, with their final balance
+            const seen = lowBalance.findIndex((l) => l.token === payerToken);
+            if (seen >= 0) lowBalance.splice(seen, 1);
+            lowBalance.push({ token: payerToken, balance: newBalance });
           }
         }
 
@@ -658,7 +691,7 @@ export const resolveLateCancelFn = createServerFn({ method: "POST" })
             eq(attendances.sessionId, validated.sessionId),
             eq(attendances.userId, validated.userId),
           ),
-          with: { user: { columns: { fcmToken: true } } },
+          with: { user: { columns: { fcmToken: true, isGuest: true, sponsorId: true } } },
         });
         if (!request || request.status !== "YES" || request.lateCancelStatus !== "PENDING") {
           return { result: handled as Result };
@@ -710,11 +743,23 @@ export const resolveLateCancelFn = createServerFn({ method: "POST" })
         outcome.promoted.fcmToken,
         gameSession.id,
         gameSession.startTime,
+        outcome.promoted.guestName,
       );
     }
-    if ("request" in outcome && outcome.request?.user.fcmToken) {
+    // A guest has no phone: their sponsor hears back instead
+    const requestUser = "request" in outcome ? outcome.request?.user : undefined;
+    const resolvedToken =
+      requestUser?.isGuest && requestUser.sponsorId
+        ? (
+            await db.query.users.findFirst({
+              where: eq(users.id, requestUser.sponsorId),
+              columns: { fcmToken: true },
+            })
+          )?.fcmToken
+        : requestUser?.fcmToken;
+    if (resolvedToken) {
       await sendLateCancelResolvedNotification(
-        outcome.request.user.fcmToken,
+        resolvedToken,
         validated.decision === "APPROVE",
         gameSession.id,
         gameSession.startTime,
@@ -760,6 +805,7 @@ export const promoteWaitlistFn = createServerFn({ method: "POST" })
         promoted.fcmToken,
         gameSession.id,
         gameSession.startTime,
+        promoted.guestName,
       );
     }
     return { type: "SUCCESS", value: undefined };
@@ -934,6 +980,7 @@ export const fetchMembersFn = createServerFn({ method: "GET" })
     if (!admin || admin.role !== "ADMIN") return [];
 
     return db.query.users.findMany({
+      where: eq(users.isGuest, false),
       orderBy: [desc(users.createdAt)],
     });
   });
@@ -957,6 +1004,7 @@ export const fetchMemberNamesFn = createServerFn({ method: "GET" })
     if (!requester || (requester.role !== "ADMIN" && requester.role !== "HOST")) return [];
 
     return db.query.users.findMany({
+      where: eq(users.isGuest, false),
       columns: { id: true, name: true },
       orderBy: [desc(users.createdAt)],
     });

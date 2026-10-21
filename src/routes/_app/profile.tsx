@@ -85,7 +85,7 @@ function ProfilePage() {
         </Card>
       )}
 
-      {(user.role === "HOST" || isAdmin) && <PhoneForm phone={user.phone} />}
+      <PhoneForm phone={user.phone} isHost={user.role === "HOST" || isAdmin} />
 
       <NotificationToggle enabled={!!user.fcmToken} />
 
