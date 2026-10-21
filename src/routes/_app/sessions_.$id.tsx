@@ -1,4 +1,5 @@
 import { createFileRoute, notFound, redirect, Link } from "@tanstack/react-router";
+import { guestLabel } from "@/features/sessions/guest-label";
 import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { useArrivals } from "@/hooks/use-arrivals";
@@ -69,7 +70,7 @@ function SessionDetailPage() {
   const { id } = Route.useParams();
   const { user } = Route.useRouteContext();
   const { data } = useSuspenseQueryDeferred(sessionDetailQueryOptions(id));
-  const { gameSession, groupName } = data;
+  const { gameSession, groupName, sponsorNames } = data;
   const [removing, setRemoving] = useState<{
     id: string;
     name: string;
@@ -328,7 +329,11 @@ function SessionDetailPage() {
                     <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">
                       {a.user.name}
                     </p>
-                    {a.user.isGuest && <p className="text-[11px] text-muted-foreground">Guest</p>}
+                    {a.user.isGuest && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {guestLabel(sponsorNames[a.user.sponsorId ?? ""])}
+                      </p>
+                    )}
                     {a.userId === gameSession.createdById && (
                       <p className="text-[11px] text-muted-foreground">Host</p>
                     )}
@@ -406,7 +411,10 @@ function SessionDetailPage() {
                       {a.user.name}
                       {a.userId === userId && " (you)"}
                       {a.user.isGuest && (
-                        <span className="text-xs text-muted-foreground"> · guest</span>
+                        <span className="text-xs text-muted-foreground">
+                          {" · "}
+                          {guestLabel(sponsorNames[a.user.sponsorId ?? ""])}
+                        </span>
                       )}
                     </p>
                   </li>
