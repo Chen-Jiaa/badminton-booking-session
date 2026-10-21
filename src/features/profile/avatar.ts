@@ -3,6 +3,9 @@
 /** Hard limit, enforced by the upload route and by the Storage bucket itself. */
 export const MAX_AVATAR_BYTES = 512 * 1024;
 
+/** Biggest photo a member can pick; it is shrunk before upload, so this only stops silly files. */
+export const MAX_AVATAR_SOURCE_BYTES = 10 * 1024 * 1024;
+
 /** The browser shrinks every photo to a square this many pixels wide before upload. */
 export const AVATAR_SIZE = 256;
 
@@ -19,6 +22,7 @@ export function isCustomAvatar(image: string | null | undefined): boolean {
 
 /** Centre-crops to a square and re-encodes as a small JPEG. Throws if the browser can't decode it. */
 export async function prepareAvatar(file: File): Promise<File> {
+  if (file.size > MAX_AVATAR_SOURCE_BYTES) throw new Error("Photo must be 10 MB or smaller");
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
