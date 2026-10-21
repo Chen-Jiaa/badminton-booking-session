@@ -208,3 +208,7 @@ export const updatePhoneSchema = z.object({
     .trim()
     .refine((v) => v === "" || toWhatsAppNumber(v) !== null, "Enter a valid phone number"),
 });
+
+export const updateNameSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name").max(30, "Name is too long"),
+});
