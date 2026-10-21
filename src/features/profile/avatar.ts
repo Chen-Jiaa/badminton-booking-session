@@ -28,6 +28,15 @@ export function checkAvatarSource(file: File): void {
   if (file.size > MAX_AVATAR_SOURCE_BYTES) throw new Error("Photo must be 10 MB or smaller");
 }
 
+/** Throws "Couldn't read that photo" when the browser can't open the file (e.g. HEIC in Chrome). */
+export async function ensureAvatarReadable(file: File): Promise<void> {
+  try {
+    (await createImageBitmap(file)).close();
+  } catch {
+    throw new Error("Couldn't read that photo");
+  }
+}
+
 /** Cuts the framed square out of the photo and re-encodes it as a small JPEG. */
 export async function cropAvatar(file: File, area: CropArea): Promise<File> {
   const bitmap = await createImageBitmap(file);

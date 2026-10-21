@@ -11,6 +11,7 @@ import { removeAvatarFn, updateNameFn } from "@/features/profile/server";
 import {
   checkAvatarSource,
   cropAvatar,
+  ensureAvatarReadable,
   isCustomAvatar,
   type CropArea,
 } from "@/features/profile/avatar";
@@ -31,12 +32,13 @@ export function ProfileHeader({ name, email, role, image }: Props) {
   // The name and photo show on the leaderboard, matches and rosters, so refresh everything
   const refresh = () => queryClient.invalidateQueries();
 
-  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // so picking the same photo again still fires
     if (!file) return;
     try {
       checkAvatarSource(file);
+      await ensureAvatarReadable(file);
       setPicked(file);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't read that photo");
@@ -144,8 +146,17 @@ export function ProfileHeader({ name, email, role, image }: Props) {
                   autoComplete="name"
                   aria-label="Your name"
                   disabled={saving}
-                  className="text-base"
+                  onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+                  className="min-w-0 text-base"
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => setEditing(false)}
+                >
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={saving || !value.trim() || value.trim() === name}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
                 </Button>
