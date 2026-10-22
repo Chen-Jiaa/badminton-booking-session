@@ -355,7 +355,7 @@ export function RsvpButtons({
           ) : hasInsufficientBalance ? (
             `Top up ${formatCurrency(shortfall.toFixed(2))} to join waitlist`
           ) : (
-            "Session full · Join waitlist"
+            "Join waitlist"
           )}
         </Button>
       ) : (
