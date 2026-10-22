@@ -22,6 +22,9 @@ start (`--no-reset` keeps the data).
 Port 3200 taken by another workspace's server? Run both commands with `DEV_TEST_PORT=3251`
 (any free port) in front. All workspaces share the one `badminton_test` DB.
 
+To click around yourself (or on a phone): `pnpm dev:test --lan`, then open the sign-in page it prints
+(`http://<Mac IP>:<port+100>`) and pick a player. Without `--lan` it only listens on localhost.
+
 ## 2. Screenshots
 
 ```bash

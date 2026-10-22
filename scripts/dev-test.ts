@@ -4,7 +4,14 @@
 import { spawn } from "node:child_process";
 import { resetTestDb } from "../e2e/db";
 import { seed } from "../e2e/seed";
-import { DEV_TEST_PORT, DEV_TEST_URL, E2E_AUTH_SECRET, TEST_DATABASE_URL } from "../e2e/env";
+import { startDevLogin } from "./dev-login";
+import {
+  DEV_LOGIN_PORT,
+  DEV_TEST_PORT,
+  DEV_TEST_URL,
+  E2E_AUTH_SECRET,
+  TEST_DATABASE_URL,
+} from "../e2e/env";
 
 async function main() {
   if (!process.argv.includes("--no-reset")) {
@@ -13,9 +20,21 @@ async function main() {
     console.log(`Test database ready: ${TEST_DATABASE_URL}`);
   }
 
+  // `--lan` makes the app and the sign-in page reachable from your phone on the same Wi-Fi
+  const lan = process.argv.includes("--lan");
+  startDevLogin({ lan });
+
   const server = spawn(
     "pnpm",
-    ["exec", "vite", "dev", "--port", String(DEV_TEST_PORT), "--strictPort"],
+    [
+      "exec",
+      "vite",
+      "dev",
+      "--port",
+      String(DEV_TEST_PORT),
+      "--strictPort",
+      ...(lan ? ["--host"] : []),
+    ],
     {
       stdio: "inherit",
       // Same overrides as the Playwright web server: test DB, test sign-in, no Sheet or Storage writes
@@ -31,6 +50,8 @@ async function main() {
     },
   );
   console.log(`Dev server (test DB) starting on ${DEV_TEST_URL}`);
+  console.log(`Sign in as any test player: http://localhost:${DEV_LOGIN_PORT}`);
+  if (lan) console.log(`On your phone (same Wi-Fi): http://<this Mac's IP>:${DEV_LOGIN_PORT}`);
   server.on("exit", (code) => process.exit(code ?? 0));
 }
 
