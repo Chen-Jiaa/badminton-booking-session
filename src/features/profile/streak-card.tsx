@@ -244,7 +244,7 @@ function WeekRowA({
             cell={c}
             played={played.has(c.key)}
             todayKey={todayKey}
-            playedClass="bg-muted text-brand-foreground"
+            playedClass="text-brand-foreground"
           />
         </div>
       ))}
@@ -304,7 +304,7 @@ function ThisWeekVariant({ played, todayKey, thisMonth, streak }: Ctx) {
                   cell={{ ...c, inMonth: true }}
                   played={played.has(c.key)}
                   todayKey={todayKey}
-                  playedClass="bg-muted text-brand-foreground"
+                  playedClass="text-brand-foreground"
                 />
               </div>
             ))}
@@ -385,7 +385,7 @@ function BandVariant({ played, todayKey, thisMonth, streak }: Ctx) {
                       cell={c}
                       played={played.has(c.key)}
                       todayKey={todayKey}
-                      playedClass="bg-muted text-brand-foreground"
+                      playedClass="text-brand-foreground"
                     />
                   </div>
                 ))}
