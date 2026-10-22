@@ -85,3 +85,7 @@ prefilled message.
 - 2026-10: the "Wallet needs RM x to join" helper text was removed; the top-up button
   says it already.
 - 2026-10: WhatsApp-the-host button, deliberately without prefilled text.
+- 2026-10: profile **weekly streak**. A day counts as "played" when the player is YES on a
+  **finalized** (LOCKED) session, so it appears after the host finalizes. A streak is
+  consecutive Mon–Sun weeks (Malaysia time) with at least one played day; the current week
+  doesn't break it until the week ends. Code: `features/profile/streak.ts`.

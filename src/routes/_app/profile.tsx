@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import { NotificationToggle } from "@/features/profile/notification-toggle";
+import { StreakCard } from "@/features/profile/streak-card";
 import { PhoneForm } from "@/features/profile/phone-form";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
@@ -49,6 +50,8 @@ function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      <StreakCard />
 
       {isAdmin && (
         <Card className="overflow-hidden py-0 gap-0">

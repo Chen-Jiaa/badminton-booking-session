@@ -19,6 +19,9 @@ Then wait until it answers: `until curl -s -o /dev/null http://localhost:3200; d
 after code changes. Restart only after a `schema.ts` change, since the DB is rebuilt on
 start (`--no-reset` keeps the data).
 
+Port 3200 taken by another workspace's server? Run both commands with `DEV_TEST_PORT=3251`
+(any free port) in front. All workspaces share the one `badminton_test` DB.
+
 ## 2. Screenshots
 
 ```bash

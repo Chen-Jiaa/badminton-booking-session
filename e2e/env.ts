@@ -10,5 +10,5 @@ export const BASE_URL = `http://localhost:${PORT}`;
 
 // `pnpm dev:test`: a dev server you can click around and screenshot, on the same test
 // DB. Its own port, so it never collides with the one `pnpm test:e2e` starts.
-export const DEV_TEST_PORT = 3200;
+export const DEV_TEST_PORT = Number(process.env.DEV_TEST_PORT) || 3200;
 export const DEV_TEST_URL = `http://localhost:${DEV_TEST_PORT}`;
