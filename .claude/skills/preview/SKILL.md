@@ -25,6 +25,9 @@ Port 3200 taken by another workspace's server? Run both commands with `DEV_TEST_
 To click around yourself (or on a phone): `pnpm dev:test --lan`, then open the sign-in page it prints
 (`http://<Mac IP>:<port+100>`) and pick a player. Without `--lan` it only listens on localhost.
 
+`pnpm seed:history` adds finalized past sessions (streak data for ben, cai, dee, admin) to the test
+DB. Safe to re-run; a fresh `dev:test` (no `--no-reset`) wipes it.
+
 ## 2. Screenshots
 
 ```bash
