@@ -27,8 +27,6 @@ export interface StreakSummary {
   activities: number;
   /** Whether the current week already has one, so the flame is "lit". */
   doneThisWeek: boolean;
-  /** The week numbers (see `weekOfDay`) that make up the streak. */
-  streakWeeks: number[];
 }
 
 /**
@@ -48,14 +46,12 @@ export function computeStreak(playedDays: string[], todayKey: string): StreakSum
   let w = doneThisWeek ? thisWeek : thisWeek - 1;
   let weeks = 0;
   let activities = 0;
-  const streakWeeks: number[] = [];
   while (perWeek.has(w)) {
-    streakWeeks.push(w);
     weeks += 1;
     activities += perWeek.get(w)!;
     w -= 1;
   }
-  return { weeks, activities, doneThisWeek, streakWeeks };
+  return { weeks, activities, doneThisWeek };
 }
 
 export interface CalendarCell {
