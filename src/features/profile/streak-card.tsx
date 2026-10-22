@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { monthKeyOf, monthLabel, shiftMonth } from "@/features/matches/logic";
 import { cn } from "@/lib/utils";
@@ -76,21 +76,21 @@ interface Ctx {
 /* Shared pieces                                                       */
 /* ------------------------------------------------------------------ */
 
-function ShuttleBadge({ streak, size = "md" }: { streak: StreakSummary; size?: "md" | "lg" }) {
+function FlameBadge({ streak, size = "md" }: { streak: StreakSummary; size?: "md" | "lg" }) {
   const big = size === "lg";
   return (
     <div
       className={cn(
         "relative flex shrink-0 items-center justify-center",
-        big ? "h-20 w-[4.5rem]" : "h-14 w-12",
+        big ? "h-20 w-16" : "h-14 w-12",
         streak.doneThisWeek ? "text-brand-foreground" : "text-muted-foreground/50",
       )}
     >
-      <Shuttlecock className="h-full w-full" />
+      <Flame className="h-full w-full" fill="currentColor" strokeWidth={1} aria-hidden />
       <span
         className={cn(
           "absolute inset-0 flex items-end justify-center font-bold text-white",
-          big ? "pb-[1.6rem] text-2xl" : "pb-[1.1rem] text-lg",
+          big ? "pb-3 text-2xl" : "pb-2 text-lg",
         )}
       >
         {streak.weeks}
@@ -170,7 +170,7 @@ function DayDot({
         cell.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
       )}
     >
-      {played ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : cell.day}
+      {played ? <Shuttlecock outline className="h-5 w-5 rotate-[60deg]" /> : cell.day}
     </span>
   );
 }
@@ -190,7 +190,7 @@ function CalendarVariant({ played, todayKey, thisMonth, streak }: Ctx) {
       <CardContent className="space-y-4 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <ShuttleBadge streak={streak} />
+            <FlameBadge streak={streak} />
             <div>
               <p className="text-sm text-muted-foreground">Your streak</p>
               <p className="text-xl font-semibold">
@@ -284,7 +284,7 @@ function ThisWeekVariant({ played, todayKey, thisMonth, streak }: Ctx) {
     <Card>
       <CardContent className="space-y-5 pt-6">
         <div className="flex items-center gap-4">
-          <ShuttleBadge streak={streak} size="lg" />
+          <FlameBadge streak={streak} size="lg" />
           <div>
             <p className="text-3xl font-bold leading-none">{streak.weeks}</p>
             <p className="text-sm font-medium">{streak.weeks === 1 ? "week" : "weeks"} in a row</p>
@@ -360,7 +360,7 @@ function BandVariant({ played, todayKey, thisMonth, streak }: Ctx) {
               {streakHint(streak)}
             </p>
           </div>
-          <ShuttleBadge streak={streak} size="lg" />
+          <FlameBadge streak={streak} size="lg" />
         </div>
         <MonthNav month={month} thisMonth={thisMonth} onChange={setMonth} />
         <div className="grid grid-cols-7 gap-y-2 text-center">
