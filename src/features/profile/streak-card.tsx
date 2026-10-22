@@ -170,7 +170,7 @@ function DayDot({
         cell.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
       )}
     >
-      {played ? <Shuttlecock outline className="h-5 w-5 rotate-[60deg]" /> : cell.day}
+      {played ? <Shuttlecock outline className="h-6 w-6 rotate-[35deg]" /> : cell.day}
     </span>
   );
 }
@@ -244,7 +244,7 @@ function WeekRowA({
             cell={c}
             played={played.has(c.key)}
             todayKey={todayKey}
-            playedClass="bg-brand-foreground text-white"
+            playedClass="bg-muted text-brand-foreground"
           />
         </div>
       ))}
@@ -304,7 +304,7 @@ function ThisWeekVariant({ played, todayKey, thisMonth, streak }: Ctx) {
                   cell={{ ...c, inMonth: true }}
                   played={played.has(c.key)}
                   todayKey={todayKey}
-                  playedClass="bg-brand-foreground text-white"
+                  playedClass="bg-muted text-brand-foreground"
                 />
               </div>
             ))}
@@ -385,7 +385,7 @@ function BandVariant({ played, todayKey, thisMonth, streak }: Ctx) {
                       cell={c}
                       played={played.has(c.key)}
                       todayKey={todayKey}
-                      playedClass="bg-brand-foreground text-white"
+                      playedClass="bg-muted text-brand-foreground"
                     />
                   </div>
                 ))}
