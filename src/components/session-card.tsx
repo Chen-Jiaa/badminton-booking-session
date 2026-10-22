@@ -395,9 +395,9 @@ export function SessionCard({
                     ) : pastDeadline ? (
                       "RSVP closed"
                     ) : hasInsufficientBalance ? (
-                      `Top up ${formatCurrency(shortfall.toFixed(2))} to join`
+                      `Top up ${formatCurrency(shortfall.toFixed(2))} to join${isFull ? " waitlist" : ""}`
                     ) : isFull ? (
-                      "Session full · Join waitlist"
+                      "Join waitlist"
                     ) : (
                       "Join Game"
                     )}
