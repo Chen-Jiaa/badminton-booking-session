@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Flame } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { monthKeyOf, monthLabel, shiftMonth } from "@/features/matches/logic";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,39 @@ import { Shuttlecock } from "./shuttlecock";
 import { computeStreak, dayKeyOf, monthCalendar, weekOfDay, type CalendarCell } from "./streak";
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
+
+/** The streak flame with the week count inside. Wobbles once on load, and on hover or tap. */
+function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
+  const [wobble, setWobble] = useState(false);
+  useEffect(() => setWobble(true), []);
+  return (
+    <div
+      className={cn(
+        "relative flex h-14 w-12 shrink-0 items-center justify-center",
+        active ? "text-brand-foreground" : "text-muted-foreground/50",
+      )}
+      onPointerEnter={() => setWobble(true)}
+      onClick={() => setWobble(true)}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={cn("h-full w-full", wobble && "flame-wobble")}
+        onAnimationEnd={() => setWobble(false)}
+        aria-hidden
+      >
+        <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
+      </svg>
+      <span className="absolute inset-0 flex items-end justify-center pb-2 text-lg font-bold text-white">
+        {weeks}
+      </span>
+    </div>
+  );
+}
 
 /** Weekly streak: a month calendar marking the days the player actually played. */
 export function StreakCard() {
@@ -31,17 +64,7 @@ export function StreakCard() {
       <CardContent className="space-y-4 pt-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "relative flex h-14 w-12 shrink-0 items-center justify-center",
-                streak.doneThisWeek ? "text-brand-foreground" : "text-muted-foreground/50",
-              )}
-            >
-              <Flame className="h-full w-full" fill="currentColor" strokeWidth={1} aria-hidden />
-              <span className="absolute inset-0 flex items-end justify-center pb-2 text-lg font-bold text-white">
-                {streak.weeks}
-              </span>
-            </div>
+            <StreakFlame weeks={streak.weeks} active={streak.doneThisWeek} />
             <p className="text-xl font-semibold">{streak.weeks === 1 ? "week" : "weeks"}</p>
           </div>
           <div className="text-right">
@@ -118,7 +141,7 @@ function WeekRow({
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full text-sm",
                 didPlay
-                  ? "text-brand-foreground"
+                  ? "bg-brand-foreground text-white"
                   : !c.inMonth
                     ? "text-muted-foreground/40"
                     : c.key > todayKey
