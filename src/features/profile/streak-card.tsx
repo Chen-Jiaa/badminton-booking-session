@@ -42,19 +42,7 @@ export function StreakCard() {
                 {streak.weeks}
               </span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Your streak</p>
-              <p className="text-xl font-semibold">
-                {streak.weeks} {streak.weeks === 1 ? "week" : "weeks"}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {streak.doneThisWeek
-                  ? "This week's done"
-                  : streak.weeks > 0
-                    ? "Play this week to keep it going"
-                    : "Play a session to start one"}
-              </p>
-            </div>
+            <p className="text-xl font-semibold">{streak.weeks === 1 ? "week" : "weeks"}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Sessions</p>
@@ -135,7 +123,7 @@ function WeekRow({
                     ? "text-muted-foreground/40"
                     : c.key > todayKey
                       ? "border border-foreground/25"
-                      : "bg-muted",
+                      : c.key !== todayKey && "bg-muted",
                 c.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
               )}
             >
