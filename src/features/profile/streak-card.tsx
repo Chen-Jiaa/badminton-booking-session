@@ -20,7 +20,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   return (
     <div
       className={cn(
-        "relative -my-2 h-14 w-12",
+        "relative -my-3 h-[4.25rem] w-12 shrink-0",
         active ? "text-brand-foreground" : "text-muted-foreground/50",
       )}
       onPointerEnter={() => setWobble(true)}
@@ -35,7 +35,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
       >
         <path d={FLAME_PATH} />
       </svg>
-      <span className="absolute inset-0 flex items-end justify-center pb-2.5 text-sm font-bold text-white">
+      <span className="absolute inset-x-0 top-[60%] -translate-y-1/2 text-center text-sm font-bold leading-none text-white">
         {weeks}
       </span>
     </div>
@@ -99,7 +99,7 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-2 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-1.5 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
@@ -163,7 +163,7 @@ function WeekRow({
             <span
               aria-label={didPlay ? `Played on ${c.key}` : undefined}
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full text-sm",
+                "flex h-8 w-8 items-center justify-center rounded-full text-[13px]",
                 didPlay
                   ? "bg-foreground text-white"
                   : !c.inMonth
@@ -174,7 +174,7 @@ function WeekRow({
                 c.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
               )}
             >
-              {didPlay ? <Shuttlecock outline className="h-6 w-6 rotate-[35deg]" /> : c.day}
+              {didPlay ? <Shuttlecock outline className="h-5 w-5 rotate-[35deg]" /> : c.day}
             </span>
           </div>
         );
@@ -182,12 +182,12 @@ function WeekRow({
       <div className="flex justify-center self-stretch">
         <div
           className={cn(
-            "flex w-10 items-center justify-center",
+            "flex w-12 items-center justify-center",
             band && "relative bg-[hsl(316_35%_91%)]",
             band?.first && "-mt-1.5 rounded-t-full pt-1.5",
-            band?.last && (flame ? "-mb-3 rounded-b-full pb-3" : "-mb-1.5 rounded-b-full pb-1.5"),
+            band?.last && (flame ? "-mb-2 rounded-b-full pb-2" : "-mb-1.5 rounded-b-full pb-1.5"),
             band?.link &&
-              "after:absolute after:inset-x-0 after:top-[calc(100%-1px)] after:h-[calc(0.5rem+2px)] after:bg-[hsl(316_35%_91%)]",
+              "after:absolute after:inset-x-0 after:top-[calc(100%-1px)] after:h-[calc(0.375rem+2px)] after:bg-[hsl(316_35%_91%)]",
           )}
         >
           {flame ? (
