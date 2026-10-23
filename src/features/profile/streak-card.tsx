@@ -20,14 +20,14 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   return (
     <div
       className={cn(
-        "relative -my-3 h-[4.25rem] w-12 shrink-0",
+        "relative -my-3 h-12 w-9 shrink-0",
         active ? "text-brand-foreground" : "text-muted-foreground/50",
       )}
       onPointerEnter={() => setWobble(true)}
       onClick={() => setWobble(true)}
     >
       <svg
-        viewBox="0 0 24 28"
+        viewBox="4 0.5 16 23"
         fill="currentColor"
         className={cn("h-full w-full", wobble && "flame-wobble")}
         onAnimationEnd={() => setWobble(false)}
@@ -35,7 +35,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
       >
         <path d={FLAME_PATH} />
       </svg>
-      <span className="absolute inset-x-0 top-[60%] -translate-y-1/2 text-center text-sm font-bold leading-none text-white">
+      <span className="absolute inset-x-0 top-[66%] -translate-y-1/2 text-center text-sm font-bold leading-none text-white">
         {weeks}
       </span>
     </div>
@@ -234,7 +234,8 @@ function WeekRow({
             // Each strip segment reaches 4px into the 6px row gap, so neighbours meet without a seam
             band && "bg-[hsl(316_35%_91%)] -my-1 py-1",
             band?.first && "-mt-2 rounded-t-full pt-2",
-            band?.last && (flame ? "-mb-3 rounded-b-full pb-3" : "-mb-2 rounded-b-full pb-2"),
+            band?.last &&
+              (flame ? "-mb-[7px] rounded-b-full pb-[7px]" : "-mb-2 rounded-b-full pb-2"),
           )}
         >
           {flame ? (
