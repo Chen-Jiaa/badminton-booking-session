@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { monthKeyOf, monthLabel, shiftMonth } from "@/features/matches/logic";
 import { cn } from "@/lib/utils";
 import { playedDaysQueryOptions } from "./server";
@@ -42,15 +42,66 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   );
 }
 
-/** Weekly streak: a month calendar marking the days the player actually played. */
-export function StreakCard() {
+const PILL_FLAME_PATH =
+  "M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4";
+
+/**
+ * The streak pill in the top bar: flame + weeks. Tapping it opens the streak board
+ * (a month calendar of the days played) as a bottom sheet.
+ */
+export function StreakNav() {
   const { data: playedDays } = useQuery(playedDaysQueryOptions());
+  const [wobble, setWobble] = useState(false);
+  useEffect(() => setWobble(true), []);
+  if (!playedDays) return null;
+
+  const streak = computeStreak(playedDays, dayKeyOf(new Date()));
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Streak: ${streak.weeks} ${streak.weeks === 1 ? "week" : "weeks"}. Open streak board`}
+          onPointerEnter={() => setWobble(true)}
+          className="-my-1 flex h-11 items-center"
+        >
+          <span
+            className={cn(
+              "flex items-center gap-0.5 rounded-full py-1 pl-1.5 pr-2.5 text-sm font-bold text-white transition-transform active:scale-95 motion-reduce:active:scale-100",
+              streak.doneThisWeek ? "bg-brand-foreground" : "bg-white/20",
+            )}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={cn("h-5 w-5", wobble && "flame-wobble")}
+              onAnimationEnd={() => setWobble(false)}
+              aria-hidden
+            >
+              <path d={PILL_FLAME_PATH} />
+            </svg>
+            {streak.weeks}
+          </span>
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle className="sr-only">Your weekly streak</DialogTitle>
+        <StreakBoard playedDays={playedDays} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Weekly streak: a month calendar marking the days the player actually played. */
+function StreakBoard({ playedDays }: { playedDays: string[] }) {
   const now = new Date();
   const todayKey = dayKeyOf(now);
   const thisMonth = monthKeyOf(now);
   const [month, setMonth] = useState(thisMonth);
-
-  if (!playedDays) return null;
 
   const played = new Set(playedDays);
   const streak = computeStreak(playedDays, todayKey);
@@ -63,76 +114,72 @@ export function StreakCard() {
     w !== undefined && flameWeek !== null && w <= flameWeek && w > flameWeek - streak.weeks;
 
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex gap-10">
-          <div>
-            <p className="text-sm text-muted-foreground">Your Streak</p>
-            <p className="text-xl font-semibold">
-              {streak.weeks} {streak.weeks === 1 ? "Week" : "Weeks"}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Total Sessions</p>
-            <p className="text-xl font-semibold">{played.size}</p>
-          </div>
+    <div className="space-y-4">
+      <div className="flex justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Your Streak</p>
+          <p className="text-xl font-semibold">
+            {streak.weeks} {streak.weeks === 1 ? "Week" : "Weeks"}
+          </p>
         </div>
+        <div className="text-right">
+          <p className="text-sm text-muted-foreground">Total Sessions</p>
+          <p className="text-xl font-semibold">{played.size}</p>
+        </div>
+      </div>
 
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            aria-label="Previous month"
-            onClick={() => setMonth(shiftMonth(month, -1))}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-muted [@media(hover:hover)]:hover:bg-muted"
-          >
-            <ChevronLeft className="h-5 w-5" aria-hidden />
-          </button>
-          <p className="font-medium">{monthLabel(month)}</p>
-          <button
-            type="button"
-            aria-label="Next month"
-            disabled={month >= thisMonth}
-            onClick={() => setMonth(shiftMonth(month, 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-muted disabled:opacity-30 [@media(hover:hover)]:hover:bg-muted"
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          aria-label="Previous month"
+          onClick={() => setMonth(shiftMonth(month, -1))}
+          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-muted [@media(hover:hover)]:hover:bg-muted"
+        >
+          <ChevronLeft className="h-5 w-5" aria-hidden />
+        </button>
+        <p className="font-medium">{monthLabel(month)}</p>
+        <button
+          type="button"
+          aria-label="Next month"
+          disabled={month >= thisMonth}
+          onClick={() => setMonth(shiftMonth(month, 1))}
+          className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-muted disabled:opacity-30 [@media(hover:hover)]:hover:bg-muted"
+        >
+          <ChevronRight className="h-5 w-5" aria-hidden />
+        </button>
+      </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_1rem_3rem] items-center gap-y-1.5 text-center">
-          {WEEKDAYS.map((d, i) => (
-            <span key={i} className="text-xs text-muted-foreground">
-              {d}
-            </span>
-          ))}
-          <span className="col-start-9" />
-          {weeks.map((week, idx) => (
-            <WeekRow
-              key={week.week}
-              cells={week.cells}
-              played={played}
-              todayKey={todayKey}
-              weekDone={playedWeeks.has(week.week)}
-              isCurrent={week.week === currentWeek}
-              band={
-                inStreak(week.week)
-                  ? {
-                      first: !inStreak(weeks[idx - 1]?.week),
-                      last: !inStreak(weeks[idx + 1]?.week),
-                      link: inStreak(weeks[idx + 1]?.week),
-                    }
-                  : null
-              }
-              flame={
-                week.week === flameWeek
-                  ? { weeks: streak.weeks, active: streak.doneThisWeek }
-                  : null
-              }
-            />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_1rem_3rem] items-center gap-y-1.5 text-center">
+        {WEEKDAYS.map((d, i) => (
+          <span key={i} className="text-xs text-muted-foreground">
+            {d}
+          </span>
+        ))}
+        <span className="col-start-9" />
+        {weeks.map((week, idx) => (
+          <WeekRow
+            key={week.week}
+            cells={week.cells}
+            played={played}
+            todayKey={todayKey}
+            weekDone={playedWeeks.has(week.week)}
+            isCurrent={week.week === currentWeek}
+            band={
+              inStreak(week.week)
+                ? {
+                    first: !inStreak(weeks[idx - 1]?.week),
+                    last: !inStreak(weeks[idx + 1]?.week),
+                    link: inStreak(weeks[idx + 1]?.week),
+                  }
+                : null
+            }
+            flame={
+              week.week === flameWeek ? { weeks: streak.weeks, active: streak.doneThisWeek } : null
+            }
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

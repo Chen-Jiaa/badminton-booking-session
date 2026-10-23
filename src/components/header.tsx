@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
+import { StreakNav } from "@/features/profile/streak-card";
 
 interface HeaderProps {
   user?: {
@@ -18,17 +19,20 @@ export function Header({ user }: HeaderProps) {
           <span className="font-semibold">Badminton Club</span>
         </Link>
         {user ? (
-          <Link
-            to="/profile"
-            className="-my-1 -mr-1.5 flex h-11 w-11 items-center justify-center rounded-full"
-          >
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.image || undefined} alt={user.name || ""} />
-              <AvatarFallback className="bg-brand text-brand-foreground text-sm">
-                {user.name?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
+          <div className="flex items-center gap-1">
+            <StreakNav />
+            <Link
+              to="/profile"
+              className="-my-1 -mr-1.5 flex h-11 w-11 items-center justify-center rounded-full"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.image || undefined} alt={user.name || ""} />
+                <AvatarFallback className="bg-brand text-brand-foreground text-sm">
+                  {user.name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
         ) : (
           <Link to="/login">
             <Button variant="secondary" size="sm">

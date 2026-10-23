@@ -88,4 +88,5 @@ prefilled message.
 - 2026-10: profile **weekly streak**. A day counts as "played" when the player is YES on a
   **finalized** (LOCKED) session, so it appears after the host finalizes. A streak is
   consecutive Mon–Sun weeks (Malaysia time) with at least one played day; the current week
-  doesn't break it until the week ends. Code: `features/profile/streak.ts`.
+  doesn't break it until the week ends. Code: `features/profile/streak.ts`. The pill in the top bar and the sheet it opens
+  (`StreakNav` in `streak-card.tsx`, mounted in `components/header.tsx`) show it; the profile page no longer has a card.
