@@ -17,7 +17,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   return (
     <div
       className={cn(
-        "relative flex h-9 w-8 shrink-0 items-center justify-center",
+        "relative -my-2 flex h-14 w-11 shrink-0 items-center justify-center",
         active ? "text-brand-foreground" : "text-muted-foreground/50",
       )}
       onPointerEnter={() => setWobble(true)}
@@ -36,7 +36,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
       >
         <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
       </svg>
-      <span className="absolute inset-0 flex items-end justify-center pb-1 text-xs font-bold text-white">
+      <span className="absolute inset-0 flex items-end justify-center pb-2 text-sm font-bold text-white">
         {weeks}
       </span>
     </div>
@@ -98,7 +98,7 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_2.25rem] items-center gap-y-2 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_2.75rem] items-center gap-y-2 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
