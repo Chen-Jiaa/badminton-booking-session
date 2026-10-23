@@ -17,7 +17,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   return (
     <div
       className={cn(
-        "relative flex h-14 w-12 shrink-0 items-center justify-center",
+        "relative flex h-9 w-8 shrink-0 items-center justify-center",
         active ? "text-brand-foreground" : "text-muted-foreground/50",
       )}
       onPointerEnter={() => setWobble(true)}
@@ -36,7 +36,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
       >
         <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
       </svg>
-      <span className="absolute inset-0 flex items-end justify-center pb-2 text-sm font-bold text-white">
+      <span className="absolute inset-0 flex items-end justify-center pb-1 text-xs font-bold text-white">
         {weeks}
       </span>
     </div>
@@ -58,19 +58,17 @@ export function StreakCard() {
   const weeks = monthCalendar(month);
   const currentWeek = weekOfDay(todayKey);
   const playedWeeks = new Set(playedDays.map(weekOfDay));
+  // The flame takes the place of the tick for the latest week in the streak
+  const flameWeek = streak.weeks > 0 ? (streak.doneThisWeek ? currentWeek : currentWeek - 1) : null;
 
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-end gap-1.5">
-            <StreakFlame weeks={streak.weeks} active={streak.doneThisWeek} />
-            <p className="pb-1 text-sm font-semibold">{streak.weeks === 1 ? "week" : "weeks"}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground">Sessions</p>
-            <p className="text-xl font-semibold">{streak.activities}</p>
-          </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Your Streak</p>
+          <p className="text-xl font-semibold">
+            {streak.weeks} {streak.weeks === 1 ? "Week" : "Weeks"}
+          </p>
         </div>
 
         <div className="flex items-center justify-between">
@@ -94,7 +92,7 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_2rem] items-center gap-y-2 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_2.25rem] items-center gap-y-2 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
@@ -109,6 +107,11 @@ export function StreakCard() {
               todayKey={todayKey}
               weekDone={playedWeeks.has(week.week)}
               isCurrent={week.week === currentWeek}
+              flame={
+                week.week === flameWeek
+                  ? { weeks: streak.weeks, active: streak.doneThisWeek }
+                  : null
+              }
             />
           ))}
         </div>
@@ -123,12 +126,14 @@ function WeekRow({
   todayKey,
   weekDone,
   isCurrent,
+  flame,
 }: {
   cells: CalendarCell[];
   played: Set<string>;
   todayKey: string;
   weekDone: boolean;
   isCurrent: boolean;
+  flame: { weeks: number; active: boolean } | null;
 }) {
   return (
     <>
@@ -156,7 +161,9 @@ function WeekRow({
         );
       })}
       <div className="flex justify-center">
-        {weekDone ? (
+        {flame ? (
+          <StreakFlame weeks={flame.weeks} active={flame.active} />
+        ) : weekDone ? (
           <span
             className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-foreground text-white"
             aria-label="Week completed"
