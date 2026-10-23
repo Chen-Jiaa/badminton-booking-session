@@ -5,6 +5,7 @@ import { walletQueryOptions } from "@/features/wallet/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { WithdrawalDialog } from "@/features/withdrawal/withdrawal-dialog";
+import { HelpLink } from "@/features/faq/help-link";
 import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { ArrowUpCircle, ArrowDownCircle, Edit, XCircle, Clock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -43,10 +44,11 @@ function WalletPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             Current Balance
           </CardTitle>
+          <HelpLink q="topup" label="How wallet top-ups work" className="-my-1 -mr-1" />
         </CardHeader>
         <CardContent>
           <p

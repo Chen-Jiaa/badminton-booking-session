@@ -139,3 +139,6 @@ prefilled message.
   consecutive Mon–Sun weeks (Malaysia time) with at least one played day; the current week
   doesn't break it until the week ends. Code: `features/profile/streak.ts`. The pill in the top bar and the sheet it opens
   (`StreakNav` in `streak-card.tsx`, mounted in `components/header.tsx`) show it; the profile page no longer has a card.
+
+- 2026-10: player FAQ (`/faq`, wording in `features/faq/content.ts`) restates the rules above in plain
+  language (24h window, RM20 default deposit, 5 guests). When you change one of those rules, update the FAQ too.

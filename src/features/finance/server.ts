@@ -72,8 +72,9 @@ export const createExpenseFn = createServerFn({ method: "POST" })
       amount: validated.amount.toFixed(2),
       sessionId: validated.sessionId ?? null,
       paidAt,
-      // if it's already been paid, the admin recording it is the one out of pocket
-      paidById: paidAt ? session.user.id : null,
+      // if it's already been paid, whoever fronted it (default: the admin recording it)
+      // is the one to reimburse
+      paidById: paidAt ? (validated.paidById ?? session.user.id) : null,
       note: validated.note ?? null,
       receiptUrl: validated.receiptUrl ?? null,
       createdById: session.user.id,

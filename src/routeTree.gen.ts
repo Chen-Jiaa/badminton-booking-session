@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as ConsoleRouteImport } from './routes/_console'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppFaqRouteImport } from './routes/_app/faq'
 import { Route as AppLeaderboardRouteImport } from './routes/_app/leaderboard'
 import { Route as AppProfileRouteImport } from './routes/_app/profile'
 import { Route as AppSessionsRouteImport } from './routes/_app/sessions'
@@ -53,6 +54,11 @@ const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppFaqRoute = AppFaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppLeaderboardRoute = AppLeaderboardRouteImport.update({
   id: '/leaderboard',
@@ -168,6 +174,7 @@ const ConsoleAdminSessionsNewRoute = ConsoleAdminSessionsNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/faq': typeof AppFaqRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/profile': typeof AppProfileRoute
   '/sessions': typeof AppSessionsRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/faq': typeof AppFaqRoute
   '/leaderboard': typeof AppLeaderboardRoute
   '/profile': typeof AppProfileRoute
   '/sessions': typeof AppSessionsRoute
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/_console': typeof ConsoleRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/faq': typeof AppFaqRoute
   '/_app/leaderboard': typeof AppLeaderboardRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/sessions': typeof AppSessionsRoute
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/faq'
     | '/leaderboard'
     | '/profile'
     | '/sessions'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/faq'
     | '/leaderboard'
     | '/profile'
     | '/sessions'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/_console'
     | '/login'
+    | '/_app/faq'
     | '/_app/leaderboard'
     | '/_app/profile'
     | '/_app/sessions'
@@ -372,6 +384,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/faq': {
+      id: '/_app/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof AppFaqRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/leaderboard': {
       id: '/_app/leaderboard'
@@ -543,6 +562,7 @@ const AppSessionsIdRouteWithChildren = AppSessionsIdRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppFaqRoute: typeof AppFaqRoute
   AppLeaderboardRoute: typeof AppLeaderboardRoute
   AppProfileRoute: typeof AppProfileRoute
   AppSessionsRoute: typeof AppSessionsRoute
@@ -553,6 +573,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppFaqRoute: AppFaqRoute,
   AppLeaderboardRoute: AppLeaderboardRoute,
   AppProfileRoute: AppProfileRoute,
   AppSessionsRoute: AppSessionsRoute,

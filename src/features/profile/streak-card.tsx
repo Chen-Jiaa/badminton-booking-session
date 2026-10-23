@@ -75,7 +75,7 @@ export function StreakNav() {
           type="button"
           aria-label={`Streak: ${streak.weeks} ${streak.weeks === 1 ? "week" : "weeks"}. Open streak board`}
           onPointerEnter={() => setWobble(true)}
-          className="-my-1 flex h-11 items-center"
+          className="-my-1 flex h-11 items-center outline-none"
         >
           <span
             className={cn(

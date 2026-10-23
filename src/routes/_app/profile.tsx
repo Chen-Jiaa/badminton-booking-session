@@ -9,7 +9,7 @@ import { NotificationToggle } from "@/features/profile/notification-toggle";
 import { ProfileHeader } from "@/features/profile/profile-header";
 import { PhoneForm } from "@/features/profile/phone-form";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CircleHelp } from "lucide-react";
 
 export const Route = createFileRoute("/_app/profile")({
   beforeLoad: ({ context }) => {
@@ -69,6 +69,17 @@ function ProfilePage() {
       <PhoneForm phone={user.phone} isHost={user.role === "HOST" || isAdmin} />
 
       <NotificationToggle enabled={!!user.fcmToken} />
+
+      <Card className="overflow-hidden py-0 gap-0">
+        <Link
+          to="/faq"
+          className="flex items-center gap-3 px-6 py-3.5 text-sm font-medium transition-[background-color,transform] active:scale-[0.98] motion-reduce:active:scale-100 [@media(hover:hover)]:hover:bg-muted/50"
+        >
+          <CircleHelp className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <span className="flex-1">Help &amp; FAQ</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+        </Link>
+      </Card>
 
       <SignOutButton />
     </div>

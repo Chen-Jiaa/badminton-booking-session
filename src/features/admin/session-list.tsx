@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { DeleteSessionButton } from "@/features/admin/delete-session-button";
@@ -18,12 +17,6 @@ interface SessionListProps {
 }
 
 export function SessionList({ sessions }: SessionListProps) {
-  const queryClient = useQueryClient();
-
-  function handleDeleted() {
-    queryClient.invalidateQueries({ queryKey: ["admin", "sessions"] });
-  }
-
   return (
     <ul className="divide-y overflow-hidden rounded-xl border bg-white">
       {sessions.map((s) => {
