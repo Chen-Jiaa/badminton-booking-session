@@ -99,7 +99,7 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-2 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-1.5 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
@@ -163,7 +163,7 @@ function WeekRow({
             <span
               aria-label={didPlay ? `Played on ${c.key}` : undefined}
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-full text-xs",
+                "flex h-8 w-8 items-center justify-center rounded-full text-[13px]",
                 didPlay
                   ? "bg-foreground text-white"
                   : !c.inMonth
@@ -174,7 +174,7 @@ function WeekRow({
                 c.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
               )}
             >
-              {didPlay ? <Shuttlecock outline className="h-4 w-4 rotate-[35deg]" /> : c.day}
+              {didPlay ? <Shuttlecock outline className="h-5 w-5 rotate-[35deg]" /> : c.day}
             </span>
           </div>
         );
@@ -183,8 +183,8 @@ function WeekRow({
         <div
           className={cn(
             "flex w-12 items-center justify-center",
-            // Each strip segment reaches 4px into the row gap, so neighbours meet without a seam
-            band && "bg-[hsl(316_35%_91%)] -my-[5px] py-[5px]",
+            // Each strip segment reaches 4px into the 6px row gap, so neighbours meet without a seam
+            band && "bg-[hsl(316_35%_91%)] -my-1 py-1",
             band?.first && "-mt-2 rounded-t-full pt-2",
             band?.last && (flame ? "-mb-3 rounded-b-full pb-3" : "-mb-2 rounded-b-full pb-2"),
           )}
