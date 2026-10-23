@@ -28,6 +28,12 @@ const HISTORY: { weeksAgo: number; day: number; players: SeedUser[] }[] = [
   { weeksAgo: 2, day: 4, players: ["lou"] },
   { weeksAgo: 3, day: 3, players: ["lou"] },
   { weeksAgo: 4, day: 1, players: ["lou"] },
+  // Admin: a 52-week streak (weeks 0-2 are above), to see how two-digit streaks look
+  ...Array.from({ length: 49 }, (_, k) => ({
+    weeksAgo: k + 3,
+    day: 2,
+    players: ["admin" as SeedUser],
+  })),
 ];
 
 async function main() {

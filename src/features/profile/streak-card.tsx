@@ -11,98 +11,33 @@ import { computeStreak, dayKeyOf, monthCalendar, weekOfDay, type CalendarCell } 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 const FLAME_PATH =
-  "M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4";
-const FAT_FLAME_PATH =
   "M12 1c.8 4 7.5 7.4 7.5 14.5a7.5 7.5 0 0 1-15 0c0-2.6 1.1-4.6 2.6-6 .2 2.2 1.1 3.6 2.4 3.6C9 8.6 10 4 12 1Z";
 
-// PROTOTYPE: five ways to show the streak flame with its number. `?flame=a..e` picks one.
-const FLAME_VARIANTS = [
-  { id: "a", label: "A Fat" },
-  { id: "b", label: "B Stack" },
-  { id: "c", label: "C Pill" },
-  { id: "d", label: "D Badge" },
-  { id: "e", label: "E Beside" },
-] as const;
-type FlameVariant = (typeof FLAME_VARIANTS)[number]["id"];
-
 /** The streak flame with its week count. Wobbles once on load, and on hover or tap. */
-function StreakFlame({
-  weeks,
-  active,
-  variant,
-}: {
-  weeks: number;
-  active: boolean;
-  variant: FlameVariant;
-}) {
+function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   const [wobble, setWobble] = useState(false);
   useEffect(() => setWobble(true), []);
-  const fat = variant === "a";
-  const icon = (className: string) => (
-    <svg
-      viewBox={fat ? "0 0 24 28" : "0 0 24 24"}
-      fill="currentColor"
-      stroke={fat ? "none" : "currentColor"}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={cn(className, wobble && "flame-wobble")}
-      onAnimationEnd={() => setWobble(false)}
-      aria-hidden
-    >
-      <path d={fat ? FAT_FLAME_PATH : FLAME_PATH} />
-    </svg>
-  );
-  const tone = active ? "text-brand-foreground" : "text-muted-foreground/50";
-  const hit = { onPointerEnter: () => setWobble(true), onClick: () => setWobble(true) };
-
-  if (variant === "a")
-    return (
-      <div className={cn("relative -my-2 h-14 w-12", tone)} {...hit}>
-        {icon("h-full w-full")}
-        <span className="absolute inset-0 flex items-end justify-center pb-2 text-lg font-bold text-white">
-          {weeks}
-        </span>
-      </div>
-    );
-  if (variant === "b")
-    return (
-      <div className={cn("-my-2 flex flex-col items-center leading-none", tone)} {...hit}>
-        {icon("h-6 w-6")}
-        <b className="text-xl">{weeks}</b>
-      </div>
-    );
-  if (variant === "c")
-    return (
-      <div
-        className={cn(
-          "flex items-center gap-0.5 rounded-full py-1 pl-1.5 pr-2.5 text-white",
-          active ? "bg-brand-foreground" : "bg-muted-foreground/50",
-        )}
-        {...hit}
-      >
-        {icon("h-5 w-5")}
-        <b className="text-base">{weeks}</b>
-      </div>
-    );
-  if (variant === "d")
-    return (
-      <div className={cn("relative -my-2 h-12 w-11", tone)} {...hit}>
-        {icon("h-full w-full")}
-        <span
-          className={cn(
-            "absolute -bottom-0.5 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 bg-white px-1 text-xs font-bold",
-            active ? "border-brand-foreground" : "border-muted-foreground/50",
-          )}
-        >
-          {weeks}
-        </span>
-      </div>
-    );
   return (
-    <div className={cn("flex items-center", tone)} {...hit}>
-      {icon("h-7 w-7")}
-      <b className="text-2xl">{weeks}</b>
+    <div
+      className={cn(
+        "relative -my-2 h-14 w-12",
+        active ? "text-brand-foreground" : "text-muted-foreground/50",
+      )}
+      onPointerEnter={() => setWobble(true)}
+      onClick={() => setWobble(true)}
+    >
+      <svg
+        viewBox="0 0 24 28"
+        fill="currentColor"
+        className={cn("h-full w-full", wobble && "flame-wobble")}
+        onAnimationEnd={() => setWobble(false)}
+        aria-hidden
+      >
+        <path d={FLAME_PATH} />
+      </svg>
+      <span className="absolute inset-0 flex items-end justify-center pb-2.5 text-sm font-bold text-white">
+        {weeks}
+      </span>
     </div>
   );
 }
@@ -114,12 +49,6 @@ export function StreakCard() {
   const todayKey = dayKeyOf(now);
   const thisMonth = monthKeyOf(now);
   const [month, setMonth] = useState(thisMonth);
-  const [variant, setVariant] = useState<FlameVariant>("b");
-  useEffect(() => {
-    const v = new URLSearchParams(window.location.search).get("flame");
-    const found = FLAME_VARIANTS.find((f) => f.id === v);
-    if (found) setVariant(found.id);
-  }, []);
 
   if (!playedDays) return null;
 
@@ -134,22 +63,6 @@ export function StreakCard() {
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <div className="flex gap-1 rounded-full bg-muted p-1 text-xs font-medium">
-          {FLAME_VARIANTS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setVariant(f.id)}
-              className={cn(
-                "flex-1 rounded-full px-1 py-1.5",
-                variant === f.id ? "bg-card shadow-sm" : "text-muted-foreground",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         <div className="flex gap-10">
           <div>
             <p className="text-sm text-muted-foreground">Your Streak</p>
@@ -184,7 +97,7 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3.5rem] items-center gap-y-2 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-2 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
@@ -199,7 +112,6 @@ export function StreakCard() {
               todayKey={todayKey}
               weekDone={playedWeeks.has(week.week)}
               isCurrent={week.week === currentWeek}
-              variant={variant}
               flame={
                 week.week === flameWeek
                   ? { weeks: streak.weeks, active: streak.doneThisWeek }
@@ -220,7 +132,6 @@ function WeekRow({
   weekDone,
   isCurrent,
   flame,
-  variant,
 }: {
   cells: CalendarCell[];
   played: Set<string>;
@@ -228,7 +139,6 @@ function WeekRow({
   weekDone: boolean;
   isCurrent: boolean;
   flame: { weeks: number; active: boolean } | null;
-  variant: FlameVariant;
 }) {
   return (
     <>
@@ -257,7 +167,7 @@ function WeekRow({
       })}
       <div className="flex justify-center">
         {flame ? (
-          <StreakFlame weeks={flame.weeks} active={flame.active} variant={variant} />
+          <StreakFlame weeks={flame.weeks} active={flame.active} />
         ) : weekDone ? (
           <span
             className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-foreground text-white"
