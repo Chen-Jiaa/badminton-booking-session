@@ -230,7 +230,7 @@ function WeekRow({
       <div className="col-start-9 flex justify-center self-stretch">
         <div
           className={cn(
-            "flex w-12 items-center justify-center",
+            "flex w-9 items-center justify-center",
             // Each strip segment reaches 4px into the 6px row gap, so neighbours meet without a seam
             band && "bg-[hsl(316_35%_91%)] -my-1 py-1",
             band?.first && "-mt-2 rounded-t-full pt-2",
