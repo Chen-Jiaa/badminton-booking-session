@@ -131,9 +131,11 @@ function WeekRow({
                 "flex h-9 w-9 items-center justify-center rounded-full text-sm",
                 didPlay
                   ? "text-brand-foreground"
-                  : c.inMonth
-                    ? "bg-muted"
-                    : "text-muted-foreground/40",
+                  : !c.inMonth
+                    ? "text-muted-foreground/40"
+                    : c.key > todayKey
+                      ? "border border-foreground/25"
+                      : "bg-muted",
                 c.key === todayKey && "ring-2 ring-foreground ring-offset-2 ring-offset-card",
               )}
             >
