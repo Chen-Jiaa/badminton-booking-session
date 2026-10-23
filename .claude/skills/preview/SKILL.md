@@ -28,6 +28,10 @@ To click around yourself (or on a phone): `pnpm dev:test --lan`, then open the s
 `pnpm seed:history` adds finalized past sessions (streak data for ben, cai, dee, admin) to the test
 DB. Safe to re-run; a fresh `dev:test` (no `--no-reset`) wipes it.
 
+If the server dies mid-session with `ReadableStream is already closed` (a phone dropping a request on
+Node 23), `scripts/dev-crash-guard.cjs` now swallows it. Restart with `--no-reset` to keep the data.
+Your Mac's Wi-Fi IP can change: `ipconfig getifaddr en0`.
+
 ## 2. Screenshots
 
 ```bash

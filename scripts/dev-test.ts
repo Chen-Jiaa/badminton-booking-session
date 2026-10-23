@@ -2,6 +2,7 @@
 // it on DEV_TEST_PORT with test sign-in enabled, so `pnpm shot` (or you) can sign in
 // as any seeded user. Never points at live Supabase. `--no-reset` keeps the current data.
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 import { resetTestDb } from "../e2e/db";
 import { seed } from "../e2e/seed";
 import { startDevLogin } from "./dev-login";
@@ -42,6 +43,9 @@ async function main() {
         ...process.env,
         DATABASE_URL: TEST_DATABASE_URL,
         E2E_AUTH_SECRET,
+        // Keeps a dropped phone connection from crashing the server (see the file)
+        NODE_OPTIONS:
+          `${process.env.NODE_OPTIONS ?? ""} --require ${join(import.meta.dirname, "dev-crash-guard.cjs")}`.trim(),
         GOOGLE_SHEET_WEBHOOK_URL: "",
         // No live Storage either: receipt uploads would land in the real bucket
         SUPABASE_SERVICE_ROLE_KEY: "",
