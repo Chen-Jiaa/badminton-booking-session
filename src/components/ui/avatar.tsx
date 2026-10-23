@@ -22,6 +22,8 @@ const AvatarImage = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Image
     ref={ref}
+    // Google answers 429 to requests carrying a localhost Referer, which hides the picture in dev
+    referrerPolicy="no-referrer"
     className={cn("aspect-square h-full w-full", className)}
     {...props}
   />

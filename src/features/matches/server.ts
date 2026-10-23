@@ -5,7 +5,7 @@ import { attendances, matches, matchPlayers, sessions, users } from "@/db/schema
 import { loadMatch, matchWith, pushTokensFor, toView } from "./queries";
 import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
-import type { Result } from "@/lib/guards";
+import { getAdminFcmTokens, type Result } from "@/lib/guards";
 import {
   createMatchSchema,
   deleteMatchSchema,
@@ -29,6 +29,7 @@ import {
   isExpired,
   isMonthKey,
   isWaitingOn,
+  sideHasResponder,
   monthKeyOf,
   monthRange,
   otherSide,
@@ -178,6 +179,20 @@ export const createMatchFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "Everyone in the match must be at this session" };
     }
 
+    const people = await db.query.users.findMany({
+      where: inArray(users.id, sideB),
+      columns: { id: true, sponsorId: true },
+    });
+    // Against your own guest nobody on the other side can answer: the session's host
+    // or an admin steps in (see isStuck)
+    const stuck = !sideHasResponder(
+      [
+        ...sideA.map((userId) => ({ userId, side: "A" as const, sponsorId: null })),
+        ...people.map((u) => ({ userId: u.id, side: "B" as const, sponsorId: u.sponsorId })),
+      ],
+      "B",
+    );
+
     const status = input.score ? "AWAITING_CONFIRM" : "INVITED";
     const matchId = await db.transaction(async (tx) => {
       const [match] = await tx
@@ -205,7 +220,14 @@ export const createMatchFn = createServerFn({ method: "POST" })
       return match.id;
     });
 
-    const tokens = await pushTokensFor(sideB);
+    const tokens = stuck
+      ? Array.from(
+          new Set([
+            ...(await pushTokensFor([gameSession.createdById])),
+            ...(await getAdminFcmTokens()),
+          ]),
+        )
+      : await pushTokensFor(sideB);
     const name = recorder?.name ?? "Someone";
     if (input.score) {
       // Opponents read it from their side: their score first
@@ -314,8 +336,18 @@ export const respondToMatchFn = createServerFn({ method: "POST" })
     if (!row) return { type: "NOT_FOUND" };
     const m = toView(row);
 
-    // Only the side the match is waiting on can answer it
-    if (!isWaitingOn(m, me)) {
+    // Only the side the match is waiting on can answer it (or the host/an admin when
+    // that side has nobody who can)
+    const [referee, gameSession] = await Promise.all([
+      db.query.users.findFirst({ where: eq(users.id, me), columns: { role: true } }),
+      db.query.sessions.findFirst({
+        where: eq(sessions.id, m.sessionId),
+        columns: { createdById: true },
+      }),
+    ]);
+    const canReferee =
+      referee?.role === "ADMIN" || (referee?.role === "HOST" && gameSession?.createdById === me);
+    if (!isWaitingOn(m, me, new Date(), canReferee)) {
       return isExpired(m)
         ? { type: "BUSINESS_ERROR", code: "This match has expired" }
         : { type: "FORBIDDEN" };

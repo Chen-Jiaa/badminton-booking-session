@@ -45,7 +45,7 @@ test("waitlisted player moves in when someone leaves", async ({ loginAs }) => {
   await player.goto(`/sessions/${SEED_SESSIONS.full}`);
   await expect(player.getByText("· 2/2")).toBeVisible();
 
-  await player.getByRole("button", { name: "Session full · Join waitlist" }).click();
+  await player.getByRole("button", { name: "Join waitlist" }).click();
   await expect(player.getByText("You're on the waitlist")).toBeVisible();
   await expect(player.getByText("On the waitlist · #1 in line")).toBeVisible();
   // Waitlisting doesn't take the deposit yet
@@ -55,7 +55,7 @@ test("waitlisted player moves in when someone leaves", async ({ loginAs }) => {
   await dee.goto(`/sessions/${SEED_SESSIONS.full}`);
   await dee.getByRole("button", { name: "Leave Game" }).click();
   await dee.getByRole("button", { name: "Leave", exact: true }).click();
-  await expect(dee.getByRole("button", { name: "Session full · Join waitlist" })).toBeVisible();
+  await expect(dee.getByRole("button", { name: "Join waitlist" })).toBeVisible();
 
   await player.goto(`/sessions/${SEED_SESSIONS.full}`);
   await expect(player.getByRole("button", { name: "Leave Game" })).toBeVisible();

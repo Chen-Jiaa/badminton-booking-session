@@ -6,6 +6,7 @@ import { users, topUpRequests, withdrawalRequests, attendances } from "@/db/sche
 import { eq, count } from "drizzle-orm";
 import { countMatchesWaitingOn } from "@/features/matches/queries";
 import { sessionMiddleware, setAuthCookies } from "@/middleware/auth";
+import { isCustomAvatar } from "@/features/profile/avatar";
 
 export const createSessionFn = createServerFn({ method: "POST" })
   .validator((data: { access_token: string; refresh_token?: string }) => data)
@@ -49,7 +50,7 @@ export const createSessionFn = createServerFn({ method: "POST" })
         })
         .returning();
       dbUser = newUser;
-    } else if (googleImage && dbUser.image !== googleImage) {
+    } else if (googleImage && dbUser.image !== googleImage && !isCustomAvatar(dbUser.image)) {
       const [updated] = await db
         .update(users)
         .set({ image: googleImage })
@@ -78,7 +79,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
     const [dbUser, pendingMatches] = await Promise.all([
       db.query.users.findFirst({
         where: eq(users.id, session.user.id),
-        columns: { role: true, balance: true, name: true, image: true },
+        columns: { role: true, balance: true, name: true, image: true, phone: true },
       }),
       countMatchesWaitingOn(session.user.id),
     ]);
@@ -112,6 +113,7 @@ export const fetchCurrentUserFn = createServerFn({ method: "GET" })
       balance: dbUser?.balance ?? "0",
       name: dbUser?.name ?? null,
       image: dbUser?.image ?? null,
+      hasPhone: !!dbUser?.phone,
       pendingTopupsCount,
       pendingWithdrawalsCount,
       pendingLateCancelsCount,

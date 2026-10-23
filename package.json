@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "dev:test": "tsx scripts/dev-test.ts",
+    "dev:local": "tsx scripts/dev-local.ts",
     "shot": "tsx scripts/shot.ts",
     "seed:history": "tsx scripts/seed-history.ts",
     "build": "vite build",
@@ -50,6 +51,7 @@
     "react": "^19.0.0",
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.0.0",
+    "react-easy-crop": "^6.2.4",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",

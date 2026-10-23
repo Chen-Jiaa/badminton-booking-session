@@ -57,7 +57,7 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="text-lg">Notifications</CardTitle>
       </CardHeader>
       <CardContent>

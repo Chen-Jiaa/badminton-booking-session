@@ -176,6 +176,8 @@ export function RsvpButtons({
                     id: currentUser.id,
                     name: currentUser.name ?? "",
                     image: currentUser.image ?? null,
+                    isGuest: false,
+                    sponsorId: null,
                   },
                 },
               ];
@@ -353,7 +355,7 @@ export function RsvpButtons({
           ) : hasInsufficientBalance ? (
             `Top up ${formatCurrency(shortfall.toFixed(2))} to join waitlist`
           ) : (
-            "Session full · Join waitlist"
+            "Join waitlist"
           )}
         </Button>
       ) : (

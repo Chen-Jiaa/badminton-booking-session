@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { updatePhoneFn } from "@/features/profile/server";
 
-/** Hosts' WhatsApp number, so players can message them from a session page. */
-export function PhoneForm({ phone }: { phone: string | null }) {
+/** Everyone's WhatsApp number, so admins can reach them (and players can reach hosts). */
+export function PhoneForm({ phone, isHost = false }: { phone: string | null; isHost?: boolean }) {
   const [value, setValue] = useState(phone ?? "");
   const [saving, setSaving] = useState(false);
   const queryClient = useQueryClient();
@@ -25,6 +25,7 @@ export function PhoneForm({ phone }: { phone: string | null }) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["profile"] }),
         queryClient.invalidateQueries({ queryKey: ["sessions"] }),
+        queryClient.invalidateQueries({ queryKey: ["current-user"] }),
       ]);
       toast.success(result.value.phone ? "WhatsApp number saved" : "WhatsApp number removed");
     } catch (err) {
@@ -36,7 +37,7 @@ export function PhoneForm({ phone }: { phone: string | null }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="text-lg">WhatsApp number</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -61,7 +62,9 @@ export function PhoneForm({ phone }: { phone: string | null }) {
           </Button>
         </form>
         <p className="text-xs text-muted-foreground">
-          Players in your sessions can WhatsApp you from the session page.
+          {isHost
+            ? "Admins and players in your sessions can WhatsApp you."
+            : "Only admins and hosts can see this."}
         </p>
       </CardContent>
     </Card>

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { toWhatsAppNumber } from "@/lib/phone";
+import { GUEST_LIMIT } from "@/features/sessions/rules";
 
 export const topUpRequestSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
@@ -84,6 +85,21 @@ export const updateSessionSchema = z.object({
 export const rsvpSchema = z.object({
   sessionId: z.string().min(1),
   status: z.enum(["YES", "NO", "WAITLIST"]),
+});
+
+export const updateGuestsSchema = z.object({
+  sessionId: z.string().min(1),
+  // Friends to bring: a saved guest (guestId) or a new name
+  add: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1, "Give your friend a name").max(30, "Name is too long"),
+        guestId: z.string().min(1).optional(),
+      }),
+    )
+    .max(GUEST_LIMIT),
+  // Guest user ids to take off the session
+  remove: z.array(z.string().min(1)).max(GUEST_LIMIT),
 });
 
 export const resolveLateCancelSchema = z.object({
@@ -174,6 +190,7 @@ export type RejectWithdrawalInput = z.infer<typeof rejectWithdrawalSchema>;
 export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export type UpdateExpenseInput = z.infer<typeof updateExpenseSchema>;
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+export type UpdateGuestsInput = z.infer<typeof updateGuestsSchema>;
 export type RsvpInput = z.infer<typeof rsvpSchema>;
 export type ManualAdjustInput = z.infer<typeof manualAdjustSchema>;
 export type LockSessionInput = z.infer<typeof lockSessionSchema>;
@@ -190,4 +207,8 @@ export const updatePhoneSchema = z.object({
     .string()
     .trim()
     .refine((v) => v === "" || toWhatsAppNumber(v) !== null, "Enter a valid phone number"),
+});
+
+export const updateNameSchema = z.object({
+  name: z.string().trim().min(1, "Enter your name").max(30, "Name is too long"),
 });

@@ -1,4 +1,5 @@
 import { createFileRoute, notFound, redirect, Link } from "@tanstack/react-router";
+import { guestLabel } from "@/features/sessions/guest-label";
 import { useState } from "react";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { useArrivals } from "@/hooks/use-arrivals";
@@ -19,10 +20,11 @@ import { RECORDING_GRACE_MS } from "@/features/matches/logic";
 import {
   AddWalkInButton,
   LateCancelRequests,
-  RemovePlayerDialog,
+  PlayerActionsDialog,
   WaitlistPanel,
 } from "@/features/sessions/roster-manage";
 import { isLateCancel, waitlistOrder } from "@/features/sessions/rules";
+import { GuestsSection } from "@/features/sessions/guests-panel";
 
 function formatSessionDate(date: Date): string {
   const part = (options: Intl.DateTimeFormatOptions) =>
@@ -68,8 +70,12 @@ function SessionDetailPage() {
   const { id } = Route.useParams();
   const { user } = Route.useRouteContext();
   const { data } = useSuspenseQueryDeferred(sessionDetailQueryOptions(id));
-  const { gameSession, groupName } = data;
-  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
+  const { gameSession, groupName, sponsorNames } = data;
+  const [removing, setRemoving] = useState<{
+    id: string;
+    name: string;
+    phone?: string | null;
+  } | null>(null);
 
   const userId = user?.id;
   const myAttendance = userId ? gameSession.attendances.find((a) => a.userId === userId) : null;
@@ -282,6 +288,20 @@ function SessionDetailPage() {
           </div>
         )}
 
+        {/* Guests: friends without an account, paid for by the member who brought them */}
+        {userId && !isLocked && !hasEnded && (
+          <GuestsSection
+            sessionId={id}
+            userId={userId}
+            attendances={gameSession.attendances}
+            deposit={parseFloat(gameSession.minBalance)}
+            maxPlayers={gameSession.maxPlayers}
+            canAdd={rsvpOpen || (hasStarted && !isFull)}
+            isLateCancel={isLateCancel(gameSession.startTime, now)}
+            iAmGoing={myAttendance?.status === "YES"}
+          />
+        )}
+
         {/* Player Grid */}
         {(yesAttendees.length > 0 || (canManage && !isLocked)) && (
           <div className="py-4 space-y-3">
@@ -309,6 +329,11 @@ function SessionDetailPage() {
                     <p className="text-[11px] text-center leading-tight line-clamp-2 w-full">
                       {a.user.name}
                     </p>
+                    {a.user.isGuest && (
+                      <p className="text-[11px] text-muted-foreground">
+                        {guestLabel(sponsorNames[a.user.sponsorId ?? ""])}
+                      </p>
+                    )}
                     {a.userId === gameSession.createdById && (
                       <p className="text-[11px] text-muted-foreground">Host</p>
                     )}
@@ -321,8 +346,14 @@ function SessionDetailPage() {
                   <button
                     key={a.id}
                     type="button"
-                    aria-label={`Remove ${a.user.name}`}
-                    onClick={() => setRemoving({ id: a.userId, name: a.user.name })}
+                    aria-label={`Manage ${a.user.name}`}
+                    onClick={() =>
+                      setRemoving({
+                        id: a.userId,
+                        name: a.user.name,
+                        phone: a.userId === userId || a.user.isGuest ? undefined : a.user.phone,
+                      })
+                    }
                     className="flex flex-col items-center gap-1 rounded-lg transition-[scale] duration-150 active:scale-[0.94]"
                   >
                     {body}
@@ -335,10 +366,12 @@ function SessionDetailPage() {
               })}
             </div>
             {canManage && !isLocked && yesAttendees.length > 0 && (
-              <p className="text-xs text-muted-foreground">Tap a player to remove them.</p>
+              <p className="text-xs text-muted-foreground">
+                Tap a player to contact or remove them.
+              </p>
             )}
             {canManage && (
-              <RemovePlayerDialog
+              <PlayerActionsDialog
                 sessionId={id}
                 player={removing}
                 onClose={() => setRemoving(null)}
@@ -377,6 +410,12 @@ function SessionDetailPage() {
                     <p className={cn("text-sm", a.userId === userId && "font-semibold")}>
                       {a.user.name}
                       {a.userId === userId && " (you)"}
+                      {a.user.isGuest && (
+                        <span className="text-xs text-muted-foreground">
+                          {" · "}
+                          {guestLabel(sponsorNames[a.user.sponsorId ?? ""])}
+                        </span>
+                      )}
                     </p>
                   </li>
                 ))}
@@ -392,6 +431,8 @@ function SessionDetailPage() {
           me={myAttendance?.status === "YES" ? myAttendance.user : null}
           attendees={yesAttendees.map((a) => a.user)}
           stickyRecord={onCourt}
+          viewerId={userId}
+          canReferee={canManage}
         />
 
         {canManage && !isLocked && hasEnded && (

@@ -32,6 +32,9 @@ If the server dies mid-session with `ReadableStream is already closed` (a phone 
 Node 23), `scripts/dev-crash-guard.cjs` now swallows it. Restart with `--no-reset` to keep the data.
 Your Mac's Wi-Fi IP can change: `ipconfig getifaddr en0`.
 
+To click around by hand (the user, on laptop or phone), use `pnpm dev:local` instead and
+`/api/dev-login`: see `docs/env.md` → Local dev server.
+
 ## 2. Screenshots
 
 ```bash

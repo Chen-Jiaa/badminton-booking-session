@@ -22,6 +22,11 @@ record (with score) ────────────────────
   `logic.ts` is the single source of truth: for `INVITED` it's the side opposite the
   creator; for `AWAITING_CONFIRM` it's the side opposite `submittedById`.
 - **One player from the waiting side is enough** to accept, confirm or dispute.
+- **Guests are answered for by their sponsor**, unless the sponsor plays on the other side
+  of that match (a member never confirms their own result).
+- **Singles against your own guest** has nobody to answer, so it's "stuck" (`isStuck()`):
+  the session's host or an admin (never someone playing in it) can accept, confirm or
+  decline it, and gets the push instead of the guest's sponsor. The nav badge doesn't count these.
 - **Dispute = enter the score you think is right.** It stores the replaced score in
   `previous_score_a/b` (shown struck-through on the card), sets `submittedById` to the
   disputer, and so flips the waiting side back. It can go back and forth.
@@ -81,6 +86,14 @@ record (with score) ────────────────────
 | Leaderboard                                                                  | `src/routes/_app/leaderboard.tsx` → `src/features/matches/leaderboard.tsx`                    |
 | "Waiting for you" count                                                      | `countMatchesWaitingOn()` → `fetchCurrentUserFn` → Sessions tab badge + banner on `/sessions` |
 | Animations (`score-tick`, `slot-fill`, `stamp-land`, `rise-in`)              | `src/styles/globals.css`                                                                      |
+
+### Guests in matches
+
+A guest (see `docs/sessions.md`) can be picked like any attendee and ranks on the
+leaderboard under their own name. They can't sign in, so their **sponsor answers for
+them**: `sideOf`/`isWaitingOn` also match `MatchPlayerView.sponsorId`, push tokens for a
+guest resolve to the sponsor (`pushTokensFor`), and the "waiting for you" count includes
+the sponsor's guests.
 
 ## Decision log
 

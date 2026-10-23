@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ChevronLeft, Mail, Phone } from "lucide-react";
+import { whatsAppLink } from "@/lib/phone";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { memberDetailQueryOptions, type MemberDetail } from "@/features/members/server";
 import { AdjustBalanceDialog } from "@/features/members/adjust-balance-dialog";
@@ -79,7 +80,19 @@ function MemberDetailPage() {
               {member.phone && (
                 <span className="flex items-center gap-1">
                   <Phone className="h-3 w-3" />
-                  {member.phone}
+                  <a href={`tel:${member.phone}`} className="underline">
+                    {member.phone}
+                  </a>
+                  {whatsAppLink(member.phone) && (
+                    <a
+                      href={whatsAppLink(member.phone)!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="ml-1 font-medium text-foreground underline"
+                    >
+                      WhatsApp
+                    </a>
+                  )}
                 </span>
               )}
               <span>Joined {formatDate(member.joinedAt)}</span>

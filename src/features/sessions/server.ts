@@ -2,13 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { sessions, users, attendances, type Session, type User } from "@/db/schema";
-import { eq, gte, lte, desc, and, or, count } from "drizzle-orm";
+import { eq, ne, gte, lte, desc, and, or, count, asc, inArray } from "drizzle-orm";
+import { TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
-import { rsvpSchema } from "@/lib/validations";
+import { rsvpSchema, updateGuestsSchema, type UpdateGuestsInput } from "@/lib/validations";
 import { sendLateCancelRequestedNotification, sendWaitlistPromotedNotification } from "@/lib/push";
 import { lockSession } from "@/lib/wallet";
-import { approverTokens, promoteFromWaitlist, refundDeposit, takeDeposit } from "./roster";
+import {
+  approverTokens,
+  type Promoted,
+  promoteFromWaitlist,
+  refundDeposit,
+  takeDeposit,
+} from "./roster";
 import { isLateCancel } from "./rules";
+import { RECORDING_GRACE_MS } from "@/features/matches/logic";
+import { applyGuestChanges, GuestError, type GuestOutcome } from "./guests";
 
 type Result<T = void> =
   | { type: "SUCCESS"; value: T }
@@ -36,7 +45,25 @@ export const fetchSessionsFn = createServerFn({ method: "GET" })
             )
           : and(lte(sessions.startTime, now), eq(sessions.status, "LOCKED"));
 
-    const [upcoming, past] = await Promise.all([
+    // Started, still inside the match-recording window, not finalized: shown to the people
+    // who are in it so they can get to "Record match" (see `docs/sessions.md`).
+    const liveQuery = session?.user.id
+      ? db.query.sessions.findMany({
+          where: and(
+            lte(sessions.startTime, now),
+            gte(sessions.endTime, new Date(now.getTime() - RECORDING_GRACE_MS)),
+            ne(sessions.status, "LOCKED"),
+          ),
+          orderBy: [desc(sessions.startTime)],
+          with: {
+            // Names and photos, so the card can open the match recorder without a page load
+            attendances: { with: { user: { columns: { id: true, name: true, image: true } } } },
+            createdBy: { columns: { id: true, name: true, image: true } },
+          },
+        })
+      : Promise.resolve([]);
+
+    const [upcoming, pastAll, liveAll] = await Promise.all([
       db.query.sessions.findMany({
         where: gte(sessions.startTime, now),
         orderBy: [sessions.startTime],
@@ -54,9 +81,17 @@ export const fetchSessionsFn = createServerFn({ method: "GET" })
           createdBy: { columns: { id: true, name: true, image: true } },
         },
       }),
+      liveQuery,
     ]);
 
-    return { upcoming, past };
+    const userId = session?.user.id;
+    const live = liveAll.filter((s) =>
+      s.attendances.some((a) => a.userId === userId && a.status === "YES"),
+    );
+    const liveIds = new Set(live.map((s) => s.id));
+    const past = pastAll.filter((s) => !liveIds.has(s.id));
+
+    return { upcoming, past, live };
   });
 
 export const sessionsQueryOptions = () =>
@@ -75,7 +110,16 @@ export const fetchSessionDetailFn = createServerFn({ method: "GET" })
         with: {
           attendances: {
             with: {
-              user: { columns: { id: true, name: true, image: true } },
+              user: {
+                columns: {
+                  id: true,
+                  name: true,
+                  image: true,
+                  isGuest: true,
+                  sponsorId: true,
+                  phone: true,
+                },
+              },
             },
           },
           createdBy: { columns: { id: true, name: true, image: true, phone: true } },
@@ -89,8 +133,34 @@ export const fetchSessionDetailFn = createServerFn({ method: "GET" })
     // The host's WhatsApp number is for signed-in members only, not anyone with the link
     if (!session?.user.id) gameSession.createdBy.phone = null;
 
+    // Players' numbers go only to admins and to the host who runs this session. Stripped here,
+    // not in the UI, so nobody else's browser ever receives them.
+    const viewerId = session?.user.id;
+    const viewer = viewerId
+      ? await db.query.users.findFirst({ where: eq(users.id, viewerId), columns: { role: true } })
+      : null;
+    const canSeePhones =
+      viewer?.role === "ADMIN" || (viewer?.role === "HOST" && gameSession.createdById === viewerId);
+    if (!canSeePhones) {
+      for (const a of gameSession.attendances) a.user.phone = null;
+    }
+
+    // Who brought each guest, for the "Low guest" label
+    const sponsorIds = Array.from(
+      new Set(gameSession.attendances.flatMap((a) => (a.user.sponsorId ? [a.user.sponsorId] : []))),
+    );
+    const sponsorRows = sponsorIds.length
+      ? await db.query.users.findMany({
+          where: inArray(users.id, sponsorIds),
+          columns: { id: true, name: true },
+        })
+      : [];
+    const sponsorNames: Record<string, string> = {};
+    for (const u of sponsorRows) sponsorNames[u.id] = u.name ?? "";
+
     return {
       gameSession,
+      sponsorNames,
       groupName: appSettings?.groupName ?? "Badminton Group",
     };
   });
@@ -133,7 +203,7 @@ export const rsvpFn = createServerFn({ method: "POST" })
       // Everything is decided inside one transaction holding the session lock, so a
       // replayed or double-tapped request sees the result of the first one rather
       // than the same stale roster (which used to refund a deposit once per copy).
-      const after: { session?: Session; lateCancel?: boolean; promoted?: User | null } = {};
+      const after: { session?: Session; lateCancel?: boolean; promoted?: Promoted | null } = {};
       const result = await db.transaction(
         async (tx): Promise<Result<{ newBalance: string; outcome: RsvpOutcome }>> => {
           const gameSession = await lockSession(tx, validated.sessionId);
@@ -268,6 +338,7 @@ export const rsvpFn = createServerFn({ method: "POST" })
           after.promoted.fcmToken,
           after.session.id,
           after.session.startTime,
+          after.promoted.guestName,
         );
       }
 
@@ -275,12 +346,25 @@ export const rsvpFn = createServerFn({ method: "POST" })
     },
   );
 
-/** Changed your mind about a late cancellation: keep the spot. */
+/**
+ * Changed your mind about a late cancellation: keep the spot. Pass `guestId` to keep
+ * one of your guests' spots.
+ */
 export const withdrawLateCancelFn = createServerFn({ method: "POST" })
-  .validator((data: { sessionId: string }) => data)
+  .validator((data: { sessionId: string; guestId?: string }) => data)
   .middleware([sessionMiddleware])
   .handler(async ({ data, context: { session } }): Promise<Result> => {
     if (!session?.user.id) return { type: "AUTH_ERROR" };
+
+    let attendeeId = session.user.id;
+    if (data.guestId) {
+      const guest = await db.query.users.findFirst({
+        where: and(eq(users.id, data.guestId), eq(users.sponsorId, session.user.id)),
+        columns: { id: true },
+      });
+      if (!guest) return { type: "FORBIDDEN" };
+      attendeeId = guest.id;
+    }
 
     const [updated] = await db
       .update(attendances)
@@ -288,7 +372,7 @@ export const withdrawLateCancelFn = createServerFn({ method: "POST" })
       .where(
         and(
           eq(attendances.sessionId, data.sessionId),
-          eq(attendances.userId, session.user.id),
+          eq(attendances.userId, attendeeId),
           eq(attendances.lateCancelStatus, "PENDING"),
         ),
       )
@@ -298,4 +382,92 @@ export const withdrawLateCancelFn = createServerFn({ method: "POST" })
       return { type: "BUSINESS_ERROR", code: "No pending cancellation to withdraw" };
     }
     return { type: "SUCCESS", value: undefined };
+  });
+
+/** Friends you've brought before, for the one-tap "Brought before" list. */
+export const fetchMyGuestsFn = createServerFn({ method: "GET" })
+  .middleware([sessionMiddleware])
+  .handler(async ({ context: { session } }) => {
+    if (!session?.user.id) return [];
+    return db.query.users.findMany({
+      where: and(eq(users.sponsorId, session.user.id), eq(users.isGuest, true)),
+      columns: { id: true, name: true },
+      orderBy: [asc(users.name)],
+    });
+  });
+
+export const myGuestsQueryOptions = () =>
+  queryOptions({
+    queryKey: ["my-guests"],
+    queryFn: () => fetchMyGuestsFn(),
+  });
+
+/**
+ * Bring friends to a session, and/or take them off it, in one all-or-nothing save.
+ * You pay: deposits come from your wallet and the guests never need an account.
+ */
+export const updateGuestsFn = createServerFn({ method: "POST" })
+  .validator((data: UpdateGuestsInput) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result<GuestOutcome>> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+    const parsed = updateGuestsSchema.safeParse(data);
+    if (!parsed.success) {
+      return { type: "BUSINESS_ERROR", code: parsed.error.issues[0]?.message ?? "Invalid guests" };
+    }
+    const input = parsed.data;
+
+    const sponsor = await db.query.users.findFirst({ where: eq(users.id, session.user.id) });
+    if (!sponsor || sponsor.isGuest) return { type: "AUTH_ERROR" };
+
+    const now = new Date();
+    try {
+      const applied = await db.transaction(async (tx) => {
+        const locked = await lockSession(tx, input.sessionId);
+        if (!locked) throw new GuestError("NOT_FOUND");
+        if (locked.status === "LOCKED") throw new GuestError("Session is locked");
+        const result = await applyGuestChanges(tx, {
+          session: locked,
+          sponsor,
+          changes: { add: input.add, remove: input.remove },
+          now,
+        });
+        return { ...result, locked };
+      });
+      const gameSession = applied.locked;
+
+      // After commit, never while holding the lock
+      if (applied.lateCancelNames.length > 0) {
+        const tokens = await approverTokens(gameSession);
+        for (const name of applied.lateCancelNames) {
+          await sendLateCancelRequestedNotification(
+            tokens,
+            name,
+            gameSession.id,
+            gameSession.startTime,
+          );
+        }
+      }
+      for (const next of applied.promoted) {
+        if (next.fcmToken) {
+          await sendWaitlistPromotedNotification(
+            next.fcmToken,
+            gameSession.id,
+            gameSession.startTime,
+            next.guestName,
+          );
+        }
+      }
+      return { type: "SUCCESS", value: applied.outcome };
+    } catch (error) {
+      if (error instanceof GuestError) {
+        return error.message === "NOT_FOUND"
+          ? { type: "NOT_FOUND" }
+          : { type: "BUSINESS_ERROR", code: error.message };
+      }
+      if (error instanceof TransactionRollbackError) {
+        return { type: "BUSINESS_ERROR", code: "Couldn't save your guests" };
+      }
+      throw error;
+    }
   });

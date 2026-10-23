@@ -2,12 +2,11 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
 import { profileQueryOptions } from "@/features/profile/server";
 import { financeSummaryQueryOptions } from "@/features/finance/server";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import { NotificationToggle } from "@/features/profile/notification-toggle";
+import { ProfileHeader } from "@/features/profile/profile-header";
 import { PhoneForm } from "@/features/profile/phone-form";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
@@ -30,25 +29,7 @@ function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.image || undefined} />
-              <AvatarFallback className="text-lg bg-brand text-brand-foreground">
-                {user.name?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-xl font-semibold">{user.name}</h2>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-              <Badge variant="secondary" className="mt-1">
-                {user.role}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ProfileHeader name={user.name} email={user.email} role={user.role} image={user.image} />
 
       {isAdmin && (
         <Card className="overflow-hidden py-0 gap-0">
@@ -85,7 +66,7 @@ function ProfilePage() {
         </Card>
       )}
 
-      {(user.role === "HOST" || isAdmin) && <PhoneForm phone={user.phone} />}
+      <PhoneForm phone={user.phone} isHost={user.role === "HOST" || isAdmin} />
 
       <NotificationToggle enabled={!!user.fcmToken} />
 

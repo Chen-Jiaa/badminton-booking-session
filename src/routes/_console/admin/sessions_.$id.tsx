@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { UserMinus } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { formatDateTime, formatCurrency } from "@/lib/utils";
 import { LockSessionForm } from "@/features/admin/lock-session-form";
 import { SessionActionsMenu } from "@/features/admin/session-actions-menu";
@@ -14,7 +14,7 @@ import { AddPlayerForm } from "@/features/admin/add-player-form";
 import { EditSessionToggle } from "@/features/admin/edit-session-toggle";
 import {
   LateCancelRequests,
-  RemovePlayerDialog,
+  PlayerActionsDialog,
   WaitlistPanel,
 } from "@/features/sessions/roster-manage";
 
@@ -33,7 +33,11 @@ function AdminSessionDetailPage() {
   const { id } = Route.useParams();
   const { data } = useSuspenseQueryDeferred(adminSessionDetailQueryOptions(id));
   const { gameSession, availablePlayers } = data;
-  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
+  const [removing, setRemoving] = useState<{
+    id: string;
+    name: string;
+    phone?: string | null;
+  } | null>(null);
 
   const yesAttendees = gameSession.attendances.filter((a) => a.status === "YES");
   const isLocked = gameSession.status === "LOCKED";
@@ -226,11 +230,17 @@ function AdminSessionDetailPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Remove ${a.user.name}`}
+                        aria-label={`Manage ${a.user.name}`}
                         className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                        onClick={() => setRemoving({ id: a.user.id, name: a.user.name })}
+                        onClick={() =>
+                          setRemoving({
+                            id: a.user.id,
+                            name: a.user.name,
+                            phone: a.user.isGuest ? undefined : a.user.phone,
+                          })
+                        }
                       >
-                        <UserMinus className="h-4 w-4" />
+                        <Ellipsis className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
@@ -241,7 +251,7 @@ function AdminSessionDetailPage() {
         </CardContent>
       </Card>
 
-      <RemovePlayerDialog sessionId={id} player={removing} onClose={() => setRemoving(null)} />
+      <PlayerActionsDialog sessionId={id} player={removing} onClose={() => setRemoving(null)} />
 
       {!isLocked && (
         <WaitlistPanel
