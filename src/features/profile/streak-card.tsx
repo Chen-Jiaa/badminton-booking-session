@@ -99,13 +99,13 @@ export function StreakCard() {
           </button>
         </div>
 
-        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_3rem] items-center gap-y-1.5 text-center">
+        <div className="grid grid-cols-[repeat(7,minmax(0,1fr))_1rem_3rem] items-center gap-y-1.5 text-center">
           {WEEKDAYS.map((d, i) => (
             <span key={i} className="text-xs text-muted-foreground">
               {d}
             </span>
           ))}
-          <span />
+          <span className="col-start-9" />
           {weeks.map((week, idx) => (
             <WeekRow
               key={week.week}
@@ -179,7 +179,7 @@ function WeekRow({
           </div>
         );
       })}
-      <div className="flex justify-center self-stretch">
+      <div className="col-start-9 flex justify-center self-stretch">
         <div
           className={cn(
             "flex w-12 items-center justify-center",
