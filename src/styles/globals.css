@@ -150,6 +150,30 @@
   animation: copy-ring 400ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+/* Streak flame: a short wobble from the base (same motion as animateicons' Flame) */
+@keyframes flame-wobble {
+  0% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  25% {
+    transform: scale(0.93, 1.08) skewX(-5deg);
+  }
+  50% {
+    transform: scale(1.04, 0.95) skewX(4deg);
+  }
+  75% {
+    transform: scale(0.98, 1.03) skewX(-2deg);
+  }
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+}
+.flame-wobble path {
+  transform-box: view-box;
+  transform-origin: 12px 21px;
+  animation: flame-wobble 800ms ease-in-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .join-pop {
     animation: none;

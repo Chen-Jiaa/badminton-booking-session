@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { attendances, sessions, users } from "@/db/schema";
 import { and, eq, ne } from "drizzle-orm";
+import { dayKeyOf } from "./streak";
 import { sessionMiddleware } from "@/middleware/auth";
 import { updateNameSchema, updatePhoneSchema } from "@/lib/validations";
 import { toWhatsAppNumber } from "@/lib/phone";
@@ -27,6 +28,38 @@ export const profileQueryOptions = () =>
     queryKey: ["profile"],
     queryFn: () => fetchProfileFn(),
     staleTime: 5 * 60 * 1000, // profile data changes rarely and only through explicit actions
+  });
+
+/**
+ * Club-local days (Malaysia time) on which the signed-in player actually played:
+ * confirmed (YES) on a session that has been finalized. Late cancels that were approved
+ * are NO, so they don't count; a rejected one stays YES and is charged, so it does.
+ */
+export const fetchPlayedDaysFn = createServerFn({ method: "GET" })
+  .middleware([sessionMiddleware])
+  .handler(async ({ context: { session } }) => {
+    if (!session?.user.id) return [];
+
+    const rows = await db
+      .select({ startTime: sessions.startTime })
+      .from(attendances)
+      .innerJoin(sessions, eq(sessions.id, attendances.sessionId))
+      .where(
+        and(
+          eq(attendances.userId, session.user.id),
+          eq(attendances.status, "YES"),
+          eq(sessions.status, "LOCKED"),
+        ),
+      );
+
+    return Array.from(new Set(rows.map((r) => dayKeyOf(r.startTime))));
+  });
+
+export const playedDaysQueryOptions = () =>
+  queryOptions({
+    queryKey: ["profile", "played-days"],
+    queryFn: () => fetchPlayedDaysFn(),
+    staleTime: 60 * 1000,
   });
 
 /**

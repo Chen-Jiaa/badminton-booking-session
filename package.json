@@ -8,6 +8,7 @@
     "dev:test": "tsx scripts/dev-test.ts",
     "dev:local": "tsx scripts/dev-local.ts",
     "shot": "tsx scripts/shot.ts",
+    "seed:history": "tsx scripts/seed-history.ts",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env .output/server/index.mjs",
     "lint": "oxlint . --ignore-path=.oxlintignore",

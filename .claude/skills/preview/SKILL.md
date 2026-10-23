@@ -19,6 +19,19 @@ Then wait until it answers: `until curl -s -o /dev/null http://localhost:3200; d
 after code changes. Restart only after a `schema.ts` change, since the DB is rebuilt on
 start (`--no-reset` keeps the data).
 
+Port 3200 taken by another workspace's server? Run both commands with `DEV_TEST_PORT=3251`
+(any free port) in front. All workspaces share the one `badminton_test` DB.
+
+To click around yourself (or on a phone): `pnpm dev:test --lan`, then open the sign-in page it prints
+(`http://<Mac IP>:<port+100>`) and pick a player. Without `--lan` it only listens on localhost.
+
+`pnpm seed:history` adds finalized past sessions (streak data for ben, cai, dee, admin) to the test
+DB. Safe to re-run; a fresh `dev:test` (no `--no-reset`) wipes it.
+
+If the server dies mid-session with `ReadableStream is already closed` (a phone dropping a request on
+Node 23), `scripts/dev-crash-guard.cjs` now swallows it. Restart with `--no-reset` to keep the data.
+Your Mac's Wi-Fi IP can change: `ipconfig getifaddr en0`.
+
 To click around by hand (the user, on laptop or phone), use `pnpm dev:local` instead and
 `/api/dev-login`: see `docs/env.md` → Local dev server.
 
