@@ -64,11 +64,17 @@ export function StreakCard() {
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <div>
-          <p className="text-sm text-muted-foreground">Your Streak</p>
-          <p className="text-xl font-semibold">
-            {streak.weeks} {streak.weeks === 1 ? "Week" : "Weeks"}
-          </p>
+        <div className="flex gap-10">
+          <div>
+            <p className="text-sm text-muted-foreground">Your Streak</p>
+            <p className="text-xl font-semibold">
+              {streak.weeks} {streak.weeks === 1 ? "Week" : "Weeks"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Total Sessions</p>
+            <p className="text-xl font-semibold">{played.size}</p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
