@@ -36,7 +36,7 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
       >
         <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" />
       </svg>
-      <span className="absolute inset-0 flex items-end justify-center pb-2 text-lg font-bold text-white">
+      <span className="absolute inset-0 flex items-end justify-center pb-2 text-sm font-bold text-white">
         {weeks}
       </span>
     </div>
@@ -63,9 +63,9 @@ export function StreakCard() {
     <Card>
       <CardContent className="space-y-4 pt-6">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-end gap-1.5">
             <StreakFlame weeks={streak.weeks} active={streak.doneThisWeek} />
-            <p className="text-xl font-semibold">{streak.weeks === 1 ? "week" : "weeks"}</p>
+            <p className="pb-1 text-sm font-semibold">{streak.weeks === 1 ? "week" : "weeks"}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-muted-foreground">Sessions</p>
