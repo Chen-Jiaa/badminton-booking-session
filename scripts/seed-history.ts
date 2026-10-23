@@ -22,6 +22,12 @@ const HISTORY: { weeksAgo: number; day: number; players: SeedUser[] }[] = [
   { weeksAgo: 5, day: 3, players: ["ben", "dee"] },
   { weeksAgo: 6, day: 3, players: ["ben"] },
   { weeksAgo: 7, day: 3, players: ["ben"] },
+  // Lou: a clean 5-week streak, one session a week
+  { weeksAgo: 0, day: 0, players: ["lou"] },
+  { weeksAgo: 1, day: 2, players: ["lou"] },
+  { weeksAgo: 2, day: 4, players: ["lou"] },
+  { weeksAgo: 3, day: 3, players: ["lou"] },
+  { weeksAgo: 4, day: 1, players: ["lou"] },
 ];
 
 async function main() {
