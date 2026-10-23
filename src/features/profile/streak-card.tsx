@@ -114,7 +114,8 @@ function StreakBoard({ playedDays }: { playedDays: string[] }) {
     w !== undefined && flameWeek !== null && w <= flameWeek && w > flameWeek - streak.weeks;
 
   return (
-    <div className="space-y-4">
+    // Same width the old profile card had, so the dates keep their spacing inside the wider sheet
+    <div className="mx-auto w-full max-w-[21rem] space-y-4">
       <div className="flex justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">Your Streak</p>
