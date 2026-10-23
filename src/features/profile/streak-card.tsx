@@ -59,6 +59,8 @@ export function StreakCard() {
   const playedWeeks = new Set(playedDays.map(weekOfDay));
   // The flame takes the place of the tick for the latest week in the streak
   const flameWeek = streak.weeks > 0 ? (streak.doneThisWeek ? currentWeek : currentWeek - 1) : null;
+  const inStreak = (w: number | undefined) =>
+    w !== undefined && flameWeek !== null && w <= flameWeek && w > flameWeek - streak.weeks;
 
   return (
     <Card>
@@ -104,7 +106,7 @@ export function StreakCard() {
             </span>
           ))}
           <span />
-          {weeks.map((week) => (
+          {weeks.map((week, idx) => (
             <WeekRow
               key={week.week}
               cells={week.cells}
@@ -112,6 +114,15 @@ export function StreakCard() {
               todayKey={todayKey}
               weekDone={playedWeeks.has(week.week)}
               isCurrent={week.week === currentWeek}
+              band={
+                inStreak(week.week)
+                  ? {
+                      first: !inStreak(weeks[idx - 1]?.week),
+                      last: !inStreak(weeks[idx + 1]?.week),
+                      link: inStreak(weeks[idx + 1]?.week),
+                    }
+                  : null
+              }
               flame={
                 week.week === flameWeek
                   ? { weeks: streak.weeks, active: streak.doneThisWeek }
@@ -131,6 +142,7 @@ function WeekRow({
   todayKey,
   weekDone,
   isCurrent,
+  band,
   flame,
 }: {
   cells: CalendarCell[];
@@ -138,6 +150,8 @@ function WeekRow({
   todayKey: string;
   weekDone: boolean;
   isCurrent: boolean;
+  /** Where this row sits in the streak: the lighter strip in the right-hand column. */
+  band: { first: boolean; last: boolean; link: boolean } | null;
   flame: { weeks: number; active: boolean } | null;
 }) {
   return (
@@ -151,7 +165,7 @@ function WeekRow({
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full text-sm",
                 didPlay
-                  ? "bg-brand-foreground text-white"
+                  ? "bg-foreground text-white"
                   : !c.inMonth
                     ? "text-muted-foreground/40"
                     : c.key > todayKey
@@ -165,25 +179,36 @@ function WeekRow({
           </div>
         );
       })}
-      <div className="flex justify-center">
-        {flame ? (
-          <StreakFlame weeks={flame.weeks} active={flame.active} />
-        ) : weekDone ? (
-          <span
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-foreground text-white"
-            aria-label="Week completed"
-          >
-            <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "h-6 w-6 rounded-full border-2",
-              isCurrent ? "border-foreground/60" : "border-muted",
-            )}
-            aria-hidden
-          />
-        )}
+      <div className="flex justify-center self-stretch">
+        <div
+          className={cn(
+            "flex w-10 items-center justify-center",
+            band && "relative bg-[hsl(316_35%_91%)]",
+            band?.first && "-mt-1.5 rounded-t-full pt-1.5",
+            band?.last && (flame ? "-mb-3 rounded-b-full pb-3" : "-mb-1.5 rounded-b-full pb-1.5"),
+            band?.link &&
+              "after:absolute after:inset-x-0 after:top-[calc(100%-1px)] after:h-[calc(0.5rem+2px)] after:bg-[hsl(316_35%_91%)]",
+          )}
+        >
+          {flame ? (
+            <StreakFlame weeks={flame.weeks} active={flame.active} />
+          ) : weekDone ? (
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-foreground text-white"
+              aria-label="Week completed"
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "h-6 w-6 rounded-full border-2",
+                isCurrent ? "border-foreground/60" : "border-muted",
+              )}
+              aria-hidden
+            />
+          )}
+        </div>
       </div>
     </>
   );
