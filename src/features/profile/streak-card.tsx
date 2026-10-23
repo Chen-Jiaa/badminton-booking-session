@@ -42,6 +42,18 @@ function StreakFlame({ weeks, active }: { weeks: number; active: boolean }) {
   );
 }
 
+/**
+ * The light purple strip fades towards the top. Each row's slice of the gradient is opaque
+ * (mixed with white, the sheet's background) so neighbouring slices overlap without doubling up.
+ */
+const STRIP_COLOR = "hsl(316 35% 91%)";
+const STRIP_TOP_STRENGTH = 15; // % of the full colour at the very top
+function stripGradient(from: number, to: number) {
+  const at = (t: number) =>
+    `color-mix(in srgb, ${STRIP_COLOR} ${Math.round(STRIP_TOP_STRENGTH + (100 - STRIP_TOP_STRENGTH) * t)}%, white)`;
+  return `linear-gradient(to bottom, ${at(from)}, ${at(to)})`;
+}
+
 const PILL_FLAME_PATH =
   "M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4";
 
@@ -112,6 +124,8 @@ function StreakBoard({ playedDays }: { playedDays: string[] }) {
   const flameWeek = streak.weeks > 0 ? (streak.doneThisWeek ? currentWeek : currentWeek - 1) : null;
   const inStreak = (w: number | undefined) =>
     w !== undefined && flameWeek !== null && w <= flameWeek && w > flameWeek - streak.weeks;
+  const firstStreakIdx = weeks.findIndex((w) => inStreak(w.week));
+  const streakRows = weeks.filter((w) => inStreak(w.week)).length;
 
   return (
     // Same width the old profile card had, so the dates keep their spacing inside the wider sheet
@@ -170,7 +184,9 @@ function StreakBoard({ playedDays }: { playedDays: string[] }) {
                 ? {
                     first: !inStreak(weeks[idx - 1]?.week),
                     last: !inStreak(weeks[idx + 1]?.week),
-                    link: inStreak(weeks[idx + 1]?.week),
+                    // Position of this row in the strip, 0 (top) to 1 (bottom), for the fade
+                    from: (idx - firstStreakIdx) / streakRows,
+                    to: (idx - firstStreakIdx + 1) / streakRows,
                   }
                 : null
             }
@@ -199,7 +215,7 @@ function WeekRow({
   weekDone: boolean;
   isCurrent: boolean;
   /** Where this row sits in the streak: the lighter strip in the right-hand column. */
-  band: { first: boolean; last: boolean; link: boolean } | null;
+  band: { first: boolean; last: boolean; from: number; to: number } | null;
   flame: { weeks: number; active: boolean } | null;
 }) {
   return (
@@ -232,11 +248,12 @@ function WeekRow({
           className={cn(
             "flex w-9 items-center justify-center",
             // Each strip segment reaches 4px into the 6px row gap, so neighbours meet without a seam
-            band && "bg-[hsl(316_35%_91%)] -my-1 py-1",
+            band && "-my-1 py-1",
             band?.first && "-mt-2 rounded-t-full pt-2",
             band?.last &&
               (flame ? "-mb-[7px] rounded-b-full pb-[7px]" : "-mb-2 rounded-b-full pb-2"),
           )}
+          style={band ? { backgroundImage: stripGradient(band.from, band.to) } : undefined}
         >
           {flame ? (
             <StreakFlame weeks={flame.weeks} active={flame.active} />
