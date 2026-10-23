@@ -43,6 +43,8 @@ export const createExpenseSchema = z.object({
   amount: z.number().positive().multipleOf(0.01),
   sessionId: z.string().min(1).optional(),
   paidAt: z.string().datetime().optional(),
+  // who fronted the money and should be paid back; defaults to the admin recording it
+  paidById: z.string().min(1).optional(),
   note: z.string().optional(),
   receiptUrl: z.string().url().optional(),
 });

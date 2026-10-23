@@ -262,7 +262,7 @@ function ExpensesTab() {
                 <TableHead>Recorded</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Detail</TableHead>
-                <TableHead>Paid by</TableHead>
+                <TableHead>Reimburse to</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -321,7 +321,7 @@ function ExpensesTab() {
                       </p>
                     )}
                     {e.paidBy && (
-                      <p className="text-xs text-muted-foreground">Paid by {e.paidBy.name}</p>
+                      <p className="text-xs text-muted-foreground">Reimburse to {e.paidBy.name}</p>
                     )}
                   </div>
                   <StatusBadge status={status} />

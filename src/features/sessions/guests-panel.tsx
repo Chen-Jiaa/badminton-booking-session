@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { HelpLink } from "@/features/faq/help-link";
 import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { currentUserQueryOptions } from "@/features/auth/server";
 import { myGuestsQueryOptions, updateGuestsFn } from "@/features/sessions/server";
@@ -76,13 +77,14 @@ export function GuestsSection({
   return (
     <div className="py-4 border-b space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold">
+        <p className="flex items-center gap-1 text-sm font-semibold">
           Your guests
           {mine.length > 0 && (
             <span className="font-normal text-muted-foreground ml-1">
               · {mine.length}/{GUEST_LIMIT}
             </span>
           )}
+          <HelpLink q="guests-deposit" label="How guests and deposits work" />
         </p>
         <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
           {mine.length > 0 ? (

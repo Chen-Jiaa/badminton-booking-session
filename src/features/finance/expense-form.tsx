@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import { createExpenseFn } from "@/features/finance/server";
+import { memberNamesQueryOptions } from "@/features/admin/server";
 
 type Category = "COURT_RENTAL" | "SHUTTLES" | "OTHER";
 
@@ -30,9 +31,13 @@ export function AddExpenseButton() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [alreadyPaid, setAlreadyPaid] = useState(true);
+  // "" = me (the admin recording it)
+  const [payerId, setPayerId] = useState("");
   const queryClient = useQueryClient();
+  const { data: members = [] } = useQuery({ ...memberNamesQueryOptions(), enabled: open });
 
   function reset() {
+    setPayerId("");
     setCategory("OTHER");
     setAmount("");
     setNote("");
@@ -54,6 +59,7 @@ export function AddExpenseButton() {
           amount: Math.round(parsed * 100) / 100,
           note: note.trim() || undefined,
           paidAt: alreadyPaid ? new Date().toISOString() : undefined,
+          paidById: alreadyPaid && payerId ? payerId : undefined,
         },
       });
       if (result.type !== "SUCCESS") throw new Error();
@@ -131,8 +137,30 @@ export function AddExpenseButton() {
                 checked={alreadyPaid}
                 onChange={(e) => setAlreadyPaid(e.target.checked)}
               />
-              I have already paid this out of pocket
+              This was already paid out of pocket
             </label>
+
+            {alreadyPaid && (
+              <div className="space-y-2">
+                <Label>Reimburse to</Label>
+                <Select
+                  value={payerId || "me"}
+                  onValueChange={(v) => setPayerId(v === "me" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="me">Me</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

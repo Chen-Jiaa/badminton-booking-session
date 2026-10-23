@@ -25,6 +25,7 @@ import {
 } from "@/features/sessions/roster-manage";
 import { isLateCancel, waitlistOrder } from "@/features/sessions/rules";
 import { GuestsSection } from "@/features/sessions/guests-panel";
+import { HelpLink } from "@/features/faq/help-link";
 
 function formatSessionDate(date: Date): string {
   const part = (options: Intl.DateTimeFormatOptions) =>
@@ -222,12 +223,19 @@ function SessionDetailPage() {
               )}
             </div>
             {parseFloat(gameSession.minBalance) > 0 && (
-              <p className="text-sm">
-                <span className="font-semibold">{formatCurrency(gameSession.minBalance)}</span>{" "}
-                deposit to join
-                <span className="text-muted-foreground text-xs ml-1">
-                  · offset against final cost
+              <p className="flex items-center gap-1 text-sm">
+                <span>
+                  <span className="font-semibold">{formatCurrency(gameSession.minBalance)}</span>{" "}
+                  deposit to join
                 </span>
+                <HelpLink q="charged" label="How and when you're charged" />
+              </p>
+            )}
+            {!isLocked && (
+              <p className="text-xs text-muted-foreground">
+                Cancelling within 24 hours of the start needs the host&rsquo;s approval (usually
+                when someone on the waitlist can take your spot). If it&rsquo;s declined, you pay
+                the full share.
               </p>
             )}
             {isLocked && (

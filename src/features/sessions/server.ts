@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
-import { sessions, users, attendances, type Session, type User } from "@/db/schema";
+import { sessions, users, attendances, type Session } from "@/db/schema";
 import { eq, ne, gte, lte, desc, and, or, count, asc, inArray } from "drizzle-orm";
 import { TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
