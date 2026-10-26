@@ -11,7 +11,7 @@ import {
   expenses,
   matches,
 } from "@/db/schema";
-import { eq, desc, and, inArray, notInArray, TransactionRollbackError } from "drizzle-orm";
+import { eq, ne, isNotNull, desc, and, inArray, notInArray, TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import {
   createSessionSchema,
@@ -32,6 +32,7 @@ import {
   sendLowBalanceNotification,
   sendTopUpConfirmedNotification,
   sendTopUpRejectedNotification,
+  sendNewSessionNotification,
 } from "@/lib/push";
 import { appendTopUpToSheet, SheetSyncError } from "@/lib/google-sheet";
 
@@ -262,6 +263,19 @@ export const createAdminSessionFn = createServerFn({ method: "POST" })
         createdById: creatorId,
       });
     });
+
+    // Tell every other member with notifications on. Guests have no device, and
+    // the creator already knows. Failures are swallowed inside the push helper.
+    const recipients = await db
+      .select({ fcmToken: users.fcmToken })
+      .from(users)
+      .where(and(eq(users.isGuest, false), ne(users.id, creatorId), isNotNull(users.fcmToken)));
+    await sendNewSessionNotification(
+      recipients.flatMap((r) => (r.fcmToken ? [r.fcmToken] : [])),
+      newSessionId,
+      new Date(validated.startTime),
+      validated.location,
+    );
 
     return { type: "SUCCESS", value: { id: newSessionId } };
   });

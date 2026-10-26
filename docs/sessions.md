@@ -4,6 +4,9 @@ How a session works from creation to charging, and the product rules behind it. 
 `features/sessions/{server,rules,roster}.ts` and the roster/session functions in
 `features/admin/server.ts` (see `docs/map.md`).
 
+- **New session push**: creating a session (`createAdminSessionFn`) pushes "New session" to every
+  non-guest member with notifications on, except the creator. Taps open the session page.
+
 ## Who can do what
 
 - **PLAYER**: join, waitlist, leave, ask for a late cancellation, record matches.

@@ -115,6 +115,12 @@ Keep this file under ~120 lines; move detail into `docs/`. Commit doc edits with
 - The dev log's `import-protection` warning about `src/middleware/auth.ts` is known and
   harmless (see the comment there). Don't chase it.
 
+- Auth: `sessionMiddleware` caches the session lookup per request (WeakMap on the `Request`), so
+  one SSR page load does at most 1 Supabase refresh. Don't call `getCookie` for the token elsewhere.
+- Timing the app: `.context/perf/` (`serve.sh`, `bench.ts`) runs a prod build with a 200 ms-delayed
+  local DB and a fake Supabase refresh endpoint. Build it with `NODE_ENV=test pnpm build`, since a
+  normal build inlines production and disables the test-token sign-in.
+
 ## Feature docs (rules + decision logs)
 
 - Sessions, deposits, waitlist, late cancels, finalize: `docs/sessions.md`

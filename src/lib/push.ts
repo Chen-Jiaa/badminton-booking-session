@@ -236,3 +236,19 @@ export async function sendWaitlistPromotedNotification(
     { type: "WAITLIST_PROMOTED", link: `/sessions/${sessionId}` },
   );
 }
+
+// ---- New sessions -----------------------------------------------------------
+
+export async function sendNewSessionNotification(
+  tokens: string[],
+  sessionId: string,
+  startTime: Date,
+  location?: string | null,
+) {
+  await sendToTokens(
+    tokens,
+    "New session",
+    `${sessionLabel(startTime)}${location ? ` at ${location}` : ""}. RSVP now to grab a spot.`,
+    { type: "SESSION_CREATED", link: `/sessions/${sessionId}` },
+  );
+}
