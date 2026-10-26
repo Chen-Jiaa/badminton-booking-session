@@ -341,7 +341,7 @@ export function SessionCard({
                   <span>
                     {isFull
                       ? `${yesCount}/${session.maxPlayers} · Full${waitlistCount > 0 ? ` · ${waitlistCount} waiting` : ""}`
-                      : `${slotsLeft}/${session.maxPlayers} left`}
+                      : `${yesCount}/${session.maxPlayers}`}
                   </span>
                 </div>
                 {!isLocked && !userId && (
