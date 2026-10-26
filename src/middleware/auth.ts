@@ -100,14 +100,30 @@ async function refreshSession(refreshToken: string): Promise<Session> {
   return verifyAccessToken(data.session.access_token);
 }
 
-export const sessionMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
-  const { getCookie } = await import("@tanstack/react-start/server");
-  let session = await verifyAccessToken(getCookie("sb-access-token"));
+// One lookup per incoming request. During SSR the route's `beforeLoad` and loader call
+// several server functions in the same request, and `getCookie` keeps returning the
+// original (expired) token even after a refresh, so each call used to refresh on its own:
+// 4 Supabase Auth round trips, two of them in sequence. Sharing the promise makes it 1.
+const sessionByRequest = new WeakMap<Request, Promise<Session>>();
 
-  if (!session) {
-    const refreshToken = getCookie("sb-refresh-token");
-    if (refreshToken) session = await refreshSession(refreshToken);
+async function resolveSession(): Promise<Session> {
+  const { getCookie } = await import("@tanstack/react-start/server");
+  const session = await verifyAccessToken(getCookie("sb-access-token"));
+  if (session) return session;
+
+  const refreshToken = getCookie("sb-refresh-token");
+  return refreshToken ? refreshSession(refreshToken) : null;
+}
+
+export const sessionMiddleware = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const request = getRequest();
+
+  let pending = sessionByRequest.get(request);
+  if (!pending) {
+    pending = resolveSession();
+    sessionByRequest.set(request, pending);
   }
 
-  return next({ context: { session } });
+  return next({ context: { session: await pending } });
 });
