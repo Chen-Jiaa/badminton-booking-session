@@ -5,7 +5,6 @@ import { financeSummaryQueryOptions } from "@/features/finance/server";
 import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { SignOutButton } from "@/features/auth/sign-out-button";
-import { NotificationToggle } from "@/features/profile/notification-toggle";
 import { BadgeShelf } from "@/features/badges/badge-shelf";
 import { myBadgesQueryOptions } from "@/features/badges/server";
 import { ProfileHeader } from "@/features/profile/profile-header";
@@ -40,9 +39,8 @@ function ProfilePage() {
         role={user.role}
         image={user.image}
         phone={user.phone}
+        notificationsEnabled={!!user.fcmToken}
       />
-
-      <BadgeShelf />
 
       {isAdmin && (
         <Card className="overflow-hidden py-0 gap-0">
@@ -79,7 +77,7 @@ function ProfilePage() {
         </Card>
       )}
 
-      <NotificationToggle enabled={!!user.fcmToken} />
+      <BadgeShelf />
 
       <Card className="overflow-hidden py-0 gap-0">
         <Link

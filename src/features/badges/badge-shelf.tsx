@@ -29,7 +29,7 @@ export function BadgeShelf() {
           <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {group}
           </h3>
-          <div className="grid grid-cols-3 gap-x-1 gap-y-3 rounded-xl border bg-white p-2 pb-3">
+          <div className="grid grid-cols-4 gap-x-1 gap-y-4 rounded-xl border bg-white p-6">
             {shown
               .filter((b) => b.group === group)
               .map((b) => {
@@ -39,9 +39,9 @@ export function BadgeShelf() {
                     key={b.id}
                     type="button"
                     onClick={() => setOpenId(b.id)}
-                    className="flex flex-col items-center gap-2 rounded-xl p-1.5 text-center transition-[scale] active:scale-[0.96] motion-reduce:active:scale-100"
+                    className="flex flex-col items-center gap-1.5 rounded-xl p-1 text-center transition-[scale] active:scale-[0.96] motion-reduce:active:scale-100"
                   >
-                    <MedalFace b={b} count={count} size={80} />
+                    <MedalFace b={b} count={count} size={56} />
                     <span
                       className={cn(
                         "text-xs font-semibold leading-tight",
