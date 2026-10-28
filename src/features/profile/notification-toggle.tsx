@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push-client";
@@ -33,7 +32,10 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
       }
       await savePushSubscriptionFn({ data: { subscription } });
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Notifications enabled");
+      toast.success("Notifications enabled", {
+        description:
+          "You'll get a push notification when your top-ups and withdrawals are approved or rejected.",
+      });
     } catch {
       toast.error("Couldn't enable notifications");
     } finally {
@@ -47,7 +49,9 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
       await unsubscribeFromPush();
       await clearPushSubscriptionFn();
       await queryClient.invalidateQueries({ queryKey: ["profile"] });
-      toast.success("Notifications disabled");
+      toast.success("Notifications disabled", {
+        description: "Turn them back on to hear about your top-ups and withdrawals.",
+      });
     } catch {
       toast.error("Couldn't disable notifications");
     } finally {
@@ -56,32 +60,22 @@ export function NotificationToggle({ enabled }: { enabled: boolean }) {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Notifications</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="mb-3 text-sm text-muted-foreground">
-          {enabled
-            ? "You'll get a push notification when your top-ups and withdrawals are approved or rejected."
-            : "Enable push notifications to hear about your top-ups and withdrawals."}
-        </p>
-        <Button
-          variant={enabled ? "outline" : "default"}
-          className="w-full"
-          disabled={loading}
-          onClick={enabled ? disable : enable}
-        >
-          {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : enabled ? (
-            <BellOff className="mr-2 h-4 w-4" />
-          ) : (
-            <Bell className="mr-2 h-4 w-4" />
-          )}
-          {enabled ? "Disable notifications" : "Enable notifications"}
-        </Button>
-      </CardContent>
-    </Card>
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={enabled ? "Turn off notifications" : "Turn on notifications"}
+      aria-pressed={enabled}
+      disabled={loading}
+      onClick={enabled ? disable : enable}
+      className={enabled ? "" : "text-muted-foreground"}
+    >
+      {loading ? (
+        <Loader2 className="h-5 w-5 animate-spin" />
+      ) : enabled ? (
+        <Bell className="h-5 w-5" />
+      ) : (
+        <BellOff className="h-5 w-5" />
+      )}
+    </Button>
   );
 }

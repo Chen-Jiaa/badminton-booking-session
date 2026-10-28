@@ -17,6 +17,7 @@ import {
 } from "@/features/profile/avatar";
 import { AvatarCropper } from "@/features/profile/avatar-cropper";
 import { PhoneForm } from "@/features/profile/phone-form";
+import { NotificationToggle } from "@/features/profile/notification-toggle";
 
 type Props = {
   name: string;
@@ -24,10 +25,11 @@ type Props = {
   role: string;
   image: string | null;
   phone: string | null;
+  notificationsEnabled: boolean;
 };
 
 /** The top profile card: change your photo (tap it), display name and WhatsApp number (pencils). */
-export function ProfileHeader({ name, email, role, image, phone }: Props) {
+export function ProfileHeader({ name, email, role, image, phone, notificationsEnabled }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<File | null>(null);
@@ -102,7 +104,12 @@ export function ProfileHeader({ name, email, role, image, phone }: Props) {
   }
 
   return (
-    <Card>
+    <Card className="relative">
+      {!editing && (
+        <div className="absolute right-3.5 top-3.5">
+          <NotificationToggle enabled={notificationsEnabled} />
+        </div>
+      )}
       <CardContent className="pt-6">
         <div className="flex items-center gap-4">
           <div className="shrink-0">
@@ -169,7 +176,7 @@ export function ProfileHeader({ name, email, role, image, phone }: Props) {
                 </Button>
               </form>
             ) : (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 pr-8">
                 <h2 className="truncate text-xl font-semibold">{name}</h2>
                 <Button
                   variant="ghost"
