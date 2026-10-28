@@ -45,6 +45,8 @@ export const DEPOSIT = 20;
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
+/** Everyone joined in the app's first month, so they're all Founding Members. */
+const JOINED = new Date("2026-10-20T12:00:00+08:00");
 
 /**
  * Baseline data every test starts from (it's reset before each test). Balances are
@@ -54,12 +56,12 @@ export async function seed() {
   const { db, close } = testDb();
   try {
     await db.insert(users).values([
-      { ...SEED_USERS.admin, balance: "100.00" },
-      { ...SEED_USERS.player, balance: money(START_BALANCE) },
-      { ...SEED_USERS.ben, balance: money(START_BALANCE) },
-      { ...SEED_USERS.cai, balance: money(START_BALANCE) },
-      { ...SEED_USERS.dee, balance: money(START_BALANCE) },
-      { ...SEED_USERS.lou, balance: money(LOU_BALANCE) },
+      { ...SEED_USERS.admin, balance: "100.00", createdAt: JOINED },
+      { ...SEED_USERS.player, balance: money(START_BALANCE), createdAt: JOINED },
+      { ...SEED_USERS.ben, balance: money(START_BALANCE), createdAt: JOINED },
+      { ...SEED_USERS.cai, balance: money(START_BALANCE), createdAt: JOINED },
+      { ...SEED_USERS.dee, balance: money(START_BALANCE), createdAt: JOINED },
+      { ...SEED_USERS.lou, balance: money(LOU_BALANCE), createdAt: JOINED },
     ]);
 
     await db.insert(courts).values({

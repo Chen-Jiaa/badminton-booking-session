@@ -86,6 +86,13 @@ export const FAQ_SECTIONS: FaqSection[] = [
           "Removing a guest follows the same cancellation rules as below. If you can't make it, your guests stay in and you still pay for them.",
         ],
       },
+      {
+        id: "guests-delete",
+        question: "How do I delete a friend from my list?",
+        answer: [
+          "Open “Bring a friend” on a session, then tap the bin next to their name under “Brought before” and confirm. A friend who is still on a game can't be deleted: remove them from the game first. Their past matches stay on the leaderboard.",
+        ],
+      },
     ],
   },
   {

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { sessions, users, attendances, type Session } from "@/db/schema";
-import { eq, ne, gte, lte, desc, and, or, count, asc, inArray } from "drizzle-orm";
+import { eq, ne, gte, lte, desc, and, or, count, asc, inArray, isNull } from "drizzle-orm";
 import { TransactionRollbackError } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
 import { rsvpSchema, updateGuestsSchema, type UpdateGuestsInput } from "@/lib/validations";
@@ -270,7 +270,13 @@ export const rsvpFn = createServerFn({ method: "POST" })
               updatedAt: now,
             };
             if (existing) {
-              await tx.update(attendances).set(fresh).where(eq(attendances.id, existing.id));
+              // Rejoining after leaving starts the clock again (join time, Early Bird badge);
+              // moving up from the waitlist keeps the time they first asked
+              const rejoined = existing.status === "NO" ? { createdAt: now } : {};
+              await tx
+                .update(attendances)
+                .set({ ...fresh, ...rejoined })
+                .where(eq(attendances.id, existing.id));
             } else {
               await tx.insert(attendances).values({ sessionId: gameSession.id, userId, ...fresh });
             }
@@ -390,10 +396,54 @@ export const fetchMyGuestsFn = createServerFn({ method: "GET" })
   .handler(async ({ context: { session } }) => {
     if (!session?.user.id) return [];
     return db.query.users.findMany({
-      where: and(eq(users.sponsorId, session.user.id), eq(users.isGuest, true)),
+      where: and(
+        eq(users.sponsorId, session.user.id),
+        eq(users.isGuest, true),
+        isNull(users.archivedAt),
+      ),
       columns: { id: true, name: true },
       orderBy: [asc(users.name)],
     });
+  });
+
+/**
+ * Take a friend off your "Brought before" list. The row is only archived (matches and the
+ * leaderboard keep their history), and not allowed while they're on a session.
+ */
+export const deleteGuestFn = createServerFn({ method: "POST" })
+  .validator((data: { guestId: string }) => data)
+  .middleware([sessionMiddleware])
+  .handler(async ({ data, context: { session } }): Promise<Result<void>> => {
+    if (!session?.user.id) return { type: "AUTH_ERROR" };
+    const guest = await db.query.users.findFirst({
+      where: and(
+        eq(users.id, data.guestId),
+        eq(users.sponsorId, session.user.id),
+        eq(users.isGuest, true),
+      ),
+    });
+    if (!guest) return { type: "NOT_FOUND" };
+    // Only games that haven't ended: finished ones keep their YES rows forever
+    const [active] = await db
+      .select({ id: attendances.id })
+      .from(attendances)
+      .innerJoin(sessions, eq(attendances.sessionId, sessions.id))
+      .where(
+        and(
+          eq(attendances.userId, guest.id),
+          inArray(attendances.status, ["YES", "WAITLIST"]),
+          gte(sessions.endTime, new Date()),
+        ),
+      )
+      .limit(1);
+    if (active) {
+      return {
+        type: "BUSINESS_ERROR",
+        code: `${guest.name} is on a game. Remove them from it first`,
+      };
+    }
+    await db.update(users).set({ archivedAt: new Date() }).where(eq(users.id, guest.id));
+    return { type: "SUCCESS", value: undefined };
   });
 
 export const myGuestsQueryOptions = () =>

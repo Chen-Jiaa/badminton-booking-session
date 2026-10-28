@@ -71,6 +71,14 @@ record (with score) ────────────────────
   **Last 5** = last five results, newest on the right.
 - Computed in `buildStandings()` from the month's confirmed matches. There are no
   denormalised stats tables to keep in sync.
+- **Attendance tab (first, the default)**: who turned up most that month, from members
+  with a `YES` attendance on a finalized (`LOCKED`) session (guests excluded; approved late
+  cancels are `NO`, so they don't count). **Most sessions** ranks by sessions played, ties →
+  faster average join. **Fastest to join** ranks by average **join time** = their RSVP row's
+  `createdAt` − the session's `createdAt` (a host-added walk-in counts from when the host
+  added them). Logic: `matches/attendance.ts`; query: `fetchAttendanceBoardFn`.
+- **Badges** show as small tags under names on the Attendance tab and Top players table
+  (see `docs/badges.md`).
 
 ### Where things live
 

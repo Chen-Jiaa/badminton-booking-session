@@ -15,6 +15,7 @@ a row in the same change that applies a migration (see "Database changes" in CLA
 | 0007_sloppy_mauler                   | waitlist order + late-cancel columns on `attendances`           | yes                             | `select exists(select 1 from information_schema.columns where table_name='attendances' and column_name='late_cancel_status')`        |
 | 0008_curious_network                 | RLS on every table, no policies (locks out the anon REST API)   | yes (2026-10-20)                | `select bool_and(relrowsecurity) from pg_class c join pg_namespace n on n.oid=c.relnamespace where nspname='public' and relkind='r'` |
 | 0009_tidy_millenium_guard            | guests: `users.is_guest`, `users.sponsor_id`, `ledger.guest_id` | yes (2026-10-21)                | `select exists(select 1 from information_schema.columns where table_name='users' and column_name='is_guest')`                        |
+| 0010_striped_siren                   | guests: `users.archived_at` (delete a friend from the list)     | yes (2026-10-28)         | `select exists(select 1 from information_schema.columns where table_name='users' and column_name='archived_at')`                     |
 
 Verified against live on 2026-10-20 (read-only). `schema.ts` matched the 0007 snapshot then
 (`drizzle-kit generate` into a copy produced nothing). The withdrawal payout columns

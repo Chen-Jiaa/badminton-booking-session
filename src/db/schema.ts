@@ -82,6 +82,8 @@ export const users = pgTable(
     // (ledger rows go on the sponsor, tagged with `ledger.guestId`).
     isGuest: boolean("is_guest").default(false).notNull(),
     sponsorId: text("sponsor_id").references((): AnyPgColumn => users.id),
+    // Set when the sponsor "deletes" a friend from their list. The row stays for history.
+    archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

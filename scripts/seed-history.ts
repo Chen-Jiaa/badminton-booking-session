@@ -8,6 +8,17 @@ import { testDb } from "../e2e/db";
 import { SEED_USERS, type SeedUser } from "../e2e/seed";
 
 const DAY = 24 * 60 * 60 * 1000;
+const MIN = 60 * 1000;
+
+// How long after a session was posted each person joins (prototype: attendance board).
+const JOIN_DELAY: Record<SeedUser, number> = {
+  ben: 4 * MIN,
+  lou: 35 * MIN,
+  admin: 3 * 60 * MIN,
+  dee: 20 * 60 * MIN,
+  cai: 2 * DAY,
+  player: 4 * DAY,
+};
 
 // Who played in each week, counted back from this week (0). Each entry is a session.
 // `day` 3 = Thursday, 5 = Saturday (Monday = 0). 8pm Malaysia time.
@@ -59,6 +70,7 @@ async function main() {
           courts: 2,
           costPerCourt: "30.00",
           status: "LOCKED",
+          createdAt: new Date(start - 5 * DAY),
           location: "History Hall",
           createdById: SEED_USERS.admin.id,
         })
@@ -66,7 +78,13 @@ async function main() {
       for (const p of h.players) {
         await db
           .insert(attendances)
-          .values({ id: `${id}${p}`, sessionId: id, userId: SEED_USERS[p].id, status: "YES" })
+          .values({
+            id: `${id}${p}`,
+            sessionId: id,
+            userId: SEED_USERS[p].id,
+            status: "YES",
+            createdAt: new Date(start - 5 * DAY + JOIN_DELAY[p]),
+          })
           .onConflictDoNothing();
       }
       added++;

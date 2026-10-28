@@ -107,7 +107,7 @@ Keep this file under ~120 lines; move detail into `docs/`. Commit doc edits with
   they fail with "no matches found".
 - Run local tools via pnpm (`pnpm exec tsx`, `pnpm exec playwright`); none are global.
   Missing browser → `pnpm exec playwright install chromium`.
-- `pnpm test:e2e` rebuilds `badminton_test`, which another workspace's `dev:test` server (:3200) may be using. Run it with `TEST_DATABASE_URL=postgres://localhost:5432/badminton_test_<name>` to use your own throwaway DB. The first run can hit the 120s web-server timeout while Vite warms up; rerun.
+- `pnpm test:e2e` rebuilds `badminton_test`, which another workspace's `dev:test` server (:3200) may be using. Use your own throwaway DB: first `TEST_DATABASE_URL=postgres://localhost:5432/badminton_test_<name> pnpm test:db:reset` (creates it; without it the web server 500s and you get a 120s timeout), then run the tests with the same variable. A first run can also time out while Vite warms up; rerun.
 - Guests (`users.isGuest`) must be excluded from member lists, and ledger totals per player key on `guestId ?? userId`. See `docs/sessions.md`.
 - `psql` is `/opt/homebrew/opt/postgresql@14/bin/psql`, which may not be on PATH.
 - `package.json` overrides `nitro>srvx` to 0.11: srvx 0.8 (Nitro 3.0.0) aborts requests
@@ -124,5 +124,6 @@ Keep this file under ~120 lines; move detail into `docs/`. Commit doc edits with
 ## Feature docs (rules + decision logs)
 
 - Sessions, deposits, waitlist, late cancels, finalize: `docs/sessions.md`
-- Matches & monthly leaderboard: `docs/matches.md`
+- Matches, monthly leaderboard & attendance tab: `docs/matches.md`
+- Badges (profile medals + leaderboard tags, nothing stored): `docs/badges.md`
 - Google Sheet finance log (approvals → Sheet, Apps Script setup): `docs/google-sheet.md`

@@ -54,6 +54,18 @@ export function computeStreak(playedDays: string[], todayKey: string): StreakSum
   return { weeks, activities, doneThisWeek };
 }
 
+/** The longest run of consecutive Monday–Sunday weeks with at least one played day, ever. */
+export function longestStreak(playedDays: string[]): number {
+  const weeks = Array.from(new Set(playedDays.map(weekNumber))).sort((a, b) => a - b);
+  let best = 0;
+  let run = 0;
+  weeks.forEach((w, i) => {
+    run = i > 0 && w === weeks[i - 1] + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  return best;
+}
+
 export interface CalendarCell {
   key: string;
   day: number;
