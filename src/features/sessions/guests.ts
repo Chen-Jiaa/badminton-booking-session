@@ -127,6 +127,11 @@ export async function applyGuestChanges(
       (wanted.guestId ? myGuests.find((g) => g.id === wanted.guestId) : undefined) ??
       myGuests.find((g) => g.name.toLowerCase() === wanted.name.toLowerCase());
     if (wanted.guestId && !guest) throw new GuestError("That friend isn't on your list");
+    // Typing a deleted friend's name again brings them back
+    if (guest?.archivedAt) {
+      await tx.update(users).set({ archivedAt: null }).where(eq(users.id, guest.id));
+      guest.archivedAt = null;
+    }
 
     const existing = guest ? attendanceOf(guest.id) : undefined;
     if (existing && (existing.status === "YES" || existing.status === "WAITLIST")) continue;
@@ -169,6 +174,8 @@ export async function applyGuestChanges(
       lateCancelRequestedAt: null,
       lateCancelResolvedAt: null,
       lateCancelResolvedById: null,
+      // A friend brought back after leaving joins afresh (join time, Early Bird badge)
+      createdAt: now,
       updatedAt: now,
     };
     if (existing) {

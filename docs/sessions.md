@@ -99,6 +99,10 @@ A member can bring friends who don't have an account. Code: `sessions/guests.ts`
   on the page whenever the member has guests, whether or not they're going themselves.
 - Removing a guest follows the member rules: refund if early, a late-cancel request
   (approved by a host/admin, push says "<guest> (guest of <sponsor>)") inside 24h.
+- Deleting a friend from "Brought before" (`deleteGuestFn`) only sets `users.archived_at`
+  (history stays). Refused while they're YES/WAITLIST on a game that hasn't ended
+  (finished games keep YES rows forever, so don't check those). Adding the same name
+  again clears it.
 - Guests are hidden from every member list (admin members, member picker, CSV export).
   Pushes meant for a guest (promotion, late-cancel result, match invites) go to the sponsor.
 - In matches the sponsor can answer for their guests (`sideOf`/`isWaitingOn` in

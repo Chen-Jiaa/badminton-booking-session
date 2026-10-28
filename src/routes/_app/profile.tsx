@@ -6,8 +6,9 @@ import { Card } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 import { NotificationToggle } from "@/features/profile/notification-toggle";
+import { BadgeShelf } from "@/features/badges/badge-shelf";
+import { myBadgesQueryOptions } from "@/features/badges/server";
 import { ProfileHeader } from "@/features/profile/profile-header";
-import { PhoneForm } from "@/features/profile/phone-form";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, CircleHelp } from "lucide-react";
 
@@ -15,7 +16,11 @@ export const Route = createFileRoute("/_app/profile")({
   beforeLoad: ({ context }) => {
     if (!context.user) throw redirect({ to: "/login" });
   },
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(profileQueryOptions()),
+  loader: ({ context: { queryClient } }) =>
+    Promise.all([
+      queryClient.ensureQueryData(profileQueryOptions()),
+      queryClient.ensureQueryData(myBadgesQueryOptions()),
+    ]),
   component: ProfilePage,
 });
 
@@ -29,7 +34,15 @@ function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <ProfileHeader name={user.name} email={user.email} role={user.role} image={user.image} />
+      <ProfileHeader
+        name={user.name}
+        email={user.email}
+        role={user.role}
+        image={user.image}
+        phone={user.phone}
+      />
+
+      <BadgeShelf />
 
       {isAdmin && (
         <Card className="overflow-hidden py-0 gap-0">
@@ -65,8 +78,6 @@ function ProfilePage() {
           <AdminRow to="/admin/topups" label="Open console" />
         </Card>
       )}
-
-      <PhoneForm phone={user.phone} isHost={user.role === "HOST" || isAdmin} />
 
       <NotificationToggle enabled={!!user.fcmToken} />
 

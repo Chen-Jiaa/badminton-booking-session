@@ -48,6 +48,8 @@ pnpm -s shot <path>... [--as <user>] [--full] [--desktop] [--hires] [--reseed] [
 - Pixel 7 viewport at CSS-pixel size (~412×840) with reduced motion. That's cheap to read.
   Use `--hires` only when the user needs to judge fine detail, and `--full` for the whole
   scroll height.
+- `--click <text>` (repeatable): tap a tab/button by its visible text (or aria-label, for icon buttons) before the shot, e.g. `--click Attendance`.
+- `--mouse x,y`: move the pointer there (after any `--click`), to see hover/tilt effects.
 - `--reseed`: back to a fresh seed first (after you've changed data by clicking around, or after
   `pnpm test:e2e`, which shares the `badminton_test` DB and leaves the last test's data behind).
 - External requests (the Google Map) are blocked, so the map area is blank. That's expected.

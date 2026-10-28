@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { queryOptions } from "@tanstack/react-query";
 import { db } from "@/db";
 import { attendances, matches, matchPlayers, sessions, users } from "@/db/schema";
+import type { AttendanceBoard } from "./attendance";
 import { loadMatch, matchWith, pushTokensFor, toView } from "./queries";
 import { and, asc, eq, gte, inArray, lt, ne } from "drizzle-orm";
 import { sessionMiddleware } from "@/middleware/auth";
@@ -121,6 +122,65 @@ export const fetchLeaderboardFn = createServerFn({ method: "GET" })
       firstMonth: earliest[0] ? monthKeyOf(earliest[0].startTime) : monthKeyOf(new Date()),
       ...standings,
     };
+  });
+
+// PROTOTYPE: attendance board. Counts YES players (not guests) on finalized (LOCKED)
+// sessions of the month. "Join time" = when their RSVP started (reset if they left and
+// rejoined) minus when the session was posted (a host-added walk-in counts from when the
+// host added them).
+// Approved late cancels are status NO, so they don't count.
+export const fetchAttendanceBoardFn = createServerFn({ method: "GET" })
+  .validator((data: { month: string }) => data)
+  .handler(async ({ data }): Promise<AttendanceBoard> => {
+    const month = isMonthKey(data.month) ? data.month : monthKeyOf(new Date());
+    const { start, end } = monthRange(month);
+    const monthSessions = and(
+      eq(sessions.status, "LOCKED"),
+      gte(sessions.startTime, start),
+      lt(sessions.startTime, end),
+    );
+
+    const [rows, totals] = await Promise.all([
+      db
+        .select({
+          userId: users.id,
+          name: users.name,
+          image: users.image,
+          joinedAt: attendances.createdAt,
+          postedAt: sessions.createdAt,
+        })
+        .from(attendances)
+        .innerJoin(sessions, eq(attendances.sessionId, sessions.id))
+        .innerJoin(users, eq(attendances.userId, users.id))
+        .where(and(eq(attendances.status, "YES"), eq(users.isGuest, false), monthSessions)),
+      db.select({ id: sessions.id }).from(sessions).where(monthSessions),
+    ]);
+
+    const byUser = new Map<string, { name: string; image: string | null; waits: number[] }>();
+    for (const r of rows) {
+      const entry = byUser.get(r.userId) ?? { name: r.name ?? "Player", image: r.image, waits: [] };
+      entry.waits.push(Math.max(0, r.joinedAt.getTime() - r.postedAt.getTime()));
+      byUser.set(r.userId, entry);
+    }
+
+    return {
+      month,
+      totalSessions: totals.length,
+      players: [...byUser.entries()].map(([id, e]) => ({
+        id,
+        name: e.name,
+        image: e.image,
+        attended: e.waits.length,
+        avgJoinMs: e.waits.reduce((a, b) => a + b, 0) / e.waits.length,
+        fastestJoinMs: Math.min(...e.waits),
+      })),
+    };
+  });
+
+export const attendanceQueryOptions = (month: string) =>
+  queryOptions({
+    queryKey: ["matches", "attendance", month],
+    queryFn: () => fetchAttendanceBoardFn({ data: { month } }),
   });
 
 export const leaderboardQueryOptions = (month: string) =>

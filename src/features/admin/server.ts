@@ -604,7 +604,12 @@ export const addPlayerFn = createServerFn({ method: "POST" })
     if (existing) {
       await db
         .update(attendances)
-        .set({ status: "YES", updatedAt: new Date() })
+        .set({
+          status: "YES",
+          updatedAt: new Date(),
+          // Someone who had left counts as joining now (join time, Early Bird badge)
+          ...(existing.status === "NO" && { createdAt: new Date() }),
+        })
         .where(eq(attendances.id, existing.id));
     } else {
       await db.insert(attendances).values({

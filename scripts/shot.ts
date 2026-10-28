@@ -1,4 +1,4 @@
-// `pnpm shot <path>... [--as <user>] [--full] [--desktop] [--hires] [--reseed] [--name <file>]`
+// `pnpm shot <path>... [--as <user>] [--full] [--desktop] [--hires] [--reseed] [--name <file>] [--click <text>] [--mouse x,y]`
 //
 // Screenshots pages of the `pnpm dev:test` server as a seeded user, on a phone, and
 // saves them to `.context/shots/`. Prints each saved path. Shots are at CSS-pixel size
@@ -25,11 +25,15 @@ function parseArgs(argv: string[]) {
     hires: false,
     reseed: false,
     name: "",
+    click: [] as string[],
+    mouse: "",
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--as") opts.as = argv[++i] as SeedUser;
     else if (arg === "--name") opts.name = argv[++i];
+    else if (arg === "--mouse") opts.mouse = argv[++i];
+    else if (arg === "--click") opts.click.push(argv[++i]);
     else if (arg === "--full") opts.full = true;
     else if (arg === "--desktop") opts.desktop = true;
     else if (arg === "--hires") opts.hires = true;
@@ -86,6 +90,21 @@ async function main() {
       await waitForHydration(page).catch(() =>
         console.warn(`${path}: not hydrated after 30s (HTTP ${response?.status()})`),
       );
+      // Tap tabs/buttons by their visible text before the shot (e.g. --click Attendance)
+      for (const text of args.click) {
+        const exact = page.getByText(text, { exact: true });
+        // Icon-only buttons have no text: fall back to their aria-label
+        const target = (await exact.count()) ? exact : page.getByText(text);
+        await ((await target.count()) ? target : page.getByLabel(text, { exact: true }))
+          .first()
+          .click();
+        await page.waitForTimeout(400);
+      }
+      if (args.mouse) {
+        const [x, y] = args.mouse.split(",").map(Number);
+        await page.mouse.move(x, y, { steps: 4 });
+        await page.waitForTimeout(300);
+      }
       const base = args.name
         ? `${args.name}${args.paths.length > 1 ? `-${i + 1}` : ""}`
         : slug(path);

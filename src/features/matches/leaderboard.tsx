@@ -3,6 +3,10 @@ import { ChevronLeft, ChevronRight, Crown, Flame } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { AvatarStack } from "./controls";
+import { useQuery } from "@tanstack/react-query";
+import { BadgeChips } from "@/features/badges/badge-chips";
+import { badgeChipsQueryOptions } from "@/features/badges/server";
+import { AttendanceBoard } from "./attendance-board";
 import {
   daysLeftInMonth,
   monthLabel,
@@ -12,7 +16,7 @@ import {
   type StandingPerson,
 } from "./logic";
 
-type Board = "players" | "teams";
+type Board = "players" | "teams" | "attendance";
 
 export interface LeaderboardData {
   month: string;
@@ -38,8 +42,8 @@ export function Leaderboard({
   meId: string | undefined;
   onMonthChange: (delta: number) => void;
 }) {
-  const [board, setBoard] = useState<Board>("players");
-  const ranked = data[board];
+  const [board, setBoard] = useState<Board>("attendance");
+  const ranked = board === "attendance" ? [] : data[board];
   const isMine = (s: Standing) => !!meId && s.people.some((p) => p.id === meId);
   const meFirst = (people: StandingPerson[]) =>
     [...people].sort((a, b) => Number(b.id === meId) - Number(a.id === meId));
@@ -90,7 +94,7 @@ export function Leaderboard({
       </div>
 
       {/* My month at a glance, for whichever board is showing */}
-      {meId && mine && (
+      {meId && mine && board !== "attendance" && (
         <div
           key={`card-${data.month}-${board}`}
           className="rise-in flex items-center gap-3 rounded-xl bg-brand/40 px-4 py-3 text-brand-foreground"
@@ -117,13 +121,16 @@ export function Leaderboard({
       )}
 
       <Tabs value={board} onValueChange={(v) => setBoard(v as Board)}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
           <TabsTrigger value="players">Top players</TabsTrigger>
           <TabsTrigger value="teams">Top teams</TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {ranked.length === 0 ? (
+      {board === "attendance" ? (
+        <AttendanceBoard key={data.month} month={data.month} meId={meId} />
+      ) : ranked.length === 0 ? (
         <div className="rounded-xl border bg-white px-4 py-10 text-center">
           <p className="font-semibold">No rankings yet</p>
         </div>
@@ -272,6 +279,7 @@ function StandingsTable({
   nameOf: (p: StandingPerson) => string;
 }) {
   const cols = "grid grid-cols-[1.5rem_1fr_2.25rem_1.75rem_1.75rem_4.25rem] items-center gap-x-1.5";
+  const { data: badges } = useQuery(badgeChipsQueryOptions());
   return (
     <div className="overflow-hidden rounded-xl border bg-white">
       <div
@@ -320,6 +328,9 @@ function StandingsTable({
                   {nameOf(p)}
                 </span>
               ))}
+              {board === "players" && (
+                <BadgeChips chips={badges?.[s.people[0].id]} max={1} className="mt-1" />
+              )}
             </span>
             <StreakBadge s={s} />
           </span>

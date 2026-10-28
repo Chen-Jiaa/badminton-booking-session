@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Loader2, Plus, UserPlus, X } from "lucide-react";
+import { Check, Loader2, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { HelpLink } from "@/features/faq/help-link";
 import { TopUpDialog } from "@/features/topup/topup-dialog";
 import { currentUserQueryOptions } from "@/features/auth/server";
-import { myGuestsQueryOptions, updateGuestsFn } from "@/features/sessions/server";
+import { deleteGuestFn, myGuestsQueryOptions, updateGuestsFn } from "@/features/sessions/server";
 import { GUEST_LIMIT } from "@/features/sessions/rules";
 import { formatCurrency } from "@/lib/utils";
 
@@ -191,6 +191,7 @@ function GuestsSheet({
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const lower = (s: string) => s.trim().toLowerCase();
   const has = (name: string) => draft.some((g) => lower(g.name) === lower(name));
@@ -217,6 +218,22 @@ function GuestsSheet({
     if (!clean || full || has(clean)) return;
     setDraft((d) => [...d, { key: nextKey(), name: clean, guestId }]);
     setText("");
+  }
+
+  async function deleteFriend(id: string, name: string) {
+    try {
+      const result = await deleteGuestFn({ data: { guestId: id } });
+      if (result.type !== "SUCCESS") {
+        toast.error(result.type === "BUSINESS_ERROR" ? result.code : "Couldn't delete your friend");
+        return;
+      }
+      toast.success(`${name} deleted from your list`);
+      await queryClient.invalidateQueries({ queryKey: ["my-guests"] });
+    } catch {
+      toast.error("Couldn't delete your friend");
+    } finally {
+      setConfirmDelete(null);
+    }
   }
 
   async function save() {
@@ -279,17 +296,52 @@ function GuestsSheet({
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Brought before</p>
               <div className="flex flex-wrap gap-2">
-                {suggestions.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => add(p.name, p.id)}
-                    className="inline-flex h-9 items-center gap-1 rounded-full border bg-background pr-2.5 pl-3 text-sm transition-[scale] duration-150 active:scale-95"
-                  >
-                    {p.name}
-                    <Plus className="h-3.5 w-3.5 text-brand-foreground" />
-                  </button>
-                ))}
+                {suggestions.map((p) =>
+                  confirmDelete === p.id ? (
+                    <span
+                      key={p.id}
+                      className="inline-flex h-9 items-center gap-1 rounded-full border border-destructive/40 bg-background pr-1 pl-3 text-sm"
+                    >
+                      Delete {p.name}?
+                      <button
+                        type="button"
+                        onClick={() => deleteFriend(p.id, p.name)}
+                        className="h-7 rounded-full bg-destructive px-2.5 text-xs font-semibold text-white active:scale-95"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(null)}
+                        className="h-7 rounded-full px-2 text-xs text-muted-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </span>
+                  ) : (
+                    <span
+                      key={p.id}
+                      className="inline-flex h-9 items-center rounded-full border bg-background text-sm"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => add(p.name, p.id)}
+                        className="inline-flex h-9 items-center gap-1 rounded-l-full pr-1 pl-3 transition-[scale] duration-150 active:scale-95"
+                      >
+                        {p.name}
+                        <Plus className="h-3.5 w-3.5 text-brand-foreground" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${p.name} from your list`}
+                        onClick={() => setConfirmDelete(p.id)}
+                        className="flex h-9 w-9 items-center justify-center rounded-r-full text-muted-foreground"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ),
+                )}
               </div>
             </div>
           )}

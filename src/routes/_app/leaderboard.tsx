@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQueryDeferred } from "@/hooks/use-suspense-query-deferred";
-import { leaderboardQueryOptions } from "@/features/matches/server";
+import { badgeChipsQueryOptions } from "@/features/badges/server";
+import { attendanceQueryOptions, leaderboardQueryOptions } from "@/features/matches/server";
 import { Leaderboard } from "@/features/matches/leaderboard";
 import { PendingMatchesBanner } from "@/features/matches/pending-banner";
 import { isMonthKey, monthKeyOf, shiftMonth } from "@/features/matches/logic";
@@ -10,7 +11,11 @@ export const Route = createFileRoute("/_app/leaderboard")({
     typeof search.month === "string" && isMonthKey(search.month) ? { month: search.month } : {},
   loaderDeps: ({ search }) => ({ month: search.month ?? monthKeyOf(new Date()) }),
   loader: ({ context: { queryClient }, deps: { month } }) =>
-    queryClient.ensureQueryData(leaderboardQueryOptions(month)),
+    Promise.all([
+      queryClient.ensureQueryData(leaderboardQueryOptions(month)),
+      queryClient.ensureQueryData(attendanceQueryOptions(month)),
+      queryClient.ensureQueryData(badgeChipsQueryOptions()),
+    ]),
   component: LeaderboardPage,
 });
 

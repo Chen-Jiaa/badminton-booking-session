@@ -4,6 +4,7 @@ import { DEPOSIT, SEED_SESSIONS, START_BALANCE } from "./seed";
 test("host saves a WhatsApp number that players can tap", async ({ loginAs }) => {
   const admin = await loginAs("admin");
   await admin.goto("/profile");
+  await admin.getByRole("button", { name: "Edit WhatsApp number" }).click();
   const phone = admin.getByPlaceholder("012-345 6789");
   const save = admin.getByRole("button", { name: "Save", exact: true });
 
@@ -14,7 +15,7 @@ test("host saves a WhatsApp number that players can tap", async ({ loginAs }) =>
   await phone.fill("012-345 6789");
   await save.click();
   await expect(admin.getByText("WhatsApp number saved")).toBeVisible();
-  await expect(phone).toHaveValue("+60123456789");
+  await expect(admin.getByText("+60123456789")).toBeVisible();
 
   const player = await loginAs("player");
   await player.goto(`/sessions/${SEED_SESSIONS.upcoming}`);
@@ -22,13 +23,6 @@ test("host saves a WhatsApp number that players can tap", async ({ loginAs }) =>
     "href",
     "https://wa.me/60123456789",
   );
-});
-
-test("players don't get the WhatsApp number field", async ({ loginAs }) => {
-  const page = await loginAs("player");
-  await page.goto("/profile");
-  await expect(page.getByRole("button", { name: "Sign Out" })).toBeVisible();
-  await expect(page.getByText("WhatsApp number")).toBeHidden();
 });
 
 test("admin creates a session that players can see", async ({ loginAs }) => {

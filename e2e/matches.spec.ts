@@ -43,6 +43,8 @@ test("player records a match and an opponent confirms it", async ({ loginAs }) =
 test("confirmed matches rank players on the monthly leaderboard", async ({ loginAs }) => {
   const pat = await loginAs("player");
   await pat.goto("/leaderboard");
+  // Attendance is the first tab; the match standings are on Top players
+  await pat.getByRole("tab", { name: "Top players" }).click();
   // Two seeded matches already rank everyone: one confirmed match is enough
   await expect(pat.getByText("No rankings yet")).toBeHidden();
   await expect(pat.locator(".rise-in.grid")).toHaveCount(4);
@@ -55,6 +57,7 @@ test("confirmed matches rank players on the monthly leaderboard", async ({ login
 
   // Pat: 21 + 21 + 21 = 63 points, 3–0 · Cai: 15 + 19 + 15 = 49 points, 0–3
   await pat.goto("/leaderboard");
+  await pat.getByRole("tab", { name: "Top players" }).click();
   const myCard = pat.getByText("your rank").locator("xpath=ancestor::div[2]");
   await expect(myCard).toContainText("#1");
   await expect(myCard).toContainText("63");

@@ -16,11 +16,18 @@ import {
   type CropArea,
 } from "@/features/profile/avatar";
 import { AvatarCropper } from "@/features/profile/avatar-cropper";
+import { PhoneForm } from "@/features/profile/phone-form";
 
-type Props = { name: string; email: string | null; role: string; image: string | null };
+type Props = {
+  name: string;
+  email: string | null;
+  role: string;
+  image: string | null;
+  phone: string | null;
+};
 
-/** The top profile card: change your photo (tap it) and your display name (pencil). */
-export function ProfileHeader({ name, email, role, image }: Props) {
+/** The top profile card: change your photo (tap it), display name and WhatsApp number (pencils). */
+export function ProfileHeader({ name, email, role, image, phone }: Props) {
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const [picked, setPicked] = useState<File | null>(null);
@@ -191,6 +198,9 @@ export function ProfileHeader({ name, email, role, image }: Props) {
               )}
             </div>
           </div>
+        </div>
+        <div className="mt-4 border-t pt-3">
+          <PhoneForm phone={phone} isHost={role === "HOST" || role === "ADMIN"} />
         </div>
       </CardContent>
       <AvatarCropper

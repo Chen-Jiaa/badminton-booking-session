@@ -28,7 +28,7 @@ test("a member brings a friend and pays the friend's deposit", async ({ loginAs 
   await bringFriends(page, "Wei Jie");
   await expect(page.getByText("· 3/8")).toBeVisible();
   await expect(page.getByText("Wei Jie").first()).toBeVisible();
-  await expect(page.getByText("Guest", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pat's guest", { exact: true })).toBeVisible();
 
   // Pat's own deposit plus the friend's, both from Pat's wallet
   await expectBalance(page, START_BALANCE - 2 * DEPOSIT);
@@ -253,4 +253,56 @@ test("a late friend is refused when the game filled up meanwhile", async ({ logi
 
   await expect(page.getByText("no free spots")).toBeVisible();
   await expect(page.getByText("Guests saved")).toBeHidden();
+});
+
+test("a member can delete a friend from their 'Brought before' list", async ({ loginAs }) => {
+  const page = await loginAs("player");
+  await page.goto(`/sessions/${SEED_SESSIONS.upcoming}`);
+  await bringFriends(page, "Wei Jie");
+
+  // Take the friend off the game, then they show up under "Brought before"
+  await page.getByRole("button", { name: "Manage" }).click();
+  let sheet = page.getByRole("dialog", { name: SHEET });
+  await sheet.getByRole("button", { name: "Remove Wei Jie" }).click();
+  await sheet.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Guests saved")).toBeVisible();
+
+  await page.getByRole("button", { name: "Bring a friend" }).click();
+  sheet = page.getByRole("dialog", { name: SHEET });
+  await sheet.getByRole("button", { name: "Delete Wei Jie from your list" }).click();
+  await sheet.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByText("Wei Jie deleted from your list")).toBeVisible();
+  await expect(sheet.getByText("Brought before")).toBeHidden();
+
+  // Their history row is kept, only hidden from the list
+  const { db, close } = testDb();
+  try {
+    const [row] = await db.select().from(users).where(eq(users.name, "Wei Jie"));
+    expect(row.archivedAt).not.toBeNull();
+  } finally {
+    await close();
+  }
+});
+
+test("a friend who only played finished games can be deleted", async ({ loginAs }) => {
+  const { db, close } = testDb();
+  try {
+    const [guest] = await db
+      .insert(users)
+      .values({ name: "Wei Jie", isGuest: true, sponsorId: SEED_USERS.player.id })
+      .returning();
+    await db
+      .insert(attendances)
+      .values({ sessionId: SEED_SESSIONS.finished, userId: guest.id, status: "YES" });
+  } finally {
+    await close();
+  }
+
+  const page = await loginAs("player");
+  await page.goto(`/sessions/${SEED_SESSIONS.upcoming}`);
+  await page.getByRole("button", { name: "Bring a friend" }).click();
+  const sheet = page.getByRole("dialog", { name: SHEET });
+  await sheet.getByRole("button", { name: "Delete Wei Jie from your list" }).click();
+  await sheet.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByText("Wei Jie deleted from your list")).toBeVisible();
 });
