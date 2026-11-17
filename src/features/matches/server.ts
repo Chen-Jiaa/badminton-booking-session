@@ -76,7 +76,7 @@ export const fetchLeaderboardFn = createServerFn({ method: "GET" })
     const { start, end } = monthRange(month);
 
     // A match belongs to the month its session was played in
-    const rows = await db
+    const monthMatchIds = db
       .select({ id: matches.id })
       .from(matches)
       .innerJoin(sessions, eq(matches.sessionId, sessions.id))
@@ -89,16 +89,11 @@ export const fetchLeaderboardFn = createServerFn({ method: "GET" })
       );
 
     const [confirmed, earliest] = await Promise.all([
-      rows.length
-        ? db.query.matches.findMany({
-            where: inArray(
-              matches.id,
-              rows.map((r) => r.id),
-            ),
-            orderBy: [asc(matches.createdAt)],
-            with: matchWith,
-          })
-        : Promise.resolve([]),
+      db.query.matches.findMany({
+        where: inArray(matches.id, monthMatchIds),
+        orderBy: [asc(matches.createdAt)],
+        with: matchWith,
+      }),
       db
         .select({ startTime: sessions.startTime })
         .from(matches)
